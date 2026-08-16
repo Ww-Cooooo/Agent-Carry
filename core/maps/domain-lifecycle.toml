@@ -1,0 +1,38 @@
+schema_version = 1
+map_id = "domain-lifecycle"
+
+[[routes]]
+id = "instantiation"
+summary = "先确定可调整的交流方式，再把模板实例化为通用个人助手或单一领域专属助手。"
+triggers = ["安装完成后的首次设置", "开始实例化", "选择交流方式", "选择通用或领域"]
+target = "core/guides/instantiation-guide.md"
+state = "active"
+minimum_level = 3
+confirmation = "manual-model-switch-if-needed"
+
+[[routes]]
+id = "guidance-mode"
+summary = "调整当前 Agent 的解释深度、提问方式和协作节奏，不改变已锁定的助手方向。"
+triggers = ["调整交流方式", "调整引导方式", "讲详细一点", "少解释直接做", "改成一步步引导"]
+target = "core/guides/instantiation-guide.md"
+state = "active"
+minimum_level = 1
+confirmation = "before-write"
+
+[[routes]]
+id = "preference-reuse"
+summary = "从已有实例安全复用个人偏好，不复制领域身份和任务资产。"
+triggers = ["复用偏好", "从另一个实例复制习惯"]
+target = "core/guides/preference-reuse-guide.md"
+state = "active"
+minimum_level = 1
+confirmation = "before-write"
+
+[[routes]]
+id = "identity-inspection"
+summary = "只读取实例清单，解释当前方向、锁定状态和边界。"
+triggers = ["我是什么实例", "查看实例方向", "是否锁定"]
+target = "instance/manifest.toml"
+state = "active"
+minimum_level = 1
+confirmation = "none"

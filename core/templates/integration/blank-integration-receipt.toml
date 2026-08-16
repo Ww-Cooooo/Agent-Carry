@@ -1,0 +1,60 @@
+schema_version = 1
+record_type = "integration-receipt"
+record_id = "handshake.replace-me"
+instance_id = "unknown"
+created_at = ""
+source = "current-host"
+protocol_version = "1.0"
+capsule_id = ""
+host_profile_id = ""
+profile_match = "unknown"
+connection_state = "not-connected"
+integration_mode = ""
+role_understanding = ""
+visible_inputs = []
+not_visible = []
+unperformed_actions = []
+limitations = []
+
+[host_observation]
+product_name = ""
+product_version = ""
+model_name = ""
+model_selection_label = ""
+request_model_name = ""
+model_routing_mode = "unknown"
+auxiliary_model_names = []
+model_observation_basis = []
+environment = ""
+observation_basis = "current-session"
+
+[host_memory]
+inventory_status = "not-started"
+category_summaries = []
+conflicts_found = false
+details_loaded = false
+automatic_context_status = "unknown"
+automatic_context_categories = []
+automatic_context_details_loaded = false
+
+[safety_observation]
+secret_exposure_status = "not-observed"
+additional_recipients_used = []
+security_incidents = []
+
+[next_context]
+needed = false
+kind = ""
+reason = ""
+
+# 能力是开放集合，只增加当前接入或任务真正相关的项目。
+# [[capabilities]]
+# capability_id = "host-capability.example"
+# summary = ""
+# status = "unknown"
+# scope = ""
+# duration = "current-session"
+# retention = "unknown"
+# limits = []
+# verification_method = ""
+# verified_at = ""

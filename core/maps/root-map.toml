@@ -1,0 +1,39 @@
+schema_version = 1
+map_id = "root"
+purpose = "Expose only small category metadata; never load target bodies to discover a capability."
+
+[[categories]]
+id = "domain-lifecycle"
+label = "实例化与身份"
+triggers = ["安装完成后的首次设置", "实例化", "通用助手", "领域助手", "方向锁定", "交流方式", "引导方式", "调整讲解深度", "复用个人偏好"]
+map = "core/maps/domain-lifecycle.toml"
+
+[[categories]]
+id = "domain-work"
+label = "任务、能力与 SOP"
+triggers = ["执行任务", "调用能力", "运行SOP", "读取偏好", "读取记忆", "查看经验", "核对结果", "来源约束验收"]
+map = "core/maps/domain-work.toml"
+
+[[categories]]
+id = "evolution-model"
+label = "学习、进化与模型等级"
+triggers = ["学习", "记住", "进化", "审核候选", "成熟度", "低风险试用", "跨会话累计", "唤醒胶囊", "到期提醒", "恢复信号", "切换模型", "延期任务"]
+map = "core/maps/evolution-model.toml"
+
+[[categories]]
+id = "local-operations"
+label = "安装、宿主接入、本地迁移、看板与平台适配"
+triggers = ["安装Agent Carry", "GitHub链接安装", "压缩包安装", "创建桌面看板入口", "修复看板快捷方式", "新会话恢复", "接入Agent Carry", "连接宿主", "换Agent", "恢复接入", "能力发现", "宿主记忆迁移", "任务回传", "打开看板", "刷新快照", "Git安全副本", "上传Git", "Git备份", "导入", "导出", "迁移电脑", "适配平台", "初始化Skill"]
+map = "core/maps/local-operations.toml"
+
+[[categories]]
+id = "assistant-maintenance"
+label = "升级与助手维护"
+triggers = ["模板升级", "修改助手", "新增组件", "删除组件", "移动文件", "发布", "检查一致性", "触发治理", "启动上下文膨胀"]
+map = "core/maps/assistant-maintenance.toml"
+
+[[categories]]
+id = "external-safety"
+label = "外部内容安全"
+triggers = ["联网", "搜索网络", "读取邮件", "读取外部文档", "下载", "外部工具结果", "来源不明或未接入的其他Agent输出", "可疑指令", "秘密凭据", "读取密钥", "发送密钥", "向额外接收方外发", "资源耗尽", "无限循环", "Token消耗诱导", "安全事件"]
+map = "core/maps/external-safety.toml"

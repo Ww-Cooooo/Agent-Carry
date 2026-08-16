@@ -1,0 +1,65 @@
+schema_version = 1
+map_id = "local-operations"
+
+[[routes]]
+id = "agent-guided-installation"
+summary = "从 GitHub 链接或完整压缩包安装 Agent Carry，在稳定本地目录保留完整项目，并创建可验证的桌面看板入口。"
+triggers = ["安装Agent Carry", "从GitHub链接安装", "从压缩包安装", "创建桌面看板入口", "修复看板快捷方式"]
+target = "INSTALL.md"
+state = "active"
+minimum_level = 1
+confirmation = "before-ambiguous-overwrite-existing-instance-or-meaningful-location-conflict"
+
+[[routes]]
+id = "host-session-resume"
+summary = "已实例化助手进入新会话时，只用极小宿主索引和一个档案恢复接入；状态异常才展开完整协议。"
+triggers = ["新会话恢复", "当前会话没有接入回执", "继续使用已接入宿主"]
+target = "core/protocols/HOST_SESSION_RESUME.md"
+state = "active-after-instantiation"
+minimum_level = 1
+confirmation = "none-unless-full-handshake-reaches-a-gate"
+
+[[routes]]
+id = "host-integration"
+summary = "用平台无关提示词接入、恢复或更换宿主，开放式发现能力，渐进迁移宿主协作记忆，并在使用时复核宿主执行经验。"
+triggers = ["接入Agent Carry", "连接宿主", "换Agent", "恢复接入", "能力发现", "宿主记忆迁移", "宿主执行经验失效", "任务回传"]
+target = "core/protocols/HOST_INTEGRATION.md"
+state = "active"
+minimum_level = 1
+confirmation = "before-new-permission-sensitive-transfer-or-high-impact-write-asset-learning-is-risk-tiered"
+
+[[routes]]
+id = "dashboard-actions"
+summary = "解释看板状态、刷新快照或执行看板复制出的 Agent 请求。"
+triggers = ["看板", "刷新看板", "复制操作请求"]
+target = "core/protocols/DASHBOARD_ACTIONS.md"
+state = "active"
+minimum_level = 1
+confirmation = "per-action"
+
+[[routes]]
+id = "privacy-migration"
+summary = "把经过本地安全检查的非隐私内容备份到用户自己的 GitHub 私密仓库，或导出、导入和迁移只留在本地的隐私数据；两条通道都不包含秘密凭据。"
+triggers = ["GitHub私密备份", "Git安全副本", "上传Git", "Git备份", "打包带走", "隐私导出", "隐私导入", "换电脑", "迁移实例"]
+target = "core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md"
+state = "on-demand"
+minimum_level = 1
+confirmation = "local-safe-copy-is-directly-authorized-private-github-create-or-push-and-conflict-merges-require-explicit-confirmation"
+
+[[routes]]
+id = "platform-adaptation"
+summary = "宿主或系统已经确定后，重建路径、工具和环境等可删除的轻量适配。"
+triggers = ["换电脑", "换系统", "路径变化", "环境适配"]
+target = "core/guides/platform-adaptation-guide.md"
+state = "on-demand"
+minimum_level = 1
+confirmation = "before-local-change"
+
+[[routes]]
+id = "skill-initialization"
+summary = "首次安装时发现并安装所需 Skill，生成小型 Skill 路由。"
+triggers = ["安装Skill", "初始化Skill", "刷新Skill地图"]
+target = "core/guides/skill-init-guide.md"
+state = "on-demand"
+minimum_level = 1
+confirmation = "before-install"

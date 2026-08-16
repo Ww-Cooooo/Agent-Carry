@@ -1,0 +1,33 @@
+schema_version = 1
+record_type = "integration-capsule"
+record_id = "capsule.replace-me"
+instance_id = "template"
+created_at = ""
+source = "agent-carry"
+protocol_version = "1.0"
+operation = "connect"
+host_profile_hint = ""
+
+[instance]
+state = "template"
+direction_type = "unselected"
+direction_label = ""
+scope_statement = ""
+guidance_mode = "unselected"
+product_version = "1.0.0"
+core_version = "1.0.0"
+asset_schema = "1.2"
+learning_policy = "risk-tiered"
+privacy_mode = "allow-task-needed-private-context"
+
+[visible_entry]
+kind = "user-provided-root"
+value = ""
+bootstrap_ref = "BOOTSTRAP.md"
+root_map_ref = "core/maps/root-map.toml"
+
+[startup_summary]
+transaction_status = "clean"
+pending_route_count = 0
+scheduled_count = 0
+next_wakeup_at = ""

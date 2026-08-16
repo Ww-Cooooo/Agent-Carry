@@ -1,0 +1,49 @@
+schema_version = 1
+policy = "one-formal-owner-per-component"
+
+[[layers]]
+id = "template-core"
+owns = ["README.md", "INSTALL.md", "START-HERE.txt", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", ".gitignore", "LICENSE", "THIRD_PARTY_NOTICES.md", "core/**", "docs/**"]
+upgrade_policy = "replace-or-migrate-by-release-manifest"
+instance_may_modify = false
+
+[[layers]]
+id = "instance-identity"
+owns = ["instance/manifest.toml", "instance/maps/domain-map.toml", "instance/profile/**"]
+upgrade_policy = "preserve-and-schema-migrate"
+instance_may_modify = true
+
+[[layers]]
+id = "instance-assets"
+owns = ["instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**"]
+upgrade_policy = "preserve"
+instance_may_modify = true
+
+[[layers]]
+id = "instance-governance"
+owns = ["instance/governance/**"]
+upgrade_policy = "merge-template-body-preserve-instance-schedule-by-stable-id"
+instance_may_modify = true
+
+[[layers]]
+id = "instance-derived"
+owns = ["instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml"]
+upgrade_policy = "rebuild-from-instance-assets"
+instance_may_modify = true
+
+[[layers]]
+id = "local-private"
+owns = [".assistant-private/**", ".assistant-local/**", "maintainer-private/**"]
+upgrade_policy = "never-publish-never-overwrite-by-template"
+instance_may_modify = true
+
+[[layers]]
+id = "derived-ui"
+owns = ["dashboard.html", "dashboard/**", "_data/**"]
+upgrade_policy = "replace-ui-preserve-local-snapshot"
+instance_may_modify = "extension-points-only"
+
+[conflict]
+default = "stop-and-explain"
+options = ["keep-current-instance", "migrate-assets-into-fresh-instance"]
+never_silently_overwrite_instance_assets = true

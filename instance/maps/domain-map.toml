@@ -1,0 +1,22 @@
+schema_version = 1
+map_id = "instance-domain"
+instance_id = "template"
+direction = "unselected"
+status = "empty-until-instantiation"
+
+# 实例化后只登记本实例方向内的任务族和资产入口。示例格式：
+# [[routes]]
+# id = "task-family.example"
+# summary = "一句话说明可完成的任务"
+# triggers = ["用户可能怎么说"]
+# asset_kind = "sop"
+# topic_key = "example-topic"
+# subject_key = "example-subject"
+# aliases = []
+# scope = []
+# conditions = []
+# related_asset_ids = []
+# target = "instance/sops/example.md"
+# state = "active"
+# minimum_level = 1
+# confirmation = "none"

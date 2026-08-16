@@ -1,0 +1,43 @@
+// Build-time portability adapter.
+// It inlines Vite's generated module and stylesheet so dashboard/dist/index.html
+// works under file:// on Windows, macOS and Linux without a local server.
+// snapshot.js remains external because Agent Carry replaces that small derivative.
+
+import { readFile, unlink, writeFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const dist = resolve(here, '..', 'dist')
+const indexPath = resolve(dist, 'index.html')
+let html = await readFile(indexPath, 'utf8')
+
+const styleMatch = html.match(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/)
+const scriptMatch = html.match(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/)
+
+if (!styleMatch || !scriptMatch) {
+  throw new Error('Offline build could not find the generated stylesheet and module entry.')
+}
+
+const assetPath = (relative) => resolve(dist, relative.replace(/^\.\//, ''))
+const stylePath = assetPath(styleMatch[1])
+const scriptPath = assetPath(scriptMatch[1])
+const css = (await readFile(stylePath, 'utf8'))
+  // The generated stylesheet originally lives in dist/assets. Once inlined
+  // into dist/index.html, bundled fonts are one level nearer.
+  .replaceAll('url(../fonts/', 'url(./fonts/')
+const js = await readFile(scriptPath, 'utf8')
+const safeInlineJs = js.replaceAll('</script', '<\\/script')
+
+html = html
+  // Function replacements are required: generated CSS/JS can contain `$&`,
+  // which String.replace would otherwise expand back into the matched tag.
+  .replace(styleMatch[0], () => `<style data-agent-carry-inline>\n${css}\n</style>`)
+  .replace(scriptMatch[0], () => `<script type="module" data-agent-carry-inline>\n${safeInlineJs}\n</script>`)
+
+await writeFile(indexPath, html, 'utf8')
+
+// The two generated files are now fully embedded. Removing only those exact
+// inputs avoids shipping duplicate payloads while preserving any future
+// non-inlined assets that the bundle may still reference.
+await Promise.all([unlink(stylePath), unlink(scriptPath)])

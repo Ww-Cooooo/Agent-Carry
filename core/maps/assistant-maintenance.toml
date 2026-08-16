@@ -1,0 +1,74 @@
+schema_version = 1
+map_id = "assistant-maintenance"
+
+[[routes]]
+id = "component-change"
+summary = "新增、修改、删除、重命名或移动助手组件时，同步所有关联入口与投影。"
+triggers = ["修改助手", "新增功能", "删除功能", "移动文件", "重命名组件"]
+target = "core/protocols/COMPONENT_CHANGE.md"
+state = "maintenance-only"
+minimum_level = 3
+confirmation = "before-durable-change"
+
+[[routes]]
+id = "template-upgrade"
+summary = "把模板更新安全应用到实例，保护实例资产并提供回退。"
+triggers = ["升级模板", "导入升级包", "检查新版本"]
+target = "core/guides/upgrade-guide.md"
+state = "on-demand"
+minimum_level = 3
+confirmation = "before-upgrade"
+
+[[routes]]
+id = "task-orchestration"
+summary = "由高等级模型规划、低等级模型执行，并通过密封任务包沟通。"
+triggers = ["Level 3规划", "交给Level 1执行", "跨Agent执行"]
+target = "core/protocols/TASK_ORCHESTRATION_SOP.md"
+state = "on-demand"
+minimum_level = 3
+confirmation = "execution-mode-choice"
+
+[[routes]]
+id = "component-registry"
+summary = "查看组件所有者、依赖、对外入口和变更联动。"
+triggers = ["组件地图", "一致性检查", "影响分析"]
+target = "core/maps/component-map.toml"
+state = "maintenance-only"
+minimum_level = 2
+confirmation = "none"
+
+[[routes]]
+id = "trigger-governance"
+summary = "统一检查时间、次数、风险、规模、状态、版本和恢复类触发，避免继续扩张启动上下文。"
+triggers = ["触发规则", "达到条件后", "定时提醒", "阈值治理", "启动胶囊膨胀", "触发系统整体检查"]
+target = "core/protocols/CROSS_SESSION_SIGNALS.md"
+state = "maintenance-only"
+minimum_level = 3
+confirmation = "none"
+
+[[routes]]
+id = "governance-memory-research"
+summary = "周期性联网研究新的 Agent 记忆治理技术，并评估是否值得改进本助手。"
+triggers = ["运行记忆治理长期TODO", "研究新的记忆技术", "用户主动提出记忆新技术并要求研究"]
+target = "instance/governance/memory-governance-card.md"
+state = "explicit-only-no-background"
+minimum_level = 3
+confirmation = "explicit"
+
+[[routes]]
+id = "governance-consistency-research"
+summary = "研究能改进组件一致性与变更联动体系的新方法。"
+triggers = ["运行一致性治理长期TODO", "改进变更联动体系"]
+target = "instance/governance/consistency-governance-card.md"
+state = "explicit-only-no-background"
+minimum_level = 3
+confirmation = "explicit"
+
+[[routes]]
+id = "governance-security-research"
+summary = "研究新的提示词注入、Agent 攻击和外部内容安全防御。"
+triggers = ["运行安全治理长期TODO", "研究新的Agent攻击", "用户主动提出安全新技术并要求研究"]
+target = "instance/governance/network-security-governance-card.md"
+state = "explicit-only-no-background"
+minimum_level = 3
+confirmation = "explicit"

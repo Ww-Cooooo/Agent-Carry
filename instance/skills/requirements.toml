@@ -1,0 +1,15 @@
+schema_version = 1
+instance_id = "template"
+generated_at = ""
+status = "scan-after-instantiation"
+
+# 只保存已确认 Skill 的小型路由，不复制 Skill 正文。
+# [[skills]]
+# id = "skill.example"
+# summary = "用途"
+# triggers = ["触发表达"]
+# platform = ""
+# entry = ""
+# source = ""
+# state = "available"
+# confirmed_at = ""

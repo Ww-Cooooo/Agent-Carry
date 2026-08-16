@@ -1,0 +1,47 @@
+schema_version = 1
+core_id = "agent-carry-core"
+version = "1.0.0"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.2"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+
+[entry]
+installation = "INSTALL.md"
+archive_handoff = "START-HERE.txt"
+bootstrap = "BOOTSTRAP.md"
+root_map = "core/maps/root-map.toml"
+component_registry = "core/maps/component-map.toml"
+ownership = "core/ownership.toml"
+signal_control = "instance/signals/control.toml"
+signal_projection = "instance/maps/signal-map.toml"
+time_trigger_projection = "instance/maps/time-trigger-map.toml"
+trigger_registry = "core/maps/trigger-registry.toml"
+host_registry = "instance/hosts/registry.toml"
+
+[contracts]
+context_routing = "core/protocols/CONTEXT_ROUTING.md"
+result_validation = "core/protocols/RESULT_VALIDATION.md"
+asset_lifecycle = "core/protocols/ASSET_LIFECYCLE.md"
+external_safety = "core/protocols/EXTERNAL_CONTENT_SAFETY_BOUNDARY.md"
+deep_security = "core/protocols/NETWORK_AGENT_SECURITY.md"
+model_levels = "core/protocols/MODEL_LEVELS.md"
+dashboard_actions = "core/protocols/DASHBOARD_ACTIONS.md"
+dashboard_action_registry = "core/maps/dashboard-actions.toml"
+component_change = "core/protocols/COMPONENT_CHANGE.md"
+upgrade = "core/upgrade/UPGRADE-CONTRACT.md"
+cross_session_signals = "core/protocols/CROSS_SESSION_SIGNALS.md"
+host_integration = "core/protocols/HOST_INTEGRATION.md"
+host_session_resume = "core/protocols/HOST_SESSION_RESUME.md"
+host_integration_schema = "core/schemas/host-integration.schema.md"
+privacy_migration = "core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md"
+migration_kit_schema = "core/schemas/migration-kit.schema.md"
+migration_manifest_template = "core/templates/migration/MIGRATION-MANIFEST.template.toml"
+
+[portability]
+formal_sources = ["*.md", "*.toml"]
+local_derivatives_may_be_rebuilt = true
+platform_specific_logic_belongs_in_adapters = true

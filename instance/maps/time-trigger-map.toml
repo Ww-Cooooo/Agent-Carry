@@ -1,0 +1,10 @@
+schema_version = 1
+map_id = "time-triggers"
+instance_id = "template"
+state = "empty"
+source_revision = 0
+generated_at = ""
+scheduled_count = 0
+next_wakeup_at = ""
+
+# 本文件是非启动、可重建的时间索引。启动胶囊只保留最早时间和总数。

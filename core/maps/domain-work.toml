@@ -1,0 +1,48 @@
+schema_version = 1
+map_id = "domain-work"
+selection = "Read the instance domain map first, then only the matched asset. Combine a few assets when the task needs them."
+
+[[routes]]
+id = "instance-domain-map"
+summary = "当前实例已登记的任务族、能力、SOP 和知识入口。"
+triggers = ["普通工作", "我要完成一个任务", "调用已有能力"]
+target = "instance/maps/domain-map.toml"
+state = "active-after-instantiation"
+minimum_level = 1
+confirmation = "none"
+
+[[routes]]
+id = "asset-lifecycle"
+summary = "按学习价值、来源、风险、授权和真实证据创建、试用、成熟、复核或清理记忆、能力、SOP 与经验。"
+triggers = ["形成SOP", "学到了什么", "写入记忆", "验证能力", "宿主执行经验", "提升成熟度", "清理旧记录"]
+target = "core/protocols/ASSET_LIFECYCLE.md"
+state = "active"
+minimum_level = 1
+confirmation = "risk-tiered"
+
+[[routes]]
+id = "context-routing"
+summary = "诊断路由遗漏、上下文过载、能力找不到或多能力组合问题。"
+triggers = ["找不到能力", "加载太多", "路由错误", "上下文诊断"]
+target = "core/protocols/CONTEXT_ROUTING.md"
+state = "diagnostic-only"
+minimum_level = 2
+confirmation = "none"
+
+[[routes]]
+id = "result-validation"
+summary = "在来源／契约约束、正式多文件变更或学习证据写入前，用新的阅读轮次核对主张、引用、真实结果与安全边界。"
+triggers = ["核对最终结果", "来源约束验收", "契约验收", "正式变更验收", "计入学习证据前"]
+target = "core/protocols/RESULT_VALIDATION.md"
+state = "on-demand-before-reliable-completion"
+minimum_level = 1
+confirmation = "risk-dependent"
+
+[[routes]]
+id = "todo-management"
+summary = "只在用户明确加入、查看、执行、更新或删除普通 TODO 时读取对应卡。"
+triggers = ["加入TODO", "做这个TODO", "查看TODO", "更新TODO", "删除TODO"]
+target = "instance/todo/README.md"
+state = "explicit-only"
+minimum_level = 1
+confirmation = "per-todo-risk"

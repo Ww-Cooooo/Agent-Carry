@@ -1,0 +1,43 @@
+schema_version = 1
+instance_id = "template"
+state = "template"
+created_from = "agent-carry@1.0.0"
+created_at = ""
+
+[direction]
+type = "unselected"
+locked = false
+domain_id = ""
+label = ""
+scope_statement = ""
+out_of_scope_policy = "create-new-instance"
+
+[profile]
+status = "not-instantiated"
+guidance_mode = "unselected"
+user_preferences_ref = "instance/profile/README.md"
+domain_map_ref = "instance/maps/domain-map.toml"
+signal_control_ref = "instance/signals/control.toml"
+signal_map_ref = "instance/maps/signal-map.toml"
+time_trigger_map_ref = "instance/maps/time-trigger-map.toml"
+host_registry_ref = "instance/hosts/registry.toml"
+
+[learning]
+policy = "risk-tiered"
+low_risk_promotion = "notify-and-reversible"
+medium_high = "explicit-confirmation"
+direct_user_instruction = "direct-authorization"
+
+[privacy]
+current_execution_model = "allow-task-needed-private-context"
+additional_sensitive_destination = "explicit-authorization"
+git_storage = "exclude-private-and-secrets"
+credentials = "host-secret-mechanism-only"
+
+[versions]
+product = "1.0.0"
+extension_api = "1.0"
+asset_schema = "1.2"
+dashboard_snapshot_schema = "1.1"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"

@@ -1,0 +1,15 @@
+schema_version = 1
+map_id = "cross-session-signals"
+instance_id = "template"
+state = "empty"
+source_revision = 0
+generated_at = ""
+budget_bytes = 8192
+overflow = false
+active_count = 0
+scheduled_count = 0
+next_wakeup_at = ""
+next_wakeup_ref = "instance/maps/time-trigger-map.toml"
+
+# 只有已经接近处理、需要处理、冲突、不确定、过期或待恢复的状态才添加
+# [[signals]]。普通观察项和每条未来日程不进入启动胶囊；本文件不是正式真源。

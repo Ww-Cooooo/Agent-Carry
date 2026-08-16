@@ -1,0 +1,30 @@
+schema_version = 1
+record_type = "return-envelope"
+record_id = "event.replace-me"
+instance_id = "unknown"
+created_at = ""
+source = "connected-host"
+task_capsule_id = "task.replace-me"
+host_profile_id = ""
+status = "partial"
+outcome_summary = ""
+changes = []
+evidence_refs = []
+capabilities_used = []
+conflicts = []
+unverified = []
+learning_signals = []
+learning_signal_items = []
+host_memory_deltas = []
+
+[persistence]
+agent_carry_written = false
+host_memory_written = false
+written_refs = []
+claim_basis = ""
+
+[safety_report]
+secret_exposure_status = "not-observed"
+additional_recipients_used = []
+resource_limits_reached = []
+security_incidents = []

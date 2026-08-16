@@ -1,0 +1,399 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import Lenis from "lenis";
+import "lenis/dist/lenis.css";
+import { CheckCircle2, CircleHelp, Clock3, ClipboardCopy, HardDrive, MonitorPlay, PackageOpen, RefreshCw, TriangleAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  NAV_ITEMS,
+  hashForRoute,
+  routeFromHash,
+  type GrowthKind,
+  type LibraryKind,
+  type RouteState,
+} from "@/dashboard-config";
+import {
+  CopyDialog,
+  EMPTY_COPY,
+  ItemDialog,
+  LogoMark,
+  type CopyState,
+  type DetailState,
+} from "@/components/dashboard/Shared";
+import {
+  GrowthView,
+  HomeView,
+  LibraryView,
+  SystemView,
+  TransferView,
+} from "@/components/dashboard/Views";
+import {
+  applyDashboardSnapshot,
+  getGlobalActions,
+  getSnapshotStatus,
+  profile,
+} from "@/lib/data";
+
+export default function Dashboard() {
+  const demoMode = (window as Window & { AGENT_CARRY_DEMO?: boolean }).AGENT_CARRY_DEMO === true;
+  const [route, setRoute] = useState<RouteState>(() => routeFromHash(window.location.hash));
+  const [copyState, setCopyState] = useState<CopyState>(EMPTY_COPY);
+  const [detail, setDetail] = useState<DetailState | null>(null);
+  const [refreshIn, setRefreshIn] = useState(60);
+  const [snapshotRevision, setSnapshotRevision] = useState(0);
+  const [refreshError, setRefreshError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
+  const scrollRestoreRef = useRef<number | null>(null);
+  const refreshingRef = useRef(false);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (!window.location.hash) {
+      window.history.replaceState(null, "", hashForRoute({ page: "home" }));
+    }
+    const syncRoute = () => setRoute(routeFromHash(window.location.hash));
+    window.addEventListener("hashchange", syncRoute);
+    window.addEventListener("popstate", syncRoute);
+    return () => {
+      window.removeEventListener("hashchange", syncRoute);
+      window.removeEventListener("popstate", syncRoute);
+    };
+  }, []);
+
+  useEffect(() => {
+    const wrapper = mainRef.current;
+    const content = wrapper?.firstElementChild;
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    if (!wrapper || !(content instanceof HTMLElement) || reduced || coarsePointer) return;
+
+    const lenis = new Lenis({
+      wrapper,
+      content,
+      autoRaf: true,
+      duration: 0.72,
+      smoothWheel: true,
+      syncTouch: false,
+      overscroll: true,
+    });
+    lenisRef.current = lenis;
+
+    const syncVisibility = () => {
+      if (document.hidden) lenis.stop();
+      else lenis.start();
+    };
+    document.addEventListener("visibilitychange", syncVisibility);
+    syncVisibility();
+
+    return () => {
+      document.removeEventListener("visibilitychange", syncVisibility);
+      lenisRef.current = null;
+      lenis.destroy();
+    };
+  }, [reduced]);
+
+  useLayoutEffect(() => {
+    if (scrollRestoreRef.current == null || !mainRef.current) return;
+    if (lenisRef.current) lenisRef.current.scrollTo(scrollRestoreRef.current, { immediate: true });
+    else mainRef.current.scrollTop = scrollRestoreRef.current;
+    scrollRestoreRef.current = null;
+  }, [snapshotRevision]);
+
+  const navigate = useCallback((next: RouteState) => {
+    const nextHash = hashForRoute(next);
+    if (window.location.hash !== nextHash) window.history.pushState(null, "", nextHash);
+    setRoute(next);
+    setDetail(null);
+    if (lenisRef.current) lenisRef.current.scrollTo(0, { immediate: Boolean(reduced) });
+    else mainRef.current?.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+  }, [reduced]);
+
+  const refreshSnapshot = useCallback(async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+    setRefreshing(true);
+    setRefreshError(false);
+    const current = (window as Window & { AGENT_CARRY_SNAPSHOT?: unknown }).AGENT_CARRY_SNAPSHOT;
+    const before = JSON.stringify(current ?? null);
+    const previousScroll = mainRef.current?.scrollTop ?? 0;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        const source = new URL("./snapshot.js", document.baseURI);
+        source.searchParams.set("refresh", String(Date.now()));
+        script.src = source.href;
+        script.dataset.agentCarryRefresh = "true";
+        script.onload = () => { script.remove(); resolve(); };
+        script.onerror = () => { script.remove(); reject(new Error("snapshot refresh failed")); };
+        document.head.appendChild(script);
+      });
+      const next = (window as Window & { AGENT_CARRY_SNAPSHOT?: unknown }).AGENT_CARRY_SNAPSHOT;
+      const after = JSON.stringify(next ?? null);
+      if (after !== before) {
+        if (applyDashboardSnapshot(next)) {
+          scrollRestoreRef.current = previousScroll;
+          setSnapshotRevision((value) => value + 1);
+        } else {
+          setRefreshError(true);
+        }
+      }
+    } catch {
+      setRefreshError(true);
+    } finally {
+      setRefreshIn(60);
+      setRefreshing(false);
+      refreshingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    let remaining = 60;
+    const timer = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        remaining = 60;
+        void refreshSnapshot();
+      }
+      setRefreshIn(remaining);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [refreshSnapshot]);
+
+  const requestCopy = useCallback(async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyState({ open: true, copied: true, text, label });
+    } catch {
+      setCopyState({ open: true, copied: false, text, label });
+    }
+  }, []);
+
+  const currentNav = NAV_ITEMS.find((item) => item.page === route.page) ?? NAV_ITEMS[0];
+  const localStatus = getSnapshotStatus(refreshError);
+  const StatusIcon = localStatus.tone === "warning" ? TriangleAlert : localStatus.tone === "template" ? Clock3 : CheckCircle2;
+  const exportAction = getGlobalActions().find((action) => action.action_id === "instance.export-private-package");
+  const rebuildAction = getGlobalActions().find((action) => action.action_id === "dashboard.refresh-snapshot");
+
+  return (
+    <div className={`app-shell${demoMode ? " app-shell--demo" : ""}`} data-snapshot-revision={snapshotRevision}>
+      <a className="skip-link" href="#main-content">跳到主要内容</a>
+
+      <aside className="site-rail" aria-label="主要导航">
+        <div className="rail-brand">
+          <LogoMark />
+          <div><strong>Agent Carry</strong><span>便携式 AI 助手</span></div>
+        </div>
+
+        <nav className="rail-nav">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = item.page === route.page;
+            return (
+              <button
+                key={item.page}
+                type="button"
+                className={active ? "is-active" : ""}
+                aria-current={active ? "page" : undefined}
+                onClick={() => navigate({ page: item.page })}
+              >
+                <span className="rail-nav__icon"><Icon aria-hidden="true" /></span>
+                <span className="rail-nav__copy"><strong>{item.label}</strong><small>{item.description}</small></span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="rail-footer">
+          {exportAction ? (
+            <button type="button" className="rail-carry" onClick={() => void requestCopy(exportAction.request, exportAction.label)}>
+              <PackageOpen aria-hidden="true" />
+              <span><strong>迁移本地隐私</strong><small>导出隐私包到另一台电脑</small></span>
+              <ClipboardCopy aria-hidden="true" />
+            </button>
+          ) : null}
+          <div className={`rail-status rail-status--${localStatus.tone}`}><i /><span>{localStatus.label}</span></div>
+          <p>v{profile.version} · 数据默认留在本机</p>
+        </div>
+      </aside>
+
+      <div className="app-column">
+        {demoMode ? (
+          <div className="demo-notice" role="note">
+            <MonitorPlay aria-hidden="true" />
+            <strong>在线演示</strong>
+            <span>这里使用的是纯虚构数据，不是你的真实助手；正式安装会从空模板开始。</span>
+          </div>
+        ) : null}
+        <header className="topbar">
+          <div className="topbar-brand-compact"><LogoMark /><strong>Agent Carry</strong></div>
+          <div className="topbar-title"><currentNav.icon aria-hidden="true" /><div><strong>{currentNav.label}</strong><span>{currentNav.description}</span></div></div>
+          <div className="topbar-tools">
+            <button
+              type="button"
+              className={`snapshot-chip snapshot-chip--${localStatus.tone}`}
+              aria-haspopup="dialog"
+              aria-expanded={statusOpen}
+              onClick={() => setStatusOpen(true)}
+            >
+              <i />
+              <span>{localStatus.label}</span>
+              <CircleHelp aria-hidden="true" />
+            </button>
+            <Button
+              variant="ghost"
+              className="topbar-refresh"
+              aria-label="重新读取看板数据"
+              title="只重新读取本地看板数据，不刷新页面，也不修改你的正式内容"
+              onClick={() => void refreshSnapshot()}
+              disabled={refreshing}
+            >
+              <RefreshCw className={refreshing ? "is-spinning" : ""} aria-hidden="true" />
+              <span>{refreshing ? "读取中" : `${refreshIn}s`}</span>
+            </Button>
+          </div>
+        </header>
+
+        {refreshError ? (
+          <div className="refresh-error" role="status">
+            暂时没有读到新的看板数据。当前内容仍可使用，你可以稍后重试；如果一直失败，再让 Agent 重新生成看板数据。
+          </div>
+        ) : null}
+
+        <main id="main-content" ref={mainRef} className="app-main" tabIndex={-1}>
+          <div className="page-frame">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={hashForRoute(route)}
+                initial={reduced ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduced ? undefined : { opacity: 0, y: -6 }}
+                transition={{ duration: 0.24, ease: [0.16, 0.84, 0.3, 1] }}
+              >
+                {route.page === "home" ? <HomeView onNavigate={navigate} onCopy={requestCopy} /> : null}
+                {route.page === "library" ? (
+                  <LibraryView
+                    kind={(route.kind as LibraryKind | undefined) ?? "memories"}
+                    onNavigate={navigate}
+                    onCopy={requestCopy}
+                    onInspect={setDetail}
+                  />
+                ) : null}
+                {route.page === "growth" ? (
+                  <GrowthView
+                    kind={(route.kind as GrowthKind | undefined) ?? "todos"}
+                    onNavigate={navigate}
+                    onCopy={requestCopy}
+                    onInspect={setDetail}
+                  />
+                ) : null}
+                {route.page === "transfer" ? <TransferView onCopy={requestCopy} /> : null}
+                {route.page === "system" ? <SystemView onRefresh={() => void refreshSnapshot()} onCopy={requestCopy} refreshIn={refreshIn} refreshFailed={refreshError} /> : null}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
+
+        <nav className="compact-window-nav" aria-label="紧凑窗口主要导航">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = item.page === route.page;
+            return (
+              <button
+                key={item.page}
+                type="button"
+                className={active ? "is-active" : ""}
+                aria-current={active ? "page" : undefined}
+                onClick={() => navigate({ page: item.page })}
+              >
+                <Icon aria-hidden="true" />
+                <span>{item.shortLabel}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <ItemDialog detail={detail} onClose={() => setDetail(null)} onCopy={requestCopy} />
+      <CopyDialog state={copyState} onClose={() => setCopyState(EMPTY_COPY)} />
+      <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
+        <DialogContent className={`snapshot-status-dialog snapshot-status-dialog--${localStatus.tone}`}>
+          <DialogHeader>
+            <div className={`snapshot-status-dialog__state snapshot-status-dialog__state--${localStatus.tone}`}>
+              <StatusIcon aria-hidden="true" />
+              <span>{localStatus.label}</span>
+            </div>
+            <DialogTitle>{localStatus.title}</DialogTitle>
+            <DialogDescription>{localStatus.summary}</DialogDescription>
+          </DialogHeader>
+
+          <div className="snapshot-status-dialog__explanation">
+            <article>
+              <span>为什么显示这个状态</span>
+              <p>{localStatus.reason}</p>
+            </article>
+            <article>
+              <span>需要怎么处理</span>
+              <p>{localStatus.nextStep}</p>
+            </article>
+          </div>
+
+          <div className="snapshot-status-dialog__local-note">
+            <HardDrive aria-hidden="true" />
+            <p><strong>只说明这台电脑上的看板状态</strong><span>它不会把内容上传到 GitHub 或云端，也不代表远程备份已经完成。</span></p>
+          </div>
+
+          <DialogFooter className="snapshot-status-dialog__footer">
+            <Button variant="outline" className="control-button" onClick={() => setStatusOpen(false)}>关闭</Button>
+            {localStatus.tone === "template" ? (
+              <Button
+                className="control-button"
+                onClick={() => {
+                  setStatusOpen(false);
+                  navigate({ page: "home" });
+                }}
+              >
+                回到总览开始设置
+              </Button>
+            ) : null}
+            {localStatus.canRebuild && rebuildAction ? (
+              <Button
+                variant="outline"
+                className="control-button snapshot-status-dialog__repair"
+                onClick={() => {
+                  setStatusOpen(false);
+                  void requestCopy(rebuildAction.request, rebuildAction.label);
+                }}
+              >
+                <ClipboardCopy aria-hidden="true" />
+                复制修复指令
+              </Button>
+            ) : null}
+            {localStatus.canRefresh ? (
+              <Button
+                className="control-button"
+                disabled={refreshing}
+                onClick={() => {
+                  setStatusOpen(false);
+                  void refreshSnapshot();
+                }}
+              >
+                <RefreshCw className={refreshing ? "is-spinning" : ""} aria-hidden="true" />
+                {refreshing ? "正在重新读取" : "重新读取本地数据"}
+              </Button>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

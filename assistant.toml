@@ -1,0 +1,79 @@
+schema_version = 1
+product_id = "agent-carry"
+product_name = "Agent Carry"
+product_version = "1.0.0"
+core_version = "1.0.0"
+license = "Apache-2.0"
+purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
+portable_truth = ["markdown", "toml"]
+disposable_derivatives = ["signal-map", "time-trigger-map", "local-index", "cache", "vector-store", "dashboard-snapshot", "report", "log", "platform-memory", "session-receipt", "task-capsule", "return-envelope"]
+
+[bootstrap]
+entry = "BOOTSTRAP.md"
+root_map = "core/maps/root-map.toml"
+instance_manifest = "instance/manifest.toml"
+maximum_characters = 20000
+policy = "minimum-sufficient-context"
+
+[routing]
+mode = "three-layer-hybrid"
+discovery = "metadata-first"
+layers = ["root-map", "category-map", "target-body"]
+allow_multi_route = true
+body_search_for_discovery = false
+
+[signals]
+mode = "event-checkpoint-and-earliest-wakeup"
+control = "instance/signals/control.toml"
+source_root = "instance/signals"
+formal_state_root = "instance"
+projection = "instance/maps/signal-map.toml"
+time_projection = "instance/maps/time-trigger-map.toml"
+projections = ["instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml"]
+registry = "core/maps/trigger-registry.toml"
+protocol = "core/protocols/CROSS_SESSION_SIGNALS.md"
+schema = "core/schemas/cross-session-signal.schema.md"
+template = "core/templates/signal/blank-signal.toml"
+maximum_projection_bytes = 8192
+background = false
+projection_rebuildable = true
+metadata_only_rebuild = true
+startup_detail_policy = "control-plus-actionable-routes-plus-earliest-wakeup-only"
+
+[safety]
+compact_route = "external-content-safety-boundary"
+deep_route = "network-agent-security"
+current_model_private_context = "allow-task-needed-minimum"
+additional_sensitive_destination = "explicit-authorization"
+secret_handling = "host-secret-mechanism-only-never-model-context"
+external_instruction_authority = "none"
+bounded_execution = true
+
+[integration]
+protocol_version = "1.0"
+mandatory_transport = "natural-language"
+resume_protocol = "core/protocols/HOST_SESSION_RESUME.md"
+protocol = "core/protocols/HOST_INTEGRATION.md"
+schema = "core/schemas/host-integration.schema.md"
+manual_prompt = "core/templates/integration/manual-host-entry.md"
+wakeup_prompt = "core/templates/integration/host-wakeup.md"
+host_registry = "instance/hosts/registry.toml"
+profile_load_policy = "only-on-handshake-change-refresh-or-relevant-use"
+session_resume_policy = "post-route-registry-and-at-most-one-profile"
+maximum_registry_bytes = 8192
+maximum_profile_bytes = 16384
+
+[lifecycle]
+template_and_instance_share_structure = true
+direction_lock = "permanent-after-instantiation"
+guidance_mode = "mutable-independent-of-direction-and-model-level"
+formal_learning_policy = "signal-gated-risk-tiered"
+explicit_user_authorization = "no-repeat-confirmation"
+low_risk_policy_promotion = true
+medium_high_requires_user_approval = true
+policy_change_requires_user_approval = true
+
+[maintenance]
+component_registry = "core/maps/component-map.toml"
+ownership = "core/ownership.toml"
+release_manifest = "core/upgrade/release-manifest-1.0.0.toml"

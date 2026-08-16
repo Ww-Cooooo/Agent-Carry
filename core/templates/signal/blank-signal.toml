@@ -1,0 +1,48 @@
+schema_version = 1
+record_type = "cross-session-signal"
+id = "signal.replace-me"
+signal_type = "memory-review"
+evaluation_family = "count"
+status = "observing"
+title = "待判断的跨会话信号"
+reason = "一句话说明为什么需要跨会话累计"
+domain = "evolution-model"
+route_id = "evolution-review"
+revision = 1
+created_at = ""
+updated_at = ""
+last_verified_at = ""
+asset_refs = []
+related_signal_ids = []
+minimum_level = 2
+confirmation = "risk-dependent"
+provenance = "model-inference"
+trust_state = "candidate"
+
+[match]
+asset_kind = "memory"
+subject = ""
+claim = ""
+scope = []
+conditions = []
+aliases = []
+
+[trigger]
+mode = "domain-rule"
+independent_event_count = 0
+threshold_value = 0
+progress_summary = ""
+next_event = ""
+next_check_at = ""
+
+# 发生真实事件后再添加 [[evidence]]。不要把本注释示例复制成空证据。
+# [[evidence]]
+# event_id = ""
+# event_source = ""
+# task_id = ""
+# occurred_at = ""
+# source_kind = ""
+# source_ref = ""
+# independent = false
+# relation = "supporting"
+# summary = ""

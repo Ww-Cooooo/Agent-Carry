@@ -1,0 +1,156 @@
+schema_version = 1
+map_id = "component-registry"
+purpose = "Single metadata-only map for impact discovery. Read full COMPONENT_CHANGE only after a durable assistant change is requested."
+
+[[components]]
+id = "identity-lifecycle"
+owner = "template-core"
+paths = ["README.md", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", "core/manifest.toml", "core/guides/instantiation-guide.md", "core/guides/platform-adaptation-guide.md", "core/guides/preference-reuse-guide.md", "core/schemas/instance-manifest.schema.md"]
+depends_on = ["context-routing"]
+projects_to = ["installation-experience", "host-integration", "cross-session-signals", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "instance-identity"
+owner = "instance-identity"
+paths = ["instance/manifest.toml", "instance/maps/domain-map.toml", "instance/profile/**"]
+depends_on = ["identity-lifecycle", "context-routing"]
+projects_to = ["privacy-migration", "dashboard-snapshot-contract", "upgrade-system"]
+
+[[components]]
+id = "context-routing"
+owner = "template-core"
+paths = ["core/maps/root-map.toml", "core/maps/domain-lifecycle.toml", "core/maps/domain-work.toml", "core/maps/evolution-model.toml", "core/maps/local-operations.toml", "core/maps/assistant-maintenance.toml", "core/maps/external-safety.toml", "core/protocols/CONTEXT_ROUTING.md", "core/schemas/map-entry.schema.md"]
+depends_on = ["identity-lifecycle", "external-safety"]
+projects_to = ["installation-experience", "host-integration", "cross-session-signals", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "asset-memory"
+owner = "template-core"
+paths = ["core/protocols/ASSET_LIFECYCLE.md", "core/schemas/asset-frontmatter.schema.md", "core/templates/memory/**", "core/templates/capability/**", "core/templates/sop/**", "core/templates/experience/**", "core/templates/evolution/**", "core/templates/todo/**", "core/templates/deferred/**", "core/templates/governance/**"]
+depends_on = ["context-routing", "model-orchestration", "result-validation"]
+projects_to = ["host-integration", "cross-session-signals", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "instance-assets"
+owner = "instance-assets"
+paths = ["instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**"]
+depends_on = ["asset-memory", "context-routing", "cross-session-signals", "host-integration", "model-orchestration"]
+projects_to = ["privacy-migration", "instance-signal-projection", "dashboard-snapshot-contract", "upgrade-system"]
+
+[[components]]
+id = "instance-governance"
+owner = "instance-governance"
+paths = ["instance/governance/**"]
+depends_on = ["asset-memory", "cross-session-signals"]
+projects_to = ["privacy-migration", "instance-signal-projection", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "external-safety"
+owner = "template-core"
+paths = ["core/maps/external-safety.toml", "core/protocols/EXTERNAL_CONTENT_SAFETY_BOUNDARY.md", "core/protocols/NETWORK_AGENT_SECURITY.md"]
+depends_on = ["context-routing"]
+projects_to = ["installation-experience", "host-integration", "cross-session-signals", "model-orchestration", "dashboard-actions", "privacy-migration", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "result-validation"
+owner = "template-core"
+paths = ["core/protocols/RESULT_VALIDATION.md", "docs/result-validation.md"]
+depends_on = ["context-routing", "external-safety"]
+projects_to = ["asset-memory", "model-orchestration", "dashboard-snapshot-contract", "upgrade-system", "component-change", "architecture-documentation"]
+
+[[components]]
+id = "host-integration"
+owner = "template-core"
+paths = ["core/protocols/HOST_SESSION_RESUME.md", "core/protocols/HOST_INTEGRATION.md", "core/schemas/host-integration.schema.md", "core/templates/integration/**"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "external-safety", "cross-session-signals"]
+projects_to = ["installation-experience", "instance-assets", "model-orchestration", "privacy-migration", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "cross-session-signals"
+owner = "template-core"
+paths = ["core/protocols/CROSS_SESSION_SIGNALS.md", "core/schemas/cross-session-signal.schema.md", "core/templates/signal/**", "core/maps/trigger-registry.toml"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "external-safety"]
+projects_to = ["host-integration", "instance-assets", "instance-signal-projection", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "instance-signal-projection"
+owner = "instance-derived"
+paths = ["instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml"]
+depends_on = ["cross-session-signals", "instance-assets"]
+projects_to = ["dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "model-orchestration"
+owner = "template-core"
+paths = ["core/protocols/MODEL_LEVELS.md", "core/protocols/DEFERRED_MODEL_WORK.md", "core/protocols/TASK_ORCHESTRATION_SOP.md"]
+depends_on = ["external-safety", "result-validation"]
+projects_to = ["dashboard-snapshot-contract", "architecture-documentation"]
+
+[[components]]
+id = "dashboard-actions"
+owner = "template-core"
+paths = ["core/maps/dashboard-actions.toml", "core/protocols/DASHBOARD_ACTIONS.md", "core/schemas/dashboard-action.schema.md"]
+depends_on = ["context-routing", "external-safety", "host-integration"]
+projects_to = ["dashboard-snapshot-contract", "dashboard-ui", "upgrade-system"]
+
+[[components]]
+id = "dashboard-snapshot-contract"
+owner = "template-core"
+paths = ["docs/snapshot-contract.md", "core/schemas/dashboard-snapshot.schema.md"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "instance-governance", "cross-session-signals", "instance-signal-projection", "model-orchestration", "dashboard-actions", "result-validation"]
+projects_to = ["dashboard-ui", "upgrade-system"]
+
+[[components]]
+id = "dashboard-ui"
+owner = "derived-ui"
+paths = ["dashboard.html", "dashboard/**", "_data/**", "docs/dashboard-design.md"]
+depends_on = ["dashboard-actions", "dashboard-snapshot-contract"]
+projects_to = ["project-licensing", "installation-experience", "upgrade-system"]
+
+[[components]]
+id = "project-licensing"
+owner = "template-core"
+paths = ["LICENSE", "THIRD_PARTY_NOTICES.md", "docs/open-source-compliance.md"]
+depends_on = ["dashboard-ui"]
+projects_to = ["installation-experience", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "installation-experience"
+owner = "template-core"
+paths = ["INSTALL.md", "START-HERE.txt"]
+depends_on = ["identity-lifecycle", "context-routing", "external-safety", "host-integration", "dashboard-ui", "project-licensing"]
+projects_to = ["upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "privacy-migration"
+owner = "template-core"
+paths = ["core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md", "core/schemas/migration-kit.schema.md", "core/templates/migration/**", ".gitignore"]
+depends_on = ["identity-lifecycle", "asset-memory", "instance-assets", "instance-governance", "external-safety", "host-integration", "dashboard-actions"]
+projects_to = ["upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "upgrade-system"
+owner = "template-core"
+paths = ["core/guides/upgrade-guide.md", "core/upgrade/**", "core/schemas/release-manifest.schema.md"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "instance-governance", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "dashboard-actions", "installation-experience", "privacy-migration", "project-licensing", "result-validation"]
+projects_to = ["architecture-documentation"]
+
+[[components]]
+id = "component-change"
+owner = "template-core"
+paths = ["core/maps/component-map.toml", "core/ownership.toml", "core/protocols/COMPONENT_CHANGE.md", "core/schemas/README.md", "docs/change-impact-map.md"]
+depends_on = ["upgrade-system", "result-validation"]
+projects_to = ["dashboard-snapshot-contract", "architecture-documentation"]
+
+[[components]]
+id = "architecture-documentation"
+owner = "template-core"
+paths = ["docs/architecture.md", "docs/security-and-privacy.md", "docs/host-integration.md", "docs/cross-session-signal-map.md", "docs/asset-evolution.md", "docs/dashboard-design.md", "docs/developer-guide.md", "docs/roadmap.md"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "model-orchestration", "installation-experience", "privacy-migration", "project-licensing", "upgrade-system", "component-change", "result-validation"]
+projects_to = []
+
+[change_rule]
+operations = ["add", "modify", "delete", "rename", "move", "upgrade", "optimize"]
+required_steps = ["locate-component", "follow-depends-on-and-projects-to", "update-formal-owner", "classify-trigger-if-condition-to-action-behavior-changed", "update-references-and-schemas", "update-dashboard-action-or-snapshot-if-affected", "write-upgrade-note-if-portable-behavior-changed", "show-user-a-compact-completion-list"]
+ordinary_context = "metadata-only"
+full_protocol = "core/protocols/COMPONENT_CHANGE.md"

@@ -1,0 +1,47 @@
+schema_version = 1
+map_id = "evolution-model"
+
+[[routes]]
+id = "evolution-review"
+summary = "只在命中学习价值时，按同类匹配、风险、授权和证据把结果转为候选、可撤销试用或正式资产。"
+triggers = ["进化", "学习", "形成经验", "修改能力", "低风险试用", "成熟度", "同类候选"]
+target = "core/protocols/ASSET_LIFECYCLE.md"
+state = "active"
+minimum_level = 1
+confirmation = "risk-tiered"
+
+[[routes]]
+id = "cross-session-signals"
+summary = "处理跨会话累计、最早时间唤醒、动态阈值、冲突或中断恢复；普通启动只读极小胶囊。"
+triggers = ["跨会话累计", "唤醒胶囊有待处理项", "到达最早唤醒时间", "重复事件", "修订不一致", "恢复未完成信号", "重建触发投影"]
+target = "core/protocols/CROSS_SESSION_SIGNALS.md"
+state = "on-demand-from-signal-map"
+minimum_level = 2
+confirmation = "risk-dependent"
+
+[[routes]]
+id = "model-levels"
+summary = "选择 Level 1/2/3，处理手动切换确认与降级限制。"
+triggers = ["模型等级", "需要更强模型", "切换完成", "切换回来"]
+target = "core/protocols/MODEL_LEVELS.md"
+state = "active"
+minimum_level = 1
+confirmation = "manual-switch"
+
+[[routes]]
+id = "model-deferred-work"
+summary = "记录因模型等级不足而延期的任务；正文平时不加载。"
+triggers = ["暂时不能切换", "查看延期任务", "延期任务到期", "开始延期任务"]
+target = "core/protocols/DEFERRED_MODEL_WORK.md"
+state = "on-demand"
+minimum_level = 1
+confirmation = "before-resume"
+
+[[routes]]
+id = "memory-engine-upgrade"
+summary = "当文件规模或检索质量需要时，把 Markdown 真源接入本地全文、RAG 或向量索引。"
+triggers = ["记忆混乱", "检索失败", "文件太多", "升级RAG", "升级向量数据库"]
+target = "core/guides/memory-engine-upgrade-guide.md"
+state = "gated-heavy"
+minimum_level = 3
+confirmation = "explicit"

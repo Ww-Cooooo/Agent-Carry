@@ -1,0 +1,13 @@
+schema_version = 1
+record_type = "cross-session-signal-control"
+instance_id = "template"
+source_revision = 0
+projection_revision = 0
+update_state = "clean"
+pending_operation_id = ""
+pending_event_id = ""
+pending_signal_id = ""
+pending_trigger_id = ""
+pending_source_ref = ""
+base_revision = 0
+updated_at = ""

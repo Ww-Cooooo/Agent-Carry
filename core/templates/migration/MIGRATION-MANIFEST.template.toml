@@ -1,0 +1,59 @@
+schema_version = 1
+record_type = "agent-carry-complete-migration"
+kit_id = "{{KIT_ID}}"
+created_at = "{{CREATED_AT}}"
+source_instance_id = "{{SOURCE_INSTANCE_ID}}"
+product_version = "{{PRODUCT_VERSION}}"
+asset_schema = "{{ASSET_SCHEMA}}"
+github_private_backup = false
+credentials_included = false
+included_categories = [
+  "template-core",
+  "instance-identity-and-locked-direction",
+  "git-safe-portable-assets",
+  "stable-maps-and-offline-dashboard",
+  "stable-reference-private-assets-in-separate-package",
+]
+excluded_categories = [
+  "secret-credentials-and-login-state",
+  "git-history-and-private-remotes",
+  "assistant-local-and-maintainer-private-material",
+  "host-native-hidden-memory-and-system-prompts",
+  "cache-log-report-rollback-and-temporary-acceptance-material",
+  "build-dependencies-and-unrelated-tools",
+]
+
+[body_package]
+file = "{{BODY_PACKAGE_FILE}}"
+sha256 = "{{BODY_PACKAGE_SHA256}}"
+archive_root = "body-package/Agent Carry"
+manifest_path = "body-package/manifest.json"
+file_count = "{{BODY_FILE_COUNT}}"
+uncompressed_bytes = "{{BODY_UNCOMPRESSED_BYTES}}"
+private_content_included = false
+credentials_included = false
+
+[private_package]
+file = "{{PRIVATE_PACKAGE_FILE}}"
+sha256 = "{{PRIVATE_PACKAGE_SHA256}}"
+manifest_path = "private-package/manifest.json"
+entry_count = "{{PRIVATE_ENTRY_COUNT}}"
+uncompressed_bytes = "{{PRIVATE_UNCOMPRESSED_BYTES}}"
+credentials_included = false
+
+[asset_counts]
+memory = "{{ASSET_COUNT_MEMORY}}"
+capabilities = "{{ASSET_COUNT_CAPABILITIES}}"
+sops = "{{ASSET_COUNT_SOPS}}"
+experiences = "{{ASSET_COUNT_EXPERIENCES}}"
+evolution = "{{ASSET_COUNT_EVOLUTION}}"
+todo = "{{ASSET_COUNT_TODO}}"
+deferred = "{{ASSET_COUNT_DEFERRED}}"
+governance = "{{ASSET_COUNT_GOVERNANCE}}"
+
+[restore]
+entry = "START-RESTORE.md"
+checksum_file = "CHECKSUMS.sha256"
+target_existing_policy = "preview-before-overwrite"
+secrets = "reconfigure-on-target-with-host-secret-mechanism"
+host_attachment = "after-restore-rebuild-and-validation"

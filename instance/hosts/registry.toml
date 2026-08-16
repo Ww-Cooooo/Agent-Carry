@@ -1,0 +1,18 @@
+schema_version = 1
+record_type = "host-registry"
+registry_id = "host-connections"
+instance_id = "template"
+revision = 0
+updated_at = ""
+load_policy = "post-route-light-resume-or-full-integration-only"
+maximum_bytes = 8192
+overflow_policy = "remove-ineligible-entries-from-light-map-but-preserve-profile-files"
+
+# 实例接入宿主后只登记极小索引；详细档案按需放入 profiles/。
+# [[hosts]]
+# profile_id = "host.example"
+# label = "用户可辨认的名称"
+# status = "active"
+# profile_ref = "instance/hosts/profiles/host.example.toml"
+# match_hints = []
+# last_verified_at = ""

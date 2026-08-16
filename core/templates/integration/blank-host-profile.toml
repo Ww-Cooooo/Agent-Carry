@@ -1,0 +1,65 @@
+schema_version = 1
+record_type = "host-profile"
+record_id = "host.replace-me"
+profile_id = "host.replace-me"
+instance_id = "template"
+source = "agent-carry"
+label = "待命名宿主"
+status = "stale"
+protocol_version = "1.0"
+created_at = ""
+last_verified_at = ""
+maximum_bytes = 16384
+
+[observed_host]
+product_name = ""
+product_version = ""
+model_name = ""
+model_selection_label = ""
+request_model_name = ""
+model_routing_mode = "unknown"
+auxiliary_model_names = []
+model_observation_basis = []
+environment = ""
+observation_basis = "unknown"
+
+[connection]
+integration_mode = ""
+access_scope = "unknown"
+write_capability = "unknown"
+persistence = "unknown"
+retention = "unknown"
+last_capsule_id = ""
+profile_match_basis = ""
+limitations = []
+
+[capability_catalog]
+scope = "integration-relevant-at-last-handshake"
+complete = false
+
+# 能力是开放集合；只登记与接入或真实任务有关的当前观察。
+# [[capabilities]]
+# capability_id = "host-capability.example"
+# summary = ""
+# status = "unknown"
+# scope = ""
+# duration = "current-session"
+# retention = "unknown"
+# limits = []
+# verification_method = ""
+# verified_at = ""
+
+[host_memory]
+inventory_status = "not-started"
+category_summaries = []
+migrated_asset_refs = []
+conflicts = []
+details_stored_here = false
+automatic_context_status = "unknown"
+automatic_context_categories = []
+automatic_context_details_stored_here = false
+
+[governance]
+contains_secrets = false
+contains_full_host_memory = false
+unresolved = []

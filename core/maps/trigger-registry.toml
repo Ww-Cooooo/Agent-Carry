@@ -1,0 +1,471 @@
+schema_version = 1
+registry_id = "unified-trigger-governance"
+purpose = "Inventory every condition-to-action rule without turning the registry or rule bodies into startup context."
+ordinary_startup = "never-load"
+startup_projection = "instance/maps/signal-map.toml"
+maintenance_rule = "Every new or changed trigger must declare a class, checkpoint, formal owner, dynamic state owner, startup policy, route, gate, cleanup rule and failure behavior."
+
+[[classes]]
+id = "explicit-event"
+summary = "A user request or a semantic event in the current task selects an existing route."
+persistent = false
+evaluation = "at-current-event"
+startup_policy = "never-project"
+
+[[classes]]
+id = "action-gate"
+summary = "A risky or high-impact action is checked immediately before the consequence."
+persistent = false
+evaluation = "before-action"
+startup_policy = "project-only-if-left-unresolved"
+
+[[classes]]
+id = "cross-session-count"
+summary = "Independent evidence accumulates across tasks until a domain-owned review threshold is reached."
+persistent = true
+evaluation = "when-a-matching-event-occurs"
+startup_policy = "project-only-near-trigger-or-actionable"
+
+[[classes]]
+id = "scheduled-time"
+summary = "A durable next-check timestamp becomes eligible at the first active checkpoint on or after that time."
+persistent = true
+evaluation = "compare-only-with-capsule-next-wakeup-at-startup"
+startup_policy = "aggregate-earliest-time-and-count-only"
+
+[[classes]]
+id = "metric-health"
+summary = "A small metric is updated only when the related operation already occurs."
+persistent = true
+evaluation = "at-related-write-read-or-failure"
+startup_policy = "project-only-after-threshold-or-uncertainty"
+
+[[classes]]
+id = "validity-on-use"
+summary = "Environment, platform or dependency validity is checked when the capability is actually used or explicitly refreshed."
+persistent = false
+evaluation = "on-use-or-explicit-refresh"
+startup_policy = "project-only-if-a-mismatch-is-discovered-and-unresolved"
+
+[[classes]]
+id = "transaction-recovery"
+summary = "An interrupted durable update must be recovered before another update overwrites it."
+persistent = true
+evaluation = "every-startup-control-check"
+startup_policy = "control-fields-only"
+
+[[classes]]
+id = "consumer-local"
+summary = "A derived consumer such as the dashboard owns its own freshness check."
+persistent = false
+evaluation = "inside-the-consumer"
+startup_policy = "never-project"
+
+[[rules]]
+id = "request-routing"
+class_id = "explicit-event"
+checkpoint = "request-received"
+formal_owner = "core/maps/root-map.toml"
+dynamic_state_owner = "none"
+route = "core/maps/root-map.toml"
+coverage = "All ordinary explicit routes in core/maps/* unless a rule below declares additional dynamic behavior."
+startup_policy = "root-map-metadata-only"
+gate = "none"
+cleanup = "none"
+failure = "ask-one-route-changing-question"
+
+[[rules]]
+id = "agent-guided-installation"
+class_id = "explicit-event"
+checkpoint = "user-explicitly-requests-installation-from-a-link-or-archive-or-repair-of-the-visible-dashboard-entry"
+formal_owner = "INSTALL.md"
+dynamic_state_owner = "current-installation-task-only"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-enter-ordinary-startup-installation-routes-only-from-an-explicit-request"
+gate = "the-install-request-authorizes-a-stable-local-copy-one-visible-dashboard-shortcut-and-bounded-verification-existing-instance-overwrite-or-ambiguous-location-requires-user-choice-git-publish-and-secret-access-remain-unauthorized"
+cleanup = "remove-agent-created-temporary-extraction-and-check-material-after-acceptance-preserve-the-user-source-archive-and-formal-installation"
+failure = "preserve-any-complete-safe-installation-report-the-exact-missing-requirement-and-provide-the-root-dashboard-path-as-a-manual-fallback"
+
+[[rules]]
+id = "host-session-resume"
+class_id = "explicit-event"
+checkpoint = "instantiated-instance-enters-a-session-without-a-current-valid-receipt"
+formal_owner = "core/protocols/HOST_SESSION_RESUME.md"
+dynamic_state_owner = "current-session-receipt-and-one-on-demand-instance/hosts/profile"
+route = "core/maps/local-operations.toml"
+startup_policy = "bootstrap-condition-selects-a-short-route-registry-and-one-profile-load-only-after-routing"
+gate = "none-unless-escalated-full-handshake-reaches-a-gate"
+cleanup = "discard-session-receipt-after-session-and-write-nothing-when-observation-is-unchanged"
+failure = "mark-uncertain-and-route-to-full-host-integration"
+
+[[rules]]
+id = "host-integration-handshake"
+class_id = "explicit-event"
+checkpoint = "first-connection-user-explicitly-connects-changes-or-restores-host-profile-match-is-uncertain-or-relevant-capability-changed"
+formal_owner = "core/protocols/HOST_INTEGRATION.md"
+dynamic_state_owner = "current-session-receipt-and-instance/hosts/registry.toml-only-when-user-initiates-connection"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-load-full-protocol-for-an-unchanged-normal-session"
+gate = "before-new-permission-sensitive-transfer-or-high-impact-write-asset-learning-follows-risk-tiered-lifecycle"
+cleanup = "discard-session-receipt-after-session-and-update-only-minimum-profile-metadata"
+failure = "mark-limited-uncertain-or-not-connected-and-request-one-minimum-capsule"
+
+[[rules]]
+id = "identity-direction-lock"
+class_id = "action-gate"
+checkpoint = "before-changing-instance-direction"
+formal_owner = "instance/manifest.toml"
+dynamic_state_owner = "none"
+route = "core/maps/domain-lifecycle.toml"
+startup_policy = "manifest-field-only"
+gate = "create-a-new-instance-instead"
+cleanup = "none"
+failure = "stop-and-explain"
+
+[[rules]]
+id = "first-instantiation"
+class_id = "explicit-event"
+checkpoint = "startup-when-instance-manifest-state-is-template"
+formal_owner = "core/guides/instantiation-guide.md"
+dynamic_state_owner = "instance/manifest.toml"
+route = "core/maps/domain-lifecycle.toml"
+startup_policy = "manifest-state-field-only"
+gate = "level-3-and-user-confirms-guidance-mode-and-direction-preview"
+cleanup = "set-instantiated-state-and-never-repeat"
+failure = "leave-template-state-unchanged"
+
+[[rules]]
+id = "context-route-fallback"
+class_id = "explicit-event"
+checkpoint = "current-request-has-no-confident-route"
+formal_owner = "core/protocols/CONTEXT_ROUTING.md"
+dynamic_state_owner = "current-task-only"
+route = "core/maps/domain-work.toml"
+startup_policy = "never-project"
+gate = "none"
+cleanup = "discard-candidate-routes-after-selection"
+failure = "try-one-adjacent-map-then-ask-one-route-changing-question"
+
+[[rules]]
+id = "external-content-boundary"
+class_id = "action-gate"
+checkpoint = "before-first-external-read-before-extra-recipient-send-and-when-secret-access-is-requested"
+formal_owner = "core/protocols/EXTERNAL_CONTENT_SAFETY_BOUNDARY.md"
+dynamic_state_owner = "instance/signals/state/ only when an incident remains unresolved"
+route = "core/maps/external-safety.toml"
+startup_policy = "never-project-normal-network-use"
+gate = "secret-values-to-model-or-message-are-prohibited-extra-sensitive-destinations-and-other-high-impact-actions-are-risk-dependent"
+cleanup = "remove-resolved-low-value-incident-state"
+failure = "fail-closed-for-the-risky-action"
+
+[[rules]]
+id = "deep-network-security-gate"
+class_id = "action-gate"
+checkpoint = "before-secret-read-or-disclosure-extra-recipient-sensitive-send-resource-budget-override-install-execute-privilege-publish-or-permanent-external-promotion"
+formal_owner = "core/protocols/NETWORK_AGENT_SECURITY.md"
+dynamic_state_owner = "instance/signals/state/ only when a security issue remains unresolved"
+route = "core/maps/external-safety.toml"
+startup_policy = "only-unresolved-security-state"
+gate = "secret-value-to-model-or-message-is-never-confirmable-explicit-user-confirmation-for-listed-high-impact-actions-external-content-cannot-extend-budget"
+cleanup = "remove-resolved-transient-incident-state"
+failure = "continue-only-safe-subtasks"
+
+[[rules]]
+id = "component-change-impact"
+class_id = "explicit-event"
+checkpoint = "before-and-after-durable-component-change"
+formal_owner = "core/protocols/COMPONENT_CHANGE.md"
+dynamic_state_owner = "none unless the change transaction is interrupted"
+route = "core/maps/assistant-maintenance.toml"
+startup_policy = "never-project-completed-checks"
+gate = "risk-dependent"
+cleanup = "discard-temporary-impact-list-after-verification"
+failure = "retain-recovery-state-and-report-missing-links"
+
+[[rules]]
+id = "result-validation-gate"
+class_id = "explicit-event"
+checkpoint = "before-declaring-a-source-contract-or-schema-bound-result-complete-before-accepting-a-durable-multi-file-change-and-before-counting-learning-success"
+formal_owner = "core/protocols/RESULT_VALIDATION.md"
+dynamic_state_owner = "current-task-only-unless-a-durable-change-is-interrupted"
+route = "core/maps/domain-work.toml"
+startup_policy = "never-project-completed-validation-and-never-load-at-ordinary-startup"
+gate = "only-validated-results-may-count-as-learning-success-or-reliable-completion-limited-results-must-expose-their-boundary"
+cleanup = "discard-task-local-checklist-and-correction-count-after-delivery-keep-only-compact-evidence-reference-when-lifecycle-needs-it"
+failure = "mark-limited-or-failed-do-not-promote-and-stop-when-bounded-correction-no-longer-reduces-the-problem"
+
+[[rules]]
+id = "task-learning-value-gate"
+class_id = "explicit-event"
+checkpoint = "task-completed-user-corrected-reusable-recovery-observed-or-user-explicitly-requests-memory"
+formal_owner = "core/protocols/ASSET_LIFECYCLE.md"
+dynamic_state_owner = "current-task-only-unless-a-real-learning-signal-is-found"
+route = "core/maps/evolution-model.toml"
+startup_policy = "never-project-no-signal-and-never-load-lifecycle-at-ordinary-startup"
+gate = "none-for-value-classification-asset-write-uses-risk-tiered-lifecycle"
+cleanup = "discard-task-local-assessment-when-no-long-term-value"
+failure = "do-not-create-an-empty-candidate"
+
+[[rules]]
+id = "asset-learning-and-cleanup"
+class_id = "cross-session-count"
+checkpoint = "learning-signal-created-or-matched-provisional-asset-used-user-corrected-significant-failure-or-asset-changed"
+formal_owner = "core/protocols/ASSET_LIFECYCLE.md"
+dynamic_state_owner = "the-target-candidate-or-asset-small-frontmatter-and-instance/signals/count-only-when-actionable"
+route = "core/maps/evolution-model.toml"
+startup_policy = "only-near-trigger-conflict-uncertain-or-pending-review"
+gate = "low-risk-policy-authorized-only-after-independent-evidence-notice-and-undo-medium-high-require-user-confirmation"
+cleanup = "cap-representative-evidence-at-five-compress-duplicates-and-remove-resolved-no-value-state"
+failure = "keep-candidates-separate-or-in-review-when-sameness-risk-source-or-maturity-is-uncertain"
+
+[[rules]]
+id = "todo-lifecycle"
+class_id = "explicit-event"
+checkpoint = "user-adds-views-runs-updates-hides-or-deletes-a-todo"
+formal_owner = "instance/todo/README.md"
+dynamic_state_owner = "instance/todo/"
+route = "core/maps/domain-work.toml"
+startup_policy = "never-project-ordinary-todos"
+gate = "explicit-user-request-for-creation-or-permanent-delete"
+cleanup = "done-may-remain-hidden-permanent-delete-only-on-explicit-request"
+failure = "preserve-existing-card"
+
+[[rules]]
+id = "memory-engine-health"
+class_id = "metric-health"
+checkpoint = "retrieval-failed-asset-count-changed-route-map-changed"
+formal_owner = "core/guides/memory-engine-upgrade-guide.md"
+dynamic_state_owner = "instance/signals/health/"
+route = "core/maps/evolution-model.toml"
+startup_policy = "only-after-an-evaluation-trigger-is-met"
+gate = "level-3-and-user-approval"
+cleanup = "reset-or-archive-metric-state-after-evaluation"
+failure = "stay-on-file-routing-and-report-limits"
+
+[[rules]]
+id = "model-work-deferral"
+class_id = "scheduled-time"
+checkpoint = "deferred-card-created-updated-completed-or-session-start-due-check"
+formal_owner = "core/protocols/DEFERRED_MODEL_WORK.md"
+dynamic_state_owner = "instance/deferred/"
+route = "core/maps/evolution-model.toml"
+startup_policy = "earliest-time-and-total-count-only"
+gate = "user-selects-a-card-and-confirms-model-switch"
+cleanup = "delete-completed-or-rejected-card-after-required-history-decision"
+failure = "keep-card-and-mark-uncertain"
+
+[[rules]]
+id = "model-level-gate"
+class_id = "action-gate"
+checkpoint = "before-work-requiring-a-higher-model-level-before-assuming-a-switch-and-when-observed-request-routing-differs-from-the-confirmed-selection"
+formal_owner = "core/protocols/MODEL_LEVELS.md"
+dynamic_state_owner = "instance/deferred/ only when user-accepted-deferral-is-needed"
+route = "core/maps/evolution-model.toml"
+startup_policy = "never-project-normal-model-selection"
+gate = "user-confirms-manual-switch-and-a-known-conflicting-request-route-must-be-resolved-before-critical-write"
+cleanup = "clear-session-switch-state-after-task"
+failure = "offer-deferral-or-stop-the-high-level-work"
+
+[[rules]]
+id = "task-orchestration-handoff"
+class_id = "action-gate"
+checkpoint = "before-sealing-handing-off-or-accepting-a-cross-agent-task-package"
+formal_owner = "core/protocols/TASK_ORCHESTRATION_SOP.md"
+dynamic_state_owner = "task-package-only-when-user-selects-this-mode"
+route = "core/maps/assistant-maintenance.toml"
+startup_policy = "never-project-completed-packages"
+gate = "user-selects-execution-mode-and-level-3-owns-architecture"
+cleanup = "delete-temporary-package-after-acceptance-when-authorized"
+failure = "return-to-planner-with-bounded-evidence"
+
+[[rules]]
+id = "long-term-governance"
+class_id = "scheduled-time"
+checkpoint = "session-start-due-check-user-request-or-governance-completion"
+formal_owner = "instance/governance/"
+dynamic_state_owner = "governance-card-frontmatter"
+route = "core/maps/assistant-maintenance.toml"
+startup_policy = "earliest-time-and-total-count-only"
+gate = "level-3-user-starts-research-and-external-safety-before-network"
+cleanup = "advance-next-due-from-actual-completion"
+failure = "leave-due-and-never-claim-background-execution"
+
+[[rules]]
+id = "candidate-reminder"
+class_id = "scheduled-time"
+checkpoint = "candidate-deferred-reminder-changed-or-session-start-due-check"
+formal_owner = "core/protocols/ASSET_LIFECYCLE.md"
+dynamic_state_owner = "candidate-frontmatter"
+route = "core/maps/evolution-model.toml"
+startup_policy = "earliest-time-and-total-count-only"
+gate = "user-selects-the-candidate"
+cleanup = "remove-schedule-fields-when-resolved-rejected-or-no-reminder-was-requested"
+failure = "keep-candidate-without-loading-body"
+
+[[rules]]
+id = "skill-validity"
+class_id = "validity-on-use"
+checkpoint = "skill-used-host-handshake-reports-a-related-skill-change-or-user-refresh"
+formal_owner = "core/guides/skill-init-guide.md"
+dynamic_state_owner = "instance/skills/requirements.toml"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-poll-all-skills"
+gate = "risk-dependent-for-installation"
+cleanup = "replace-stale-route-after-validation"
+failure = "use-equivalent-capability-or-report-unavailable"
+
+[[rules]]
+id = "host-capability-validity"
+class_id = "validity-on-use"
+checkpoint = "full-or-resume-handshake-relevant-capability-use-observed-environment-model-route-or-automatic-context-change-or-user-refresh"
+formal_owner = "core/protocols/HOST_INTEGRATION.md"
+dynamic_state_owner = "one-matching-instance/hosts/profile-or-current-session-receipt"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-poll-hosts-or-load-all-profiles"
+gate = "before-new-permission-configuration-persistence-sensitive-transfer-or-high-impact-action"
+cleanup = "replace-stale-observation-after-validation-and-archive-revoked-profiles-on-user-request"
+failure = "use-text-capsule-or-other-lower-permission-mode-and-report-limit"
+
+[[rules]]
+id = "host-execution-experience-validity"
+class_id = "validity-on-use"
+checkpoint = "a-capability-or-sop-selects-a-referenced-host-experience-or-an-environment-version-permission-change-is-observed"
+formal_owner = "core/protocols/ASSET_LIFECYCLE.md"
+dynamic_state_owner = "only-the-selected-host-execution-experience-frontmatter"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-load-or-poll-host-experiences-at-startup"
+gate = "before-any-remapped-method-needs-new-permission-sensitive-transfer-or-high-impact-action"
+cleanup = "replace-stale-observations-compress-evidence-and-archive-a-clearly-invalid-low-risk-mapping"
+failure = "ignore-the-stale-experience-and-remap-from-the-portable-core"
+
+[[rules]]
+id = "host-connection-metadata-health"
+class_id = "metric-health"
+checkpoint = "host-profile-or-registry-created-updated-revoked-or-a-light-resume-lookup-fails"
+formal_owner = "core/protocols/HOST_INTEGRATION.md"
+dynamic_state_owner = "instance/hosts/registry.toml-and-the-one-changed-profile"
+route = "core/maps/local-operations.toml"
+startup_policy = "only-unresolved-over-budget-corruption-or-lookup-ambiguity-never-normal-profile-count"
+gate = "user-confirmation-before-permanent-profile-deletion-not-needed-for-removing-an-ineligible-light-index-entry"
+cleanup = "replace-stale-capability-observations-compress-repeated-evidence-and-preserve-profile-files-when-index-entries-exit"
+failure = "keep-profile-files-mark-metadata-stale-and-use-full-handshake-or-text-capsule"
+
+[[rules]]
+id = "platform-adaptation"
+class_id = "validity-on-use"
+checkpoint = "host-operating-system-path-or-capability-change-is-observed"
+formal_owner = "core/guides/platform-adaptation-guide.md"
+dynamic_state_owner = "one-matching-host-profile-instance-profile-and-skill-routing-metadata"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-poll-platform-state"
+gate = "risk-dependent-for-permission-or-external-send"
+cleanup = "replace-stale-adaptation-metadata-after-validation"
+failure = "preserve-portable-semantics-and-report-missing-capability"
+
+[[rules]]
+id = "upgrade-import-conflict"
+class_id = "action-gate"
+checkpoint = "before-import-upgrade-merge-or-overwrite"
+formal_owner = "core/guides/upgrade-guide.md"
+dynamic_state_owner = "instance/signals/state/ only while unresolved"
+route = "core/maps/assistant-maintenance.toml"
+startup_policy = "only-unresolved-conflict-or-recovery"
+gate = "user-confirms-conflict-resolution"
+cleanup = "remove-resolved-transient-state"
+failure = "preserve-current-instance-and-stop"
+
+[[rules]]
+id = "privacy-import-export"
+class_id = "action-gate"
+checkpoint = "before-private-github-repository-create-or-push-and-before-conflict-overwrite-or-new-sensitive-destination"
+formal_owner = "core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md"
+dynamic_state_owner = "temporary-preview-or-instance/signals/state/ only while unresolved"
+route = "core/maps/local-operations.toml"
+startup_policy = "only-unresolved-import-or-recovery"
+gate = "local-safe-copy-and-local-private-export-are-directly-authorized-private-github-owner-name-visibility-branch-and-candidate-preview-require-explicit-user-confirmation-public-repositories-and-automatic-collaborators-are-forbidden-secrets-never-enter-model-git-or-package"
+cleanup = "remove-temporary-preview-and-user-approved-rollback-copy"
+failure = "preserve-current-data-and-local-safe-copy-quarantine-unknown-input-and-never-fall-back-to-a-public-or-shared-repository"
+
+[[rules]]
+id = "preference-reuse-import"
+class_id = "action-gate"
+checkpoint = "before-importing-preferences-from-another-instance"
+formal_owner = "core/guides/preference-reuse-guide.md"
+dynamic_state_owner = "candidate-import-metadata-only"
+route = "core/maps/domain-lifecycle.toml"
+startup_policy = "never-project-normal-reuse"
+gate = "user-confirms-preview-and-conflicts"
+cleanup = "remove-rejected-import-candidates"
+failure = "keep-current-instance-preferences"
+
+[[rules]]
+id = "signal-update-recovery"
+class_id = "transaction-recovery"
+checkpoint = "startup-and-before-any-durable-trigger-update"
+formal_owner = "core/protocols/CROSS_SESSION_SIGNALS.md"
+dynamic_state_owner = "instance/signals/control.toml"
+route = "core/maps/evolution-model.toml"
+startup_policy = "always-load-control-fields-only"
+gate = "repair-before-overwrite"
+cleanup = "clear-pending-fields-only-after-all-projections-validate"
+failure = "recovery-required"
+
+[[rules]]
+id = "dashboard-snapshot-freshness"
+class_id = "consumer-local"
+checkpoint = "dashboard-open-refresh-timer-or-manual-refresh"
+formal_owner = "docs/snapshot-contract.md"
+dynamic_state_owner = "dashboard/dist/snapshot.js"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-enter-agent-startup"
+gate = "none"
+cleanup = "replace-derived-snapshot"
+failure = "show-stale-state-and-preserve-last-valid-snapshot"
+
+[[rules]]
+id = "dashboard-agent-actions"
+class_id = "explicit-event"
+checkpoint = "user-sends-a-dashboard-copied-request"
+formal_owner = "core/protocols/DASHBOARD_ACTIONS.md"
+dynamic_state_owner = "none"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-project-action-bodies"
+gate = "action-specific"
+cleanup = "none"
+failure = "report-unknown-action-without-guessing"
+
+[[rules]]
+id = "derived-projection-refresh"
+class_id = "consumer-local"
+checkpoint = "formal-source-changed-or-user-requested-refresh"
+formal_owner = "docs/snapshot-contract.md"
+dynamic_state_owner = "rebuildable-projections"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-load-dashboard-or-index-freshness-into-agent-startup"
+gate = "none"
+cleanup = "replace-derived-output-after-validation"
+failure = "preserve-last-valid-projection-and-report-stale"
+
+[[rules]]
+id = "task-local-self-correction-limit"
+class_id = "explicit-event"
+checkpoint = "failure-inside-current-task"
+formal_owner = "core/protocols/ASSET_LIFECYCLE.md"
+dynamic_state_owner = "current-task-only"
+route = "core/protocols/ASSET_LIFECYCLE.md"
+startup_policy = "never-persist-or-project"
+gate = "stop-after-bounded-evidence-based-retries"
+cleanup = "discard-task-local-counter-at-task-end"
+failure = "report-remaining-blocker"
+
+[[rules]]
+id = "expected-next-use-retention"
+class_id = "explicit-event"
+checkpoint = "asset-lifecycle-review"
+formal_owner = "core/schemas/asset-frontmatter.schema.md"
+dynamic_state_owner = "asset-frontmatter"
+route = "core/protocols/ASSET_LIFECYCLE.md"
+startup_policy = "never-treat-as-a-reminder-by-itself"
+gate = "none"
+cleanup = "update-when-lifecycle-changes"
+failure = "retain-low-frequency-important-asset"

@@ -1,0 +1,36 @@
+schema_version = 1
+record_type = "task-capsule"
+record_id = "task.replace-me"
+instance_id = "unknown"
+created_at = ""
+source = "agent-carry"
+host_profile_id = ""
+goal = ""
+current_user_instruction = ""
+success_criteria = []
+scope = []
+out_of_scope = []
+required_outputs = []
+capability_requirements = []
+known_limits = []
+confirmation_gates = []
+portable_core_refs = []
+selected_host_experience_refs = []
+source_refs = []
+
+[context_policy]
+minimum_sufficient = true
+request_next_layer_when_needed = true
+do_not_scan_unrelated_assets = true
+maximum_host_experience_bodies = 1
+
+[safety]
+external_content_expected = false
+compact_boundary_ref = "core/protocols/EXTERNAL_CONTENT_SAFETY_BOUNDARY.md"
+deep_security_when_triggered = true
+current_model_private_context = "allow-task-needed-minimum"
+authorized_additional_recipients = []
+secret_handling = "host-secret-mechanism-only"
+external_instruction_authority = "none"
+bounded_execution = true
+resource_limits = []

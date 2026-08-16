@@ -1,0 +1,130 @@
+// Post-build assertion for the actual file:// deliverable. This is intentionally
+// a developer/build check only; end users still open dashboard.html directly.
+
+import { createHash } from 'node:crypto'
+import { access, readFile, readdir } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { runInNewContext } from 'node:vm'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const dashboardRoot = resolve(here, '..')
+const repositoryRoot = resolve(dashboardRoot, '..')
+const dist = resolve(dashboardRoot, 'dist')
+const indexPath = resolve(dist, 'index.html')
+const manifestPath = resolve(dist, 'fonts', 'font-manifest.json')
+
+async function exists(path) {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message)
+}
+
+function sha256(buffer) {
+  return createHash('sha256').update(buffer).digest('hex')
+}
+
+const html = await readFile(indexPath, 'utf8')
+assert(html.includes('data-agent-carry-inline'), 'Offline index is missing the inlined application marker.')
+assert(await exists(resolve(dist, 'snapshot.js')), 'Offline dashboard is missing its local snapshot.js.')
+
+const snapshotSource = await readFile(resolve(dist, 'snapshot.js'), 'utf8')
+const snapshotSandbox = { window: {} }
+runInNewContext(snapshotSource, snapshotSandbox, { timeout: 1000 })
+const snapshot = snapshotSandbox.window.AGENT_CARRY_SNAPSHOT
+assert(snapshot?.meta?.schema_version === '1.1', 'Formal dashboard snapshot is not Schema 1.1.')
+assert(snapshot?.meta?.state === 'template' && snapshot?.overview?.state === 'template', 'Formal dashboard snapshot is not a template.')
+assert(snapshot?.profile?.guidance_mode === 'unselected', 'Formal template snapshot must leave guidance mode unselected.')
+for (const key of ['memories', 'sops', 'capabilities', 'experiences', 'evolution', 'todo', 'governance']) {
+  assert(Array.isArray(snapshot[key]) && snapshot[key].length === 0, `Formal template snapshot contains ${key} data.`)
+}
+
+const htmlShell = html
+  .replace(/(<script\b[^>]*>)[\s\S]*?(<\/script>)/gi, '$1$2')
+  .replace(/(<style\b[^>]*>)[\s\S]*?(<\/style>)/gi, '$1$2')
+const resourceTags = htmlShell.match(/<(?:script|link|img|source|video|audio)\b[^>]*>/gi) ?? []
+for (const tag of resourceTags) {
+  for (const match of tag.matchAll(/\b(?:src|href)=["']([^"']+)["']/gi)) {
+    const reference = match[1]
+    assert(!/^https?:\/\//i.test(reference) && !reference.startsWith('//'), `External runtime resource found: ${reference}`)
+  }
+}
+
+for (const style of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+  for (const match of style[1].matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)) {
+    const reference = match[1]
+    assert(!/^https?:\/\//i.test(reference) && !reference.startsWith('//'), `External CSS resource found: ${reference}`)
+  }
+}
+
+const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+assert(manifest.schemaVersion === 1, 'Unsupported font manifest schema.')
+assert(Array.isArray(manifest.fonts) && manifest.fonts.length === 4, 'Font manifest must describe the four packaged faces.')
+
+for (const font of manifest.fonts) {
+  const fontPath = resolve(dirname(manifestPath), font.file)
+  const bytes = await readFile(fontPath)
+  assert(bytes.length > 0, `Packaged font is empty: ${font.file}`)
+  assert(sha256(bytes) === font.sha256, `Font checksum mismatch: ${font.file}`)
+  assert(html.includes(`url(./fonts/${font.file})`), `Offline CSS does not reference packaged font: ${font.file}`)
+
+  const licensePath = resolve(dirname(manifestPath), font.licenseFile)
+  const license = await readFile(licensePath, 'utf8')
+  assert(/SIL OPEN FONT LICENSE Version 1\.1/i.test(license), `OFL 1.1 text is missing for ${font.family}.`)
+  assert(font.licenseSpdx === 'OFL-1.1', `SPDX OFL-1.1 identifier is missing for ${font.family}.`)
+  assert(Boolean(font.copyright), `Copyright metadata is missing for ${font.family}.`)
+  assert(
+    sha256(Buffer.from(license.replace(/\r\n/g, '\n').trim())) === font.licenseSha256,
+    `Font license checksum mismatch: ${font.file}`,
+  )
+  assert(font.conversionValidation?.nameTableMetadataMatched === true, `Font metadata preservation is unverified: ${font.file}`)
+  assert(
+    font.conversionValidation?.sourceGlyphCount === font.conversionValidation?.outputGlyphCount &&
+      font.conversionValidation?.sourceUnicodeMappingCount === font.conversionValidation?.outputUnicodeMappingCount,
+    `Font conversion changed glyph or cmap coverage: ${font.file}`,
+  )
+}
+
+const legacyFonts = ['InterVariable.woff2', 'JetBrainsMono-Regular.woff2', 'JetBrainsMono-Medium.woff2', 'JetBrainsMono-Bold.woff2']
+const distributedFonts = await readdir(resolve(dist, 'fonts'))
+for (const filename of legacyFonts) {
+  assert(!distributedFonts.includes(filename), `Unused legacy font is still distributed: ${filename}`)
+}
+
+const productionInventory = resolve(dist, 'licenses', 'dashboard-production-dependencies.json')
+const productionNotices = resolve(dist, 'licenses', 'dashboard-production-dependencies.txt')
+const sourceComponentInventory = resolve(dist, 'licenses', 'source-code', 'source-components.json')
+assert(await exists(productionInventory), 'Production dependency inventory is missing from the offline bundle.')
+assert(await exists(productionNotices), 'Production dependency license texts are missing from the offline bundle.')
+assert(await exists(sourceComponentInventory), 'Adapted source-component inventory is missing from the offline bundle.')
+
+const inventory = JSON.parse(await readFile(productionInventory, 'utf8'))
+assert(Array.isArray(inventory.packages) && inventory.packages.length > 0, 'Production dependency inventory is empty.')
+const directPackages = new Set(inventory.packages.filter((entry) => entry.direct).map((entry) => entry.name))
+for (const required of ['react', 'react-dom', 'three', 'motion', 'radix-ui', 'tailwindcss', 'lucide-react']) {
+  assert(directPackages.has(required), `Direct runtime dependency is absent from notices: ${required}`)
+}
+
+const sourceComponents = JSON.parse(await readFile(sourceComponentInventory, 'utf8'))
+assert(Array.isArray(sourceComponents.components) && sourceComponents.components.length > 0, 'Adapted source-component inventory is empty.')
+for (const component of sourceComponents.components) {
+  const componentLicensePath = resolve(dist, ...component.licenseFile.split('/'))
+  const componentLicense = (await readFile(componentLicensePath, 'utf8')).replace(/\r\n/g, '\n').trim()
+  assert(sha256(Buffer.from(componentLicense)) === component.licenseSha256, `Adapted source license checksum mismatch: ${component.name}`)
+  assert(componentLicense.includes(component.copyright), `Adapted source copyright is missing: ${component.name}`)
+}
+
+const rootEntry = await readFile(resolve(repositoryRoot, 'dashboard.html'), 'utf8')
+assert(rootEntry.includes('dashboard/dist/index.html'), 'Repository dashboard entry no longer targets the offline build.')
+
+console.log(
+  `Offline asset check passed: Snapshot 1.1 empty template, ${manifest.fonts.length} font faces, ` +
+    `${inventory.packages.length} production packages, ${sourceComponents.components.length} adapted source component set, no remote resources.`,
+)
