@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "agent-carry-synthetic-pages-demo",
+  "publicRepository": "Ww-Cooooo/Agent-Carry",
+  "expectedUrl": "https://ww-cooooo.github.io/Agent-Carry/",
+  "publishingBranch": "gh-pages",
+  "publishingFolder": "/",
+  "dataPolicy": "synthetic-only",
+  "includedInPublicMain": false,
+  "includedInReleaseArchive": false,
+  "source": {
+    "dashboardIndexSha256": "ede3418ec9b32091b03b6086b47368cb88666e2feaf3f810b2eb9957d9c742d2",
+    "formalEmptySnapshotSha256": "4a66c41f384bcbfd32b915d5638cfcf19a7630c815628ba0b82dd4e44f4337ae",
+    "syntheticDemoSnapshotSha256": "d374b87e720a362af1c126c5ddb29e53573bb244f3ae3e8c957737e4da189f04"
+  }
+}

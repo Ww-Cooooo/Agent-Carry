@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "scope": "Third-party source templates copied or adapted into the Agent Carry repository. npm dependencies and fonts are inventoried separately.",
+  "components": [
+    {
+      "name": "shadcn/ui",
+      "relationship": "adapted source templates",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2023 shadcn",
+      "repository": "https://github.com/shadcn-ui/ui",
+      "upstreamCommit": "d4fc45b1fbabfccb7a6a4333d8004cf19481caa9",
+      "upstreamLicense": "https://github.com/shadcn-ui/ui/blob/d4fc45b1fbabfccb7a6a4333d8004cf19481caa9/LICENSE.md",
+      "licenseFile": "licenses/source-code/shadcn-ui-MIT.txt",
+      "licenseSha256": "890dc55a3067ea1b2070f3cad3f7b347c38ab237d5d8f56d41e7b01b44e05741",
+      "adaptedFiles": [
+        {
+          "local": "dashboard/src/components/ui/button.tsx",
+          "upstream": "apps/v4/registry/new-york-v4/ui/button.tsx"
+        },
+        {
+          "local": "dashboard/src/components/ui/badge.tsx",
+          "upstream": "apps/v4/registry/new-york-v4/ui/badge.tsx"
+        },
+        {
+          "local": "dashboard/src/components/ui/dialog.tsx",
+          "upstream": "apps/v4/registry/new-york-v4/ui/dialog.tsx"
+        },
+        {
+          "local": "dashboard/src/lib/utils.ts",
+          "upstream": "apps/v4/registry/new-york-v4/lib/utils.ts"
+        }
+      ],
+      "relatedScaffoldFiles": [
+        "dashboard/src/index.css"
+      ],
+      "modifications": "Component styles, sizing, Chinese accessibility copy, theme tokens, layout behavior and application integration were substantially adapted for Agent Carry. The upstream copyright and MIT terms remain attached to the adapted portions."
+    }
+  ]
+}
