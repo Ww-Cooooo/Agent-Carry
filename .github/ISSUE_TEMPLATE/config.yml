@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 私密报告安全问题
+    url: https://github.com/Ww-Cooooo/Agent-Carry/security/advisories/new
+    about: 不要把漏洞细节、秘密或真实隐私写入公开 Issue。

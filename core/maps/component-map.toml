@@ -115,6 +115,13 @@ depends_on = ["dashboard-ui"]
 projects_to = ["installation-experience", "upgrade-system", "architecture-documentation"]
 
 [[components]]
+id = "open-source-community"
+owner = "template-core"
+paths = ["CONTRIBUTING.md", "SECURITY.md", ".github/**"]
+depends_on = ["external-safety", "project-licensing", "result-validation"]
+projects_to = ["upgrade-system", "architecture-documentation"]
+
+[[components]]
 id = "installation-experience"
 owner = "template-core"
 paths = ["INSTALL.md", "START-HERE.txt"]
@@ -132,7 +139,7 @@ projects_to = ["upgrade-system", "architecture-documentation"]
 id = "upgrade-system"
 owner = "template-core"
 paths = ["core/guides/upgrade-guide.md", "core/upgrade/**", "core/schemas/release-manifest.schema.md"]
-depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "instance-governance", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "dashboard-actions", "installation-experience", "privacy-migration", "project-licensing", "result-validation"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "instance-governance", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "dashboard-actions", "installation-experience", "privacy-migration", "project-licensing", "open-source-community", "result-validation"]
 projects_to = ["architecture-documentation"]
 
 [[components]]

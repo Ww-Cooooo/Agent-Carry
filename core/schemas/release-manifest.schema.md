@@ -5,6 +5,8 @@
 - 产品版本、核心版本、项目 SPDX 许可证标识、扩展接口版本，以及资产、跨会话信号、宿主接入、完整迁移套件、看板等各数据 Schema 版本。
 - `from_versions`：可直接应用的来源范围。
 - `replace`：模板拥有、可整体替换的路径与摘要。
+- `core/upgrade/official-source.toml` 属于模板核心，目标版本必须携带并按清单替换；Agent 不能通过搜索结果猜测更新来源。
+- 根目录社区说明与 `.github/ISSUE_TEMPLATE/` 属于公开项目入口，不拥有个人实例数据。目标版本包含这些文件时按模板核心替换，不把它们误作用户资产迁移。
 - `migrate`：需要 Schema 迁移的实例身份路径和迁移说明。
 - `preserve`：必须保留的实例资产和本地私密路径。
 - `instance/governance/**` 是混合拥有路径：目标模板提供卡片正文、频率和研究步骤；升级按稳定卡片 ID 迁移实例自己的 `schedule_state`、`schedule_anchor_at`、`last_completed_at`、`next_due_at`、`snoozed_until`、`trigger_revision` 及用户暂停／取消状态。不能整卡覆盖成模板空态，也不能为了保留排期而永远沿用旧模板正文。因此它应进入 `migrate`，并在投影重建前完成字段级合并。

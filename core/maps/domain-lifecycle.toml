@@ -4,7 +4,7 @@ map_id = "domain-lifecycle"
 [[routes]]
 id = "instantiation"
 summary = "先确定可调整的交流方式，再把模板实例化为通用个人助手或单一领域专属助手。"
-triggers = ["安装完成后的首次设置", "开始实例化", "选择交流方式", "选择通用或领域"]
+triggers = ["安装完成后的首次设置", "开始实例化", "选择交流方式", "选择通用或领域", "先帮我判断"]
 target = "core/guides/instantiation-guide.md"
 state = "active"
 minimum_level = 3

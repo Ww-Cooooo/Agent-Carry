@@ -75,15 +75,15 @@ request_template = "我现在明确要求把一个 Agent Carry 本地隐私迁�
 
 [[actions]]
 action_id = "instance.upgrade-template"
-label = "升级当前助手模板核心"
-purpose = "预览并应用模板更新，同时保留实例个人资产。"
+label = "检查并升级 Agent Carry"
+purpose = "按需检查官方公开版本，先预览变化，再决定是否升级并保留实例个人资产。"
 route_id = "template-upgrade"
 target = "core/guides/upgrade-guide.md"
 writes_files = true
 confirmation_point = "before-upgrade"
-forbidden = ["不得静默覆盖实例资产", "不得强制升级"]
-result_fields = ["版本变化", "替换/迁移/保留/冲突", "回退状态", "验收结果"]
-request_template = "我现在要检查并可能升级当前 Agent Carry 实例的模板核心。请先从根地图选择 assistant-maintenance，再选择 template-upgrade，读取 core/guides/upgrade-guide.md 和目标版本发布清单，并按动作 instance.upgrade-template 执行。先只生成替换、迁移、保留、删除、冲突和扩展兼容预览；不要强制升级或静默覆盖实例身份、偏好、记忆、能力、SOP、经验和进化成果。在我明确选择迁移升级后再执行。完成后报告版本变化、处理清单、回退状态和验收结果。"
+forbidden = ["不得后台检查、自动下载或强制升级", "不得从搜索结果、镜像或附件猜测官方版本", "不得静默覆盖实例资产"]
+result_fields = ["检查来源", "当前与目标版本", "替换/迁移/保留/冲突", "回退状态", "验收结果"]
+request_template = "我现在要检查 Agent Carry 是否有官方新版本，并在确认后才考虑升级当前实例。请先从根地图选择 assistant-maintenance，再选择 template-upgrade，读取 core/guides/upgrade-guide.md、core/upgrade/official-source.toml 和目标版本发布清单，并按动作 instance.upgrade-template 执行。只有这次请求才授权按登记的官方公开来源检查版本；不要后台检查、自动下载、强制升级，也不要从搜索结果、镜像或附件猜测官方版本。先告诉我检查来源、当前版本和目标版本，并只生成替换、迁移、保留、删除、冲突和扩展兼容预览；不要静默覆盖实例身份、偏好、记忆、能力、SOP、经验和进化成果。在我明确选择迁移升级后再下载或执行；无法联网时，请让我提供本地升级包。完成后报告检查来源、版本变化、处理清单、回退状态和验收结果。"
 
 [[actions]]
 action_id = "preference.reuse-from-instance"

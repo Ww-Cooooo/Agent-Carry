@@ -625,7 +625,7 @@ const SECONDARY_ACTION_META = {
   },
   "instance.upgrade-template": {
     icon: Upload,
-    description: "Agent Carry 发布新版后，先预览哪些核心会更新、哪些个人内容会保留，确认后再升级。",
+    description: "需要时让 Agent 从登记的官方发布源检查版本，先说明更新内容和个人资料如何保留，确认后再升级。",
   },
 } as const;
 

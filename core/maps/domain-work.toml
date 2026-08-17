@@ -41,7 +41,7 @@ confirmation = "risk-dependent"
 [[routes]]
 id = "todo-management"
 summary = "只在用户明确加入、查看、执行、更新或删除普通 TODO 时读取对应卡。"
-triggers = ["加入TODO", "做这个TODO", "查看TODO", "更新TODO", "删除TODO"]
+triggers = ["加入待办", "做这个待办", "查看待办", "更新待办", "删除待办", "加入TODO", "做这个TODO", "查看TODO", "更新TODO", "删除TODO"]
 target = "instance/todo/README.md"
 state = "explicit-only"
 minimum_level = 1

@@ -1,0 +1,24 @@
+schema_version = 1
+source_id = "agent-carry-official-public"
+product_id = "agent-carry"
+label = "Agent Carry 官方公开发布源"
+repository = "https://github.com/Ww-Cooooo/Agent-Carry"
+releases = "https://github.com/Ww-Cooooo/Agent-Carry/releases"
+latest_release = "https://github.com/Ww-Cooooo/Agent-Carry/releases/latest"
+latest_archive = "https://github.com/Ww-Cooooo/Agent-Carry/releases/latest/download/Agent-Carry.zip"
+installation_guide = "https://github.com/Ww-Cooooo/Agent-Carry/blob/main/INSTALL.md"
+
+[behavior]
+check = "only-after-explicit-user-request"
+background_check = false
+automatic_download = false
+automatic_upgrade = false
+github_account_required = false
+network_unavailable = "ask-for-a-user-provided-local-archive-and-do-not-broadly-search-for-mirrors"
+alternate_source = "label-as-nonofficial-and-require-user-choice-before-reading-or-downloading"
+
+[verification]
+release_kind = "published-non-draft-non-prerelease"
+required_inputs = ["target-release-manifest", "candidate-file-manifest-or-hashes"]
+checks = ["source-identity", "version-and-schema", "path-safety", "file-integrity", "upgrade-preview-before-write"]
+claim_limit = "integrity-and-source-checks-reduce-risk-but-do-not-promise-absolute-safety"

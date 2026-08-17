@@ -1,0 +1,60 @@
+name: 报告问题
+description: 安装、看板、任务执行、迁移或其他行为与预期不一致
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        谢谢你帮助改进 Agent Carry。请描述真实目标和实际结果，不需要先提出技术方案。
+        不要提交 API 密钥、登录态、真实隐私、完整个人实例或未经脱敏的日志。安全漏洞请使用私密报告入口。
+  - type: input
+    id: version
+    attributes:
+      label: Agent Carry 版本或来源
+      description: 例如 v1.1.0、Release 下载包，或某个公开提交。
+      placeholder: v1.1.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 使用环境
+      description: 操作系统、宿主 Agent；知道模型名称时也可以填写。
+      placeholder: Windows 11 / Claude Code / 模型名称不确定
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 你原本想完成什么
+      description: 请用普通语言说明当时的目标。
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际发生了什么
+      description: 包括看到的结果、错误，以及它是否每次都会发生。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 怎样复现
+      description: 写出最少步骤；如果不能稳定复现，也请如实说明。
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized_evidence
+    attributes:
+      label: 脱敏后的补充材料
+      description: 可选。粘贴前请删除秘密、隐私正文、账号信息和私人路径。
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我没有在本 Issue 中提交秘密凭据、登录态、真实隐私或完整个人实例。
+          required: true
+        - label: 这不是需要私密处理的安全漏洞报告。
+          required: true

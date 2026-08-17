@@ -1,0 +1,51 @@
+name: 提出建议
+description: 描述一个真实场景、当前困难和希望得到的结果
+title: "[建议] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        不必先设计技术方案。请先讲清谁在什么情况下遇到了什么困难，以及改进后希望得到什么结果。
+  - type: dropdown
+    id: experience
+    attributes:
+      label: 你的使用经验
+      options:
+        - 第一次或很少使用 Agent
+        - 用过一些 Agent 或懂一点编程
+        - 经常使用 Agent 或熟悉编程
+    validations:
+      required: true
+  - type: textarea
+    id: situation
+    attributes:
+      label: 真实使用场景
+      description: 你当时使用哪个宿主 Agent，想完成什么事情？
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 目前哪里困难
+      description: 现有流程为什么不够用，或者会让谁感到困惑？
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 你希望最后得到什么结果
+      description: 说明用户看见、完成或避免了什么；不必限定具体按钮或代码实现。
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: 现在怎样临时解决
+      description: 可选。如果已经有替代做法，请说明它为什么仍然麻烦。
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我没有提交秘密凭据、登录态、真实隐私或完整个人实例。
+          required: true

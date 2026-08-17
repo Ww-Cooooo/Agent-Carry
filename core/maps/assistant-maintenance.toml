@@ -13,7 +13,7 @@ confirmation = "before-durable-change"
 [[routes]]
 id = "template-upgrade"
 summary = "把模板更新安全应用到实例，保护实例资产并提供回退。"
-triggers = ["升级模板", "导入升级包", "检查新版本"]
+triggers = ["升级模板", "导入升级包", "检查新版本", "检查更新", "官方新版本"]
 target = "core/guides/upgrade-guide.md"
 state = "on-demand"
 minimum_level = 3

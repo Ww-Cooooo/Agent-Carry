@@ -3,7 +3,7 @@ policy = "one-formal-owner-per-component"
 
 [[layers]]
 id = "template-core"
-owns = ["README.md", "INSTALL.md", "START-HERE.txt", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", ".gitignore", "LICENSE", "THIRD_PARTY_NOTICES.md", "core/**", "docs/**"]
+owns = ["README.md", "INSTALL.md", "START-HERE.txt", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", ".gitignore", "LICENSE", "THIRD_PARTY_NOTICES.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "core/**", "docs/**"]
 upgrade_policy = "replace-or-migrate-by-release-manifest"
 instance_may_modify = false
 
