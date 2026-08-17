@@ -2,9 +2,18 @@ schema_version = 1
 map_id = "domain-lifecycle"
 
 [[routes]]
+id = "first-run-guidance"
+summary = "空白模板安装后立即迎接用户，同时说明看板与聊天入口、三种交流路线和下一步；只收集创建所需的第一批选择，不写入或锁定实例。"
+triggers = ["安装完成后的首次设置", "安装后第一条回复", "创建我的助手", "创建我的助手入口", "说明三种引导路线", "首次选择交流方式", "选择通用或领域", "先帮我判断", "开始实例化"]
+target = "core/guides/instantiation-guide.md"
+state = "active"
+minimum_level = 1
+confirmation = "none"
+
+[[routes]]
 id = "instantiation"
-summary = "先确定可调整的交流方式，再把模板实例化为通用个人助手或单一领域专属助手。"
-triggers = ["安装完成后的首次设置", "开始实例化", "选择交流方式", "选择通用或领域", "先帮我判断"]
+summary = "在首次引导取得用户选择后，由 Level 3 完成渐进访谈、实例结构设计、完整预览、正式写入和方向锁定。"
+triggers = ["已完成交流方式与助手方向两项首次选择", "开始渐进访谈", "实例结构设计", "生成完整预览", "确认完整预览后创建", "写入实例", "锁定助手方向"]
 target = "core/guides/instantiation-guide.md"
 state = "active"
 minimum_level = 3

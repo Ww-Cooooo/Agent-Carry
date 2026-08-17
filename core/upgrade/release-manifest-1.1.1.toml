@@ -1,0 +1,24 @@
+schema_version = 1
+release = "1.1.1"
+core = "1.1.1"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.2"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+migration_kit_schema = "1.0"
+from_versions = ["1.0.0", "1.1.0"]
+notes = "Backward-compatible patch release. Replaces the separately uploaded latest Release asset with GitHub's source archive generated from the reviewed public main branch, adds an exact-tag archive route for upgrades, and verifies normalized extracted file paths and bytes instead of treating GitHub's regenerable outer ZIP bytes as a durable release identity. It also makes post-install onboarding mandatory for a successful blank-template installation: Level 1 first-run guidance must lead with creating the assistant, expose both the visible Dashboard and complete chat fallback, explain all three guidance routes, tell Dashboard users to return the generated instruction to the current Agent, and must not stop at an installation report. Level 3 remains responsible for the progressive interview, complete preview, write and direction lock. Product and core versions advance to 1.1.1 while extension, asset, dashboard, signal, host-integration and migration-kit schemas remain unchanged. Upgrade replaces template-owned project, installation, upgrade, documentation and dashboard files; migrates instance identity and governance schedule state; and preserves user memory, capabilities, SOPs, experiences, evolution, todos, deferred work, skills, signals, host profiles, local private content and rebuildable local derivatives."
+extension_changes = "Compatible with extension API 1.0; no extension migration is required."
+dashboard_changes = "Keeps Dashboard Snapshot Schema 1.1 and Action Schema 1.0. The existing Create My Assistant flow remains the visual entry; installation and bootstrap guidance now point users to that entry while providing an equivalent chat-only path."
+
+replace = ["README.md", "INSTALL.md", "START-HERE.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+migrate = ["instance/manifest.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**"]
+preserve = ["instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[verification]
+checks = ["manifest-parses", "version-1.1.1-aligned", "upgrade-from-1.0.0-and-1.1.0-supported", "project-license-apache-2.0-valid", "third-party-provenance-and-licenses-valid", "official-update-source-identity-valid", "official-update-explicit-request-only", "github-generated-main-archive-url-valid", "versioned-tag-archive-route-valid", "public-main-equals-latest-release-tag", "archive-root-auto-discovery-valid", "extracted-content-manifest-valid", "archive-handoff-valid", "post-install-first-response-onboarding-valid", "first-run-guidance-level-route-valid", "first-run-instantiation-trigger-boundary-valid", "dashboard-generated-instruction-handoff-valid", "dashboard-and-chat-first-run-paths-aligned", "direction-lock-preserved", "guidance-mode-and-direction-independent", "instance-assets-preserved", "governance-card-body-current-and-instance-schedule-preserved", "host-profiles-preserved", "privacy-boundary-valid", "git-safe-and-private-export-actions-aligned", "secret-exclusion-valid", "schemas-aligned", "dashboard-actions-aligned", "dashboard-offline-responsive-valid", "snapshot-rebuilt"]
+risk_policy = "targeted-not-enterprise-regression"

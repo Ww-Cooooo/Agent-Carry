@@ -40,7 +40,7 @@ npm run analyze
 
 `npm run build` 会把应用脚本和样式内联进 `dist/index.html`，确保 `file://` 下可用。Noto Sans SC、Space Grotesk、Noto Sans Mono CJK SC、快照和许可证包作为本地同目录资源分发；不访问 CDN，也不依赖用户预装中文字体。不要删除 `scripts/make-offline.mjs`，否则浏览器可能因本地 ES 模块限制显示空白。
 
-构建开始时会自动核对正式动作登记表、第三方许可证清单和开源合规清单；构建结束后再检查字体哈希、OFL 文本、生产依赖声明、shadcn/ui 改写源码声明、根入口与远端资源。`npm run analyze` 只在 `.assistant-local/dashboard/` 生成维护者本地包体报告，不会把分析面板塞进看板或最终安装包。这些工具只服务于前端维护，不会出现在最终用户双击看板的流程中。
+构建开始时会自动核对正式动作登记表、安装后首次创建契约、第三方许可证清单和开源合规清单；首次创建检查确保安装入口、ZIP 交接、极小启动、实例化指南、README 与看板仍共同要求“创建助手优先、看板和聊天双入口、三种路线有解释、生成指令交回当前聊天、Level 1 迎接与 Level 3 正式实例化分离”，并拒绝退化成只报安装完成或提前写入模板。构建结束后再检查字体哈希、OFL 文本、生产依赖声明、shadcn/ui 改写源码声明、根入口与远端资源。`npm run analyze` 只在 `.assistant-local/dashboard/` 生成维护者本地包体报告，不会把分析面板塞进看板或最终安装包。这些工具只服务于前端维护，不会出现在最终用户双击看板的流程中。
 
 字体职责与固定来源见 `public/fonts/font-manifest.json`，改写源码映射见 `public/licenses/source-code/source-components.json`，完整第三方说明见仓库根目录 `THIRD_PARTY_NOTICES.md`。变更 npm 运行依赖后先执行 `npm run licenses:generate` 并审核结果；日常构建只校验，不会静默改写声明文件。新增源码模板或二进制素材时运行 `npm run check:compliance`，未登记内容会关闭门禁。
 
