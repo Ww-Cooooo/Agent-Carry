@@ -10,7 +10,7 @@
   "includedInReleaseArchive": false,
   "source": {
     "dashboardIndexSha256": "56de4d3c2ee1db8a2a8f96dbb23cab2a2dc8079be8b30957f61ec6c23df0b206",
-    "formalEmptySnapshotSha256": "312f6753b794f3bb4236cb64849809975300b6bc2ff864ada79b22671f8934e3",
-    "syntheticDemoSnapshotSha256": "6cd59a3f2abc4113326e47f3de97deefc247719c8a7b64a2941e246e67f57622"
+    "formalEmptySnapshotSha256": "07f02d4b8fe40134b8e2ff15c9ba979e269f411a0bcee1d016d6da091bae2e51",
+    "syntheticDemoSnapshotSha256": "29fe22de5df1ed82f9af2804fed3f9927e6aac6248c9afb727455691a8be5ac5"
   }
 }
