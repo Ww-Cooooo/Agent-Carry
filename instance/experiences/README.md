@@ -4,13 +4,9 @@
 - 模板：`core/templates/experience/blank-experience.md`。
 - 宿主执行经验模板：`core/templates/experience/blank-host-execution.md`。
 
-## 索引
+## 怎样找到一条经验
 
-实例化后在此登记每条经验：`ID | 任务类型 | 摘要 | 状态`。正文按需加载。
-
-| ID | 任务类型 | 摘要 | 状态 |
-|---|---|---|---|
-| _（待填写）_ | | | |
+正式小型索引只有 `instance/maps/domain-map.toml` 一份；命中相关能力或 SOP 后才按需读取经验正文。本说明不再维护第二张手工表，避免地图、正文和看板出现三份不同状态。
 
 ## 规则
 

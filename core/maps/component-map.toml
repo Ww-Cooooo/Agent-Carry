@@ -5,7 +5,7 @@ purpose = "Single metadata-only map for impact discovery. Read full COMPONENT_CH
 [[components]]
 id = "identity-lifecycle"
 owner = "template-core"
-paths = ["README.md", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", "core/manifest.toml", "core/guides/instantiation-guide.md", "core/guides/platform-adaptation-guide.md", "core/guides/preference-reuse-guide.md", "core/schemas/instance-manifest.schema.md"]
+paths = ["README.md", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", "core/manifest.toml", "core/guides/instantiation-guide.md", "core/guides/first-use-execution-gates.md", "core/guides/platform-adaptation-guide.md", "core/guides/preference-reuse-guide.md", "core/schemas/instance-manifest.schema.md"]
 depends_on = ["context-routing"]
 projects_to = ["installation-experience", "host-integration", "cross-session-signals", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
 

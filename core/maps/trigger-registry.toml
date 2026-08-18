@@ -130,9 +130,9 @@ formal_owner = "core/guides/instantiation-guide.md"
 dynamic_state_owner = "current-task-only-before-confirmed-write-then-instance/manifest.toml"
 route = "core/maps/domain-lifecycle.toml"
 startup_policy = "manifest-state-field-only"
-gate = "level-1-first-run-guidance-must-welcome-and-collect-both-guidance-mode-and-direction-intent-before-level-3-progressive-interview-user-explicitly-confirms-the-complete-preview-before-write"
+gate = "level-1-must-reopen-the-post-install-reply-gate-before-first-response-then-before-real-task-input-reopen-the-instantiation-handoff-gate-obtain-a-formal-direction-and-user-confirmed-level-3-before-level-3-reopens-the-instantiation-write-gate-user-explicitly-confirms-the-complete-preview-before-an-allowlisted-write"
 cleanup = "set-instantiated-state-and-never-repeat"
-failure = "leave-template-state-unchanged"
+failure = "do-not-end-with-an-install-report-do-not-create-assets-and-leave-or-restore-template-state-when-the-transaction-cannot-validate"
 
 [[rules]]
 id = "context-route-fallback"
@@ -197,7 +197,7 @@ failure = "mark-limited-or-failed-do-not-promote-and-stop-when-bounded-correctio
 [[rules]]
 id = "task-learning-value-gate"
 class_id = "explicit-event"
-checkpoint = "task-completed-user-corrected-reusable-recovery-observed-or-user-explicitly-requests-memory"
+checkpoint = "task-completed-user-confirms-the-result-correct-user-asks-to-continue-or-save-the-method-user-corrected-reusable-recovery-observed-or-user-explicitly-requests-memory"
 formal_owner = "core/protocols/ASSET_LIFECYCLE.md"
 dynamic_state_owner = "current-task-only-unless-a-real-learning-signal-is-found"
 route = "core/maps/evolution-model.toml"

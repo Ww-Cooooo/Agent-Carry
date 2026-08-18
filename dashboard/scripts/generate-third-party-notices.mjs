@@ -176,7 +176,10 @@ if (checkOnly) {
     readFile(inventoryPath, 'utf8').catch(() => ''),
     readFile(noticesPath, 'utf8').catch(() => ''),
   ])
-  if (currentInventory !== inventoryText || currentNotices.replace(/\r\n/g, '\n') !== notices) {
+  if (
+    currentInventory.replace(/\r\n/g, '\n') !== inventoryText
+    || currentNotices.replace(/\r\n/g, '\n') !== notices
+  ) {
     throw new Error('Dashboard dependency notices are stale. Run npm run licenses:generate and review the result.')
   }
   console.log(`Dependency license bundle is current (${dependencies.length} production packages).`)

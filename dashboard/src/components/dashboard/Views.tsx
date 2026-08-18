@@ -182,7 +182,7 @@ export function HomeView({
     <div className="page-stack home-view">
       <section className="welcome-row" aria-labelledby="home-title">
         <div>
-          <p className="welcome-kicker">你的 AI 随身助手</p>
+          <p className="welcome-kicker">{isTemplate ? "你的 AI 随身助手" : `当前助手 · ${profile.displayName}`}</p>
           <h1 id="home-title">{headline}</h1>
           <p>{intro}</p>
         </div>

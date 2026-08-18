@@ -41,6 +41,7 @@ runInNewContext(snapshotSource, snapshotSandbox, { timeout: 1000 })
 const snapshot = snapshotSandbox.window.AGENT_CARRY_SNAPSHOT
 assert(snapshot?.meta?.schema_version === '1.1', 'Formal dashboard snapshot is not Schema 1.1.')
 assert(snapshot?.meta?.state === 'template' && snapshot?.overview?.state === 'template', 'Formal dashboard snapshot is not a template.')
+assert(snapshot?.meta?.identity_ref === 'template', 'Formal template snapshot has the wrong dashboard identity ref.')
 assert(snapshot?.profile?.guidance_mode === 'unselected', 'Formal template snapshot must leave guidance mode unselected.')
 for (const key of ['memories', 'sops', 'capabilities', 'experiences', 'evolution', 'todo', 'governance']) {
   assert(Array.isArray(snapshot[key]) && snapshot[key].length === 0, `Formal template snapshot contains ${key} data.`)
@@ -123,8 +124,15 @@ for (const component of sourceComponents.components) {
 
 const rootEntry = await readFile(resolve(repositoryRoot, 'dashboard.html'), 'utf8')
 assert(rootEntry.includes('dashboard/dist/index.html'), 'Repository dashboard entry no longer targets the offline build.')
+assert(rootEntry.includes('dashboard/dist/snapshot.js'), 'Repository dashboard entry does not read the local snapshot identity.')
+for (const key of ['ac_kind', 'ac_ref', 'ac_version']) {
+  assert(rootEntry.includes(key), `Repository dashboard entry is missing ${key}.`)
+  assert(html.includes(key), `Compiled offline dashboard is missing ${key}.`)
+}
+assert(html.includes('这个入口和实际加载的助手不一致'), 'Compiled offline dashboard lacks the entry mismatch warning.')
+assert(html.includes('已暂停复制执行指令'), 'Compiled offline dashboard lacks the mismatch copy gate.')
 
 console.log(
-  `Offline asset check passed: Snapshot 1.1 empty template, ${manifest.fonts.length} font faces, ` +
+  `Offline asset check passed: Snapshot 1.1 empty template with identity capsule, ${manifest.fonts.length} font faces, ` +
     `${inventory.packages.length} production packages, ${sourceComponents.components.length} adapted source component set, no remote resources.`,
 )

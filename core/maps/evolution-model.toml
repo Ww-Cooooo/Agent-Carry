@@ -4,7 +4,7 @@ map_id = "evolution-model"
 [[routes]]
 id = "evolution-review"
 summary = "只在命中学习价值时，按同类匹配、风险、授权和证据把结果转为候选、可撤销试用或正式资产。"
-triggers = ["进化", "学习", "形成经验", "修改能力", "低风险试用", "成熟度", "同类候选"]
+triggers = ["进化", "学习", "形成经验", "修改能力", "低风险试用", "成熟度", "同类候选", "结果正确", "这次做对了", "以后继续这样", "以后可以继续使用", "保存这套方法"]
 target = "core/protocols/ASSET_LIFECYCLE.md"
 state = "active"
 minimum_level = 1

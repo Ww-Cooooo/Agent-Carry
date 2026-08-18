@@ -59,7 +59,7 @@ updated_at = ""
 - `supersedes`：被本资产明确替代的稳定资产 ID；不能只靠同名推断替代关系。
 - `minimum_level`：安全理解和执行本资产所需的最低模型等级。生成或修改正式资产时按目标任务重新判断；不能机械继承候选审核、规划者或宿主模型的等级。清楚低风险流程通常为 1，重要架构与高影响决定仍需 3。
 - `approval_state`、`activation_basis`、`risk_tier`、`approved_by_user`：见第 3、4 节。
-- `updated_at`：带偏移量的 ISO 8601；未知时留空，不伪造。
+- `updated_at`：本次资产实际写入时间，使用带偏移量的 ISO 8601；未知时留空，不伪造，也不复用实例创建时间、治理锚点或旧快照时间。能力与 SOP 的 `last_validated_at` 同样记录本次真正通过结果验证的时间。
 
 `topic_key`、`subject_key` 和 `summary` 只能保存低敏检索语义。原始隐私正文放在受 Git 排除的 `.assistant-private/assets/` 本地隐私层并通过 `private_refs` 按需取得；GitHub 私密备份只保留低敏元数据与引用存在性，不携带私密正文。凭据、完整对话、系统提示和攻击载荷不得进入这些字段。当前执行模型可以在任务命中后取得必要隐私正文，但 API 密钥、密码、令牌、Cookie、私钥、恢复码和登录态不得进入任何模型上下文或隐私层。
 

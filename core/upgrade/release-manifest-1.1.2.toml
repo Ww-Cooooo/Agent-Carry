@@ -1,0 +1,25 @@
+schema_version = 1
+release = "1.1.2"
+core = "1.1.2"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.2"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+migration_kit_schema = "1.0"
+from_versions = ["1.0.0", "1.1.0", "1.1.1"]
+notes = "Backward-compatible first-use reliability patch. Adds event-local execution gates that are reopened immediately before the post-install reply, when a template is about to collect actual input or begin the first real task, immediately before and after the confirmed instantiation write, and when the first real task receives validation or reusable-method feedback. The pre-task handoff requires a formal general or domain direction and explicit user confirmation that the current model is Level 3 before instance architecture, preview and write; the user switches manually only when the current model is insufficient, and a task candidate cannot bypass instantiation. Instantiation now creates only identity, profile, task-family routing, clean signals, governance schedules, one minimal current-host profile and a source-validated Dashboard snapshot; it cannot pre-create memory, capability, SOP, experience, evolution or todo assets. Dashboard projection now rejects task families, planned routes and missing-body entries as assets. Review and provisional states override older maturity fields in the user-facing status, and the current instance display name remains visible in a fixed identity area so multiple local assistants are not confused. Result-correct and continue-using feedback routes to result validation and the asset lifecycle so a verified, explicitly retained method can start as practiced rather than silently remaining chat-only or being marked reliable. Signal configuration now distinguishes the two startup reads from the complete projection update set, so a fresh host cannot treat the non-startup time index as part of ordinary startup before next_wakeup_at is due. Product and core versions advance to 1.1.2 while extension, asset, Dashboard, signal, host-integration and migration-kit schemas remain compatible."
+extension_changes = "Compatible with extension API 1.0; no extension migration is required."
+dashboard_changes = "Keeps Dashboard Snapshot Schema 1.1 and Action Schema 1.0. Snapshot generation is stricter: every projected asset must have a real, kind-matching formal body and counts must match arrays. Review and provisional status take precedence over maturity, formal instances keep profile.display_name visible in a fixed identity area, and each template, instance or demo entry carries a non-semantic identity capsule that is checked before copy actions are allowed."
+
+replace = ["README.md", "INSTALL.md", "START-HERE.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md"]
+migrate = ["instance/manifest.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**"]
+preserve = ["instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[verification]
+checks = ["manifest-parses", "version-1.1.2-aligned", "upgrade-from-1.0.0-through-1.1.1-supported", "post-install-exit-gate-reopened", "first-response-dashboard-and-chat-entry-valid", "three-guidance-routes-explained-before-selection", "pre-first-task-instantiation-handoff-valid", "level-3-confirmed-before-instance-architecture", "instantiation-write-allowlist-valid", "no-assets-before-first-real-task", "initial-task-family-target-exists", "governance-first-schedule-initialized", "current-host-minimum-profile-created", "snapshot-formal-source-and-counts-valid", "startup-time-index-not-loaded-before-due", "dashboard-instance-name-persistent", "dashboard-entry-identity-capsule-valid", "dashboard-review-and-provisional-priority-valid", "instance-directory-guides-current", "first-task-result-validation-route-valid", "explicit-reuse-creates-practiced-not-reliable", "direction-lock-preserved", "instance-assets-preserved", "privacy-and-secret-boundaries-preserved", "schemas-compatible", "dashboard-actions-aligned", "dashboard-offline-responsive-valid"]
+risk_policy = "targeted-not-enterprise-regression"

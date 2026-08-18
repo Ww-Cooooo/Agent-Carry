@@ -27,6 +27,7 @@ function fallbackSnapshot(): Snap {
       state: "snapshot-unavailable",
       freshness_seconds: 86400,
       source_digest: "",
+      identity_ref: "unavailable",
     },
     overview: {
       product: "AgentCarry",
@@ -298,6 +299,7 @@ export interface AssetItem {
   id: string;
   title: string;
   summary: string;
+  status: string;
   reliability: string;
   say: string;
   triggers: string[];
@@ -306,6 +308,14 @@ export interface AssetItem {
 const missingSummary = (kind: string) => `说明缺失：请让 Agent 补齐这条${kind}的用途说明，并重建看板数据。`;
 const textOr = (value: unknown, fallback: string) =>
   typeof value === "string" && value.trim() ? value.trim() : fallback;
+
+/** 复核和试用状态优先于成熟度，避免旧 practiced/reliable 字段掩盖当前风险状态。 */
+function assetReliability(item: any): string {
+  const status = typeof item?.status === "string" ? item.status.trim() : "";
+  if (status === "review" || status === "需要复核" || item?.unresolved_conflict === true) return "review";
+  if (status === "provisional" || status === "试用中") return "provisional";
+  return item?.reliability ?? item?.maturity ?? "unvalidated";
+}
 
 const projectMemories = (snapshot: Snap): MemoryItem[] => (snapshot.memories ?? []).map((m: any) => ({
   id: m.id ?? m.title,
@@ -317,7 +327,8 @@ const projectSops = (snapshot: Snap): AssetItem[] => (snapshot.sops ?? []).map((
   id: s.id ?? s.title,
   title: textOr(s.title, "未命名固定流程（SOP）"),
   summary: textOr(s.summary, missingSummary("固定流程（SOP）")),
-  reliability: s.reliability ?? "未评估",
+  status: s.status ?? "active",
+  reliability: assetReliability(s),
   say: s.triggers?.[0] ?? s.summary ?? "",
   triggers: s.triggers ?? [],
 }));
@@ -326,7 +337,8 @@ const projectCapabilities = (snapshot: Snap): AssetItem[] => (snapshot.capabilit
   id: c.id ?? c.title,
   title: textOr(c.title, "未命名能力"),
   summary: textOr(c.summary, missingSummary("能力")),
-  reliability: c.reliability ?? "未评估",
+  status: c.status ?? "active",
+  reliability: assetReliability(c),
   say: c.triggers?.[0] ?? c.summary ?? "",
   triggers: c.triggers ?? [],
 }));
@@ -565,17 +577,20 @@ const GLOBAL_ACTIONS: GlobalActionDef[] = [
       target: "core/protocols/DASHBOARD_ACTIONS.md",
       goal: "我现在要让 Agent 从正式来源重建 Agent Carry 的本地看板状态快照。",
       scope: [
-        "从正式清单、地图和资产元数据重建只读快照，先写临时文件并校验结构与来源摘要，再原子替换 dashboard/dist/snapshot.js。",
+        "从正式清单、地图和资产元数据重建只读快照；每张资产卡先核对真实正文、稳定 ID 与 kind，各数组长度必须与 assets 计数一致，再原子替换 dashboard/dist/snapshot.js。",
+        "初始任务族、计划路线、聊天候选和缺失正文的地图条目都不是资产，不得进入资产数组或计数；发现来源缺失、类型不符或计数不一致时保留旧快照并报告冲突。",
         "每条改进建议都要按 Snapshot Schema 从正式候选的来源引用和计数中生成不泄露正文的 source_summary，并填写 target_kind 与真实 next_step。",
+        "模板的 meta.identity_ref 固定为 template；正式实例按 Snapshot Schema 从 instance_id 生成 ac- 加 SHA-256 前 12 位的匿名稳定引用，不得把实例名、领域、路径、个人资料或秘密写入引用。",
         "不要尝试修改任何正式资产；快照只是可重建派生物。",
       ],
       forbidden: [
         "不得把内部 ID、路径、日志、隐私正文或攻击载荷投影到看板",
+        "不得把实例名、领域、路径、个人资料或秘密写入入口身份引用",
         "不得把快照反向写回正式资产",
         "不得开启后台常驻扫描",
       ],
       confirmation: "仅在来源与现有快照冲突时需要向我确认",
-      resultFields: ["快照绝对路径", "生成时间", "来源摘要", "改进建议投影检查", "缺失或冲突"],
+      resultFields: ["快照绝对路径", "生成时间", "来源摘要", "入口身份引用", "改进建议投影检查", "缺失或冲突"],
     }),
   },
   {
@@ -818,27 +833,29 @@ const GLOBAL_ACTIONS: GlobalActionDef[] = [
     label: "创建我的助手",
     rootCategory: "domain-lifecycle",
     routeId: "instantiation",
-    target: "core/guides/instantiation-guide.md",
+    target: "core/guides/first-use-execution-gates.md",
     templateOnly: true,
     request: buildGlobalRequest({
       action_id: "instance.instantiate",
       label: "创建我的助手",
       rootCategory: "domain-lifecycle",
       routeId: "instantiation",
-      target: "core/guides/instantiation-guide.md",
+      target: "core/guides/first-use-execution-gates.md",
       goal: "我现在要从当前 AgentCarry 模板创建一个准备长期使用的新助手实例。",
       summary: "先选择可随时调整的交流方式，再选择永久锁定的助手方向；两者相互独立，不是六种用户等级。",
       scope: [
         "看板会在本请求末尾附上我已经选择的交流方式与方向意向；把它们视为本次明确输入，不要让我重复点击或回答。交流方式只能是 step-by-step、balanced 或 direct，三种方式都能创建两种方向。",
         "方向意向只能是 general、domain 或 help-decide。help-decide 只是让我先获得比较建议，不是第三种正式方向；在我明确选择 general 或 domain 之前不得写入或锁定。",
         "step-by-step 使用普通话从职业、困难和目标找到 2～4 个真实任务候选；balanced 先了解已有用法、常见任务、资料工具和期望，只补问关键缺口；direct 可直接讨论专业标准、资料、工作流、SOP、工具、自治边界和验收方式。",
-        "按同一套渐进访谈了解真实需求、遗漏场景、偏好、自动化边界、隐私方式和长期目标，不要把两维组合成六套固定问卷，也不要只让我填表。",
-        "展示交流方式、方向类型、方向名称、范围声明、初始任务族、第一项真实任务和确认策略后，等我确认再写入 profile.guidance_mode 并永久锁定方向；需要另一方向时从模板另建实例。",
-        "完成正式设置后同步生成最新看板快照。",
+        "选中首项任务、准备索取当天金额或真实业务文件前，重新执行‘B. 首项任务开始前的实例化交接门’。模板态只讨论任务目标、材料类别和人工判断边界；先取得正式方向，并在我明确确认当前模型处于 Level 3 后，才进入实例结构设计；当前不足时再请我手动切换。不能猜测模型等级。",
+        "再按检查点指向的实例化指南完成同一套渐进访谈；了解真实需求、遗漏场景、偏好、自动化边界、隐私方式和长期目标，不要把两维组合成六套固定问卷，也不要只让我填表。",
+        "展示交流方式、方向类型、方向名称、范围声明、初始任务族、第一项真实任务、学习与隐私策略、环境假设和未知项后，等我确认完整预览；真正写入前重新执行‘C. 实例化写入门’。",
+        "实例化只建立身份清单、档案、指向真实实例说明的 task-family 路线、干净信号、三张治理卡首轮排期、当前宿主最小档案和正式来源快照；首个真实任务前资产计数通常全部为 0。",
+        "写入后回读任务族目标、治理时间、宿主档案、时间索引和快照来源，全部一致才能报告创建完成。",
       ],
-      forbidden: ["不得在确认前写入或锁定实例方向", "不得跳过交流方式与通用/领域选择", "不得把 help-decide 写成正式方向", "不得为了引导预先制造记忆、能力、SOP 或待办"],
+      forbidden: ["不得在确认前写入或锁定实例方向", "不得跳过交流方式与通用/领域选择", "不得把 help-decide 写成正式方向", "不得在模板态索取首项任务的当天金额、真实文件或开始执行", "不得在用户确认 Level 3 前进入实例结构设计", "不得为了引导预先制造记忆、能力、SOP、经验、学习建议或待办", "不得把任务族、计划路线或缺失正文的条目计入看板资产", "不得漏掉治理排期或当前宿主最小档案"],
       confirmation: "写入并永久锁定方向前，展示预览并等待我确认",
-      resultFields: ["交流方式、实例名称、类型、锁定方向和核心使命", "已建立的入口、偏好与初始能力地图", "第一项真实任务及是否立即开始", "看板快照是否已同步"],
+      resultFields: ["交流方式、实例名称、类型、锁定方向和核心使命", "初始任务族及其真实目标", "三张治理卡首轮排期与当前宿主最小档案", "第一项真实任务及是否立即开始", "空资产、信号和看板快照检查"],
     }),
   },
 ];

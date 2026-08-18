@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
@@ -39,8 +39,10 @@ import {
   applyDashboardSnapshot,
   getGlobalActions,
   getSnapshotStatus,
+  meta,
   profile,
 } from "@/lib/data";
+import { inspectDashboardIdentity, syncDashboardIdentity } from "@/lib/identity";
 
 export default function Dashboard() {
   const demoMode = (window as Window & { AGENT_CARRY_DEMO?: boolean }).AGENT_CARRY_DEMO === true;
@@ -52,6 +54,7 @@ export default function Dashboard() {
   const [refreshError, setRefreshError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [identityIssueOpen, setIdentityIssueOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
   const scrollRestoreRef = useRef<number | null>(null);
@@ -169,14 +172,32 @@ export default function Dashboard() {
     return () => window.clearInterval(timer);
   }, [refreshSnapshot]);
 
+  const dashboardIdentity = useMemo(() => inspectDashboardIdentity({
+    demoMode,
+    state: profile.state,
+    displayName: profile.displayName,
+    version: profile.version,
+    identityRef: meta?.identity_ref,
+    href: window.location.href,
+  }), [demoMode, snapshotRevision]);
+
+  useEffect(() => {
+    syncDashboardIdentity(dashboardIdentity);
+    if (!dashboardIdentity.mismatch) setIdentityIssueOpen(false);
+  }, [dashboardIdentity]);
+
   const requestCopy = useCallback(async (text: string, label: string) => {
+    if (dashboardIdentity.mismatch) {
+      setIdentityIssueOpen(true);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(text);
       setCopyState({ open: true, copied: true, text, label });
     } catch {
       setCopyState({ open: true, copied: false, text, label });
     }
-  }, []);
+  }, [dashboardIdentity.mismatch]);
 
   const currentNav = NAV_ITEMS.find((item) => item.page === route.page) ?? NAV_ITEMS[0];
   const localStatus = getSnapshotStatus(refreshError);
@@ -185,13 +206,32 @@ export default function Dashboard() {
   const rebuildAction = getGlobalActions().find((action) => action.action_id === "dashboard.refresh-snapshot");
 
   return (
-    <div className={`app-shell${demoMode ? " app-shell--demo" : ""}`} data-snapshot-revision={snapshotRevision}>
+    <div
+      className={`app-shell${demoMode ? " app-shell--demo" : ""}${dashboardIdentity.mismatch ? " app-shell--identity-warning" : ""}`}
+      data-snapshot-revision={snapshotRevision}
+      data-dashboard-kind={dashboardIdentity.expected.kind}
+      data-dashboard-ref={dashboardIdentity.expected.ref}
+      data-dashboard-version={dashboardIdentity.expected.version}
+      data-dashboard-identity={dashboardIdentity.mismatch ? "mismatch" : "matched"}
+    >
       <a className="skip-link" href="#main-content">跳到主要内容</a>
 
       <aside className="site-rail" aria-label="主要导航">
         <div className="rail-brand">
           <LogoMark />
           <div><strong>Agent Carry</strong><span>便携式 AI 助手</span></div>
+        </div>
+
+        <div
+          className={`rail-instance-card${profile.state === "instance" ? " is-instance" : " is-template"}`}
+          aria-label={profile.state === "instance" ? `当前助手：${profile.displayName}` : "当前还没有创建助手"}
+          title={profile.state === "instance" ? profile.displayName : "完成第一次设置后，这里会一直显示当前助手名称"}
+        >
+          <i aria-hidden="true" />
+          <div>
+            <small>{profile.state === "instance" ? "当前助手" : "当前状态"}</small>
+            <strong>{profile.state === "instance" ? profile.displayName : "尚未创建助手"}</strong>
+          </div>
         </div>
 
         <nav className="rail-nav">
@@ -263,6 +303,19 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {dashboardIdentity.mismatch ? (
+          <div className="identity-warning" role="alert">
+            <TriangleAlert aria-hidden="true" />
+            <div>
+              <strong>这个入口和实际加载的助手不一致</strong>
+              <span>可能打开了另一份 Agent Carry、旧书签或复制错目录。为防止把指令交给错误助手，本页暂时只提供查看。</span>
+            </div>
+            <Button variant="outline" className="identity-warning__button" onClick={() => setIdentityIssueOpen(true)}>
+              怎么处理
+            </Button>
+          </div>
+        ) : null}
+
         {refreshError ? (
           <div className="refresh-error" role="status">
             暂时没有读到新的看板数据。当前内容仍可使用，你可以稍后重试；如果一直失败，再让 Agent 重新生成看板数据。
@@ -325,6 +378,39 @@ export default function Dashboard() {
 
       <ItemDialog detail={detail} onClose={() => setDetail(null)} onCopy={requestCopy} />
       <CopyDialog state={copyState} onClose={() => setCopyState(EMPTY_COPY)} />
+      <Dialog open={identityIssueOpen} onOpenChange={setIdentityIssueOpen}>
+        <DialogContent className="identity-mismatch-dialog">
+          <DialogHeader>
+            <div className="identity-mismatch-dialog__state">
+              <TriangleAlert aria-hidden="true" />
+              <span>已暂停复制执行指令</span>
+            </div>
+            <DialogTitle>先确认你打开的是哪一份助手</DialogTitle>
+            <DialogDescription>
+              当前页面实际读取到的是“{profile.state === "instance" ? profile.displayName : "尚未创建助手的空白模板"}”，但浏览器入口携带的是另一份身份记录。看板内容仍可浏览，任何会交给 Agent 执行的指令都不会复制。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="identity-mismatch-dialog__steps">
+            <article>
+              <span>常见原因</span>
+              <p>桌面上有多份入口、打开了旧书签，或者移动／复制目录后仍沿用了另一份助手的链接。</p>
+            </article>
+            <article>
+              <span>安全处理</span>
+              <p>请让当前 Agent 核对这个入口指向的安装目录、实例清单与看板快照；确认属于同一份助手后，再重建看板入口并重新打开。</p>
+            </article>
+          </div>
+
+          <p className="identity-mismatch-dialog__note">
+            链接里的匿名编号只用于发现开错入口，不包含助手名称、领域、个人资料或秘密，也不能当作授权凭据。
+          </p>
+
+          <DialogFooter>
+            <Button className="control-button" onClick={() => setIdentityIssueOpen(false)}>我知道了</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
         <DialogContent className={`snapshot-status-dialog snapshot-status-dialog--${localStatus.tone}`}>
           <DialogHeader>

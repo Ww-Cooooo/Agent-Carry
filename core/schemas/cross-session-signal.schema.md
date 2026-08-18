@@ -6,6 +6,8 @@
 
 当前入口由 `assistant.toml` 的 `[signals]` 声明：
 
+`startup_reads` 只能列出控制记录与 `instance/maps/signal-map.toml` 唤醒胶囊；`projections` 是事务完成前必须共同更新的派生输出集合，不是启动读取清单。`time_projection_load_policy` 必须明确：只有唤醒胶囊的 `next_wakeup_at` 已到、用户明确查看日程或正在重建投影时，才读取非启动时间索引。宿主不得枚举 `source_root` 来判断是否有信号。
+
 ```toml
 schema_version = 1
 record_type = "cross-session-signal-control"
