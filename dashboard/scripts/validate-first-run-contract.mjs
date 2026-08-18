@@ -97,6 +97,8 @@ requireFragments("core/guides/instantiation-guide.md", [
   "C. 实例化写入门",
   'asset_kind = "task-family"',
   "尚未做过真实任务时，看板的资产计数通常全部为 0",
+  "instance/profile/approved-profile.md",
+  "不得让正式实例继续引用会被模板升级替换的 `instance/profile/README.md`",
   "D. 第一项真实任务结束门",
 ]);
 
@@ -121,6 +123,8 @@ requireFragments("core/guides/first-use-execution-gates.md", [
   'status = "current"',
   'status = "deferred"',
   "快照中的 `assets` 计数等于正式资产文件数",
+  "instance/profile/approved-profile.md",
+  "禁止写入用户正文",
   "资产计数通常全部为 0",
   "## D. 第一项真实任务结束门",
   "结果正确不自动授权新资产",
@@ -250,6 +254,8 @@ requireFragments("core/protocols/CONTEXT_ROUTING.md", [
 requireFragments("instance/profile/README.md", [
   'asset_kind = "task-family"',
   "只有任务真实完成、结果通过核对并获得相应保存授权后",
+  "本文件只是模板拥有的目录说明",
+  "instance/profile/approved-profile.md",
 ]);
 requireFragments("core/protocols/ASSET_LIFECYCLE.md", [
   "结果正确",
@@ -299,22 +305,16 @@ requireFragments("dashboard/src/lib/data.ts", [
   "不得把任务族、计划路线或缺失正文的条目计入看板资产",
   "正式实例按 Snapshot Schema 从 instance_id 生成 ac- 加 SHA-256 前 12 位的匿名稳定引用",
 ]);
-requireFragments("core/upgrade/release-manifest-1.1.2.toml", [
+requireFragments("core/upgrade/release-manifest-1.1.3.toml", [
   "replace_instance_guides",
   "instance/profile/README.md",
   "instance-directory-guides-current",
-  "post-install-exit-gate-reopened",
-  "pre-first-task-instantiation-handoff-valid",
-  "level-3-confirmed-before-instance-architecture",
-  "three-guidance-routes-explained-before-selection",
-  "instantiation-write-allowlist-valid",
-  "no-assets-before-first-real-task",
-  "governance-first-schedule-initialized",
-  "current-host-minimum-profile-created",
-  "snapshot-formal-source-and-counts-valid",
-  "startup-time-index-not-loaded-before-due",
-  "dashboard-entry-identity-capsule-valid",
-  "explicit-reuse-creates-practiced-not-reliable",
+  "legacy-profile-readme-to-approved-profile",
+  "normalize-task-family-route-state",
+  "formal-change-quality-route-hits-before-durable-write",
+  "ordinary-read-only-does-not-load-full-change-protocol",
+  "target-file-allowlist-excludes-development-junk-and-private-maintainer-content",
+  "formal-active-provisional-review-assets-have-direct-kind-matching-routes",
 ]);
 
 forbidFragments("INSTALL.md", ["完成后只告诉我", "## 8. 安装完成报告"]);

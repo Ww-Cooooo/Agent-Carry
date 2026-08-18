@@ -1,0 +1,49 @@
+schema_version = 2
+release = "1.1.3"
+core = "1.1.3"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.2"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+migration_kit_schema = "1.0"
+from_versions = ["1.0.0", "1.1.0", "1.1.1", "1.1.2"]
+notes = "Backward-compatible change-quality, learning-closure and upgrade-safety patch. Formal add, modify, delete, rename, move, migrate, upgrade and publish operations now load one on-demand quality protocol that fixes root causes and proves user-data reliability before reducing user burden; ordinary startup and read-only work still keep only a tiny event pointer. User corrections and meaningful failures first require the current result to be fixed and validated; only reusable causes become visible learning candidates, while one-off mistakes and full error logs stay out of long-term assets and startup context. Versioned migration protects early instances that stored the approved profile in instance/profile/README.md before the target guide is replaced, normalizes task-family routes to on-demand, verifies direct reachability for formal active/provisional/review assets, and requires target template files to come from a fixed allowlist so development-only node_modules, Git metadata, caches and private maintainer material cannot enter an upgrade candidate. Product and core versions advance to 1.1.3 while extension, asset, Dashboard, signal, host-integration and migration-kit schemas remain compatible; release-manifest schema advances to 2."
+extension_changes = "Compatible with extension API 1.0; no extension migration is required."
+dashboard_changes = "Keeps Dashboard Snapshot Schema 1.1 and Action Schema 1.0. No new page or user control is introduced; snapshots are rebuilt only when formal instance data changes."
+
+replace = ["README.md", "INSTALL.md", "START-HERE.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md"]
+migrate = ["instance/manifest.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**"]
+preserve = ["instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+broad_globs_are_copy_commands = false
+
+[[migration_rules]]
+id = "legacy-profile-readme-to-approved-profile"
+from_versions = ["1.0.0", "1.1.0", "1.1.1", "1.1.2"]
+when_all = ["instance.state=instance", "instance.profile.user_preferences_ref=instance/profile/README.md", "source is confirmed as a real instance profile rather than a directory guide or placeholder; otherwise stop and ask"]
+source = "instance/profile/README.md"
+destination = "instance/profile/approved-profile.md"
+operation_order = ["copy-source-bytes", "verify-source-and-destination-sha256-equal", "update-instance-manifest-reference", "reparse-and-read-back-reference", "replace-source-with-target-directory-guide"]
+destination_collision = "reuse-only-if-byte-identical-otherwise-stop-and-show-conflict"
+idempotence = "second-run-makes-no-change"
+
+[[migration_rules]]
+id = "normalize-task-family-route-state"
+from_versions = ["1.0.0", "1.1.0", "1.1.1", "1.1.2"]
+when_all = ["instance/maps/domain-map.toml contains asset_kind=task-family"]
+source = "instance/maps/domain-map.toml"
+operation_order = ["for-each-task-family-route-set-only-state-to-on-demand", "preserve-all-other-route-fields", "reparse-domain-map", "verify-task-families-are-not-counted-as-assets"]
+idempotence = "second-run-makes-no-change"
+
+[verification]
+checks = ["manifest-parses", "version-1.1.3-aligned", "upgrade-from-1.0.0-through-1.1.2-supported", "formal-change-quality-route-hits-before-durable-write", "ordinary-read-only-does-not-load-full-change-protocol", "correction-learning-route-fixes-and-validates-current-result-before-candidate", "one-off-error-and-full-log-do-not-become-assets-or-startup-context", "core-schema-security-upgrade-release-decisions-require-level-3", "target-file-allowlist-excludes-development-junk-and-private-maintainer-content", "legacy-profile-bytes-migrated-before-guide-replace", "legacy-profile-reference-readback-valid", "task-family-routes-on-demand", "formal-active-provisional-review-assets-have-direct-kind-matching-routes", "map-targets-exist", "instance-directory-guides-current", "direction-lock-preserved", "instance-assets-preserved", "privacy-and-secret-boundaries-preserved", "startup-budget-preserved", "upgrade-second-run-idempotent", "rollback-restores-original-candidate-state", "dashboard-actions-aligned", "dashboard-offline-responsive-valid"]
+risk_policy = "root-cause-and-user-data-reliability-first-targeted-internal-validation-with-light-user-experience"

@@ -157,7 +157,8 @@ depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "cross-se
 projects_to = []
 
 [change_rule]
-operations = ["add", "modify", "delete", "rename", "move", "upgrade", "optimize"]
-required_steps = ["locate-component", "follow-depends-on-and-projects-to", "update-formal-owner", "classify-trigger-if-condition-to-action-behavior-changed", "update-references-and-schemas", "update-dashboard-action-or-snapshot-if-affected", "write-upgrade-note-if-portable-behavior-changed", "show-user-a-compact-completion-list"]
+operations = ["add", "modify", "delete", "rename", "move", "migrate", "upgrade", "optimize", "publish"]
+formal_scopes = ["template-component", "instance-identity", "instance-formal-asset", "instance-formal-state", "derived-projection-contract", "release-candidate"]
+required_steps = ["load-durable-change-protocol", "locate-formal-owner", "prove-root-cause-and-user-visible-risk", "follow-depends-on-and-projects-to", "define-acceptance-and-rollback", "update-formal-owner", "classify-trigger-if-condition-to-action-behavior-changed", "update-references-and-schemas", "verify-formal-asset-reachability-if-affected", "update-dashboard-action-or-snapshot-if-affected", "write-version-specific-migration-if-existing-instances-can-differ", "run-risk-proportionate-internal-validation", "show-user-a-compact-completion-list"]
 ordinary_context = "metadata-only"
 full_protocol = "core/protocols/COMPONENT_CHANGE.md"

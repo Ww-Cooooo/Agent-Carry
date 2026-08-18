@@ -3,8 +3,8 @@ map_id = "assistant-maintenance"
 
 [[routes]]
 id = "component-change"
-summary = "新增、修改、删除、重命名或移动助手组件时，同步所有关联入口与投影。"
-triggers = ["修改助手", "新增功能", "删除功能", "移动文件", "重命名组件"]
+summary = "正式新增、修改、删除、重命名、移动、迁移、升级或发布前，先按根因与用户可见结果确定质量门，再同步关联入口与投影。"
+triggers = ["修改助手", "修改正式内容", "新增功能", "删除功能", "移动文件", "重命名组件", "迁移正式内容", "准备升级", "准备发布"]
 target = "core/protocols/COMPONENT_CHANGE.md"
 state = "maintenance-only"
 minimum_level = 3

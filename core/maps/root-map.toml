@@ -17,7 +17,7 @@ map = "core/maps/domain-work.toml"
 [[categories]]
 id = "evolution-model"
 label = "学习、进化与模型等级"
-triggers = ["学习", "记住", "进化", "审核候选", "成熟度", "低风险试用", "跨会话累计", "唤醒胶囊", "到期提醒", "恢复信号", "切换模型", "延期任务"]
+triggers = ["学习", "记住", "进化", "用户指出错误", "从错误中学习", "以后不要再犯", "审核候选", "成熟度", "低风险试用", "跨会话累计", "唤醒胶囊", "到期提醒", "恢复信号", "切换模型", "延期任务"]
 map = "core/maps/evolution-model.toml"
 
 [[categories]]
@@ -29,7 +29,7 @@ map = "core/maps/local-operations.toml"
 [[categories]]
 id = "assistant-maintenance"
 label = "升级与助手维护"
-triggers = ["模板升级", "检查新版本", "检查更新", "官方新版本", "修改助手", "新增组件", "删除组件", "移动文件", "发布", "Level 3规划", "交给Level 1执行", "检查一致性", "触发治理", "启动上下文膨胀"]
+triggers = ["模板升级", "检查新版本", "检查更新", "官方新版本", "修改助手", "修改正式内容", "新增组件", "删除组件", "重命名组件", "移动文件", "迁移正式内容", "发布", "Level 3规划", "交给Level 1执行", "检查一致性", "触发治理", "启动上下文膨胀"]
 map = "core/maps/assistant-maintenance.toml"
 
 [[categories]]

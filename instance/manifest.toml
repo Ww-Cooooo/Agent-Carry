@@ -1,7 +1,7 @@
 schema_version = 1
 instance_id = "template"
 state = "template"
-created_from = "agent-carry@1.1.2"
+created_from = "agent-carry@1.1.3"
 created_at = ""
 
 [direction]
@@ -35,7 +35,7 @@ git_storage = "exclude-private-and-secrets"
 credentials = "host-secret-mechanism-only"
 
 [versions]
-product = "1.1.2"
+product = "1.1.3"
 extension_api = "1.0"
 asset_schema = "1.2"
 dashboard_snapshot_schema = "1.1"

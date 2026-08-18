@@ -53,6 +53,6 @@ Vite 8.2.1、TypeScript 6.0.3、`@vitejs/plugin-react` 6.0.5、`@tailwindcss/vit
 
 ## 未使用的外部素材与名称说明
 
-当前仓库没有第三方随包图片、照片、插画、音视频、3D 模型、外部贴图、闭源 SDK 或付费 UI 资源。README 的看板图片由本项目空模板离线页面生成，按 Apache-2.0 登记在 `docs/assets/project-assets.json`，不含个人实例数据。行星场景和纹理由项目代码运行时程序化生成；根看板图标是项目内联的简单几何 SVG；界面图标来自已登记的 Lucide React 依赖。文档中出现的 Codex、Claude Code、DeepSeek、QoderWork 等名称只用于说明兼容场景，不包含其商标、Logo 或产品素材，也不表示从属、授权或背书关系。
+当前仓库没有随包截图，也没有第三方随包图片、照片、插画、音视频、3D 模型、外部贴图、闭源 SDK 或付费 UI 资源；`docs/assets/project-assets.json` 当前为空。行星场景和纹理由项目代码运行时程序化生成；根看板图标是项目内联的简单几何 SVG；界面图标来自已登记的 Lucide React 依赖。文档中出现的 Codex、Claude Code、DeepSeek、QoderWork 等名称只用于说明兼容场景，不包含其商标、Logo 或产品素材，也不表示从属、授权或背书关系。
 
 Agent Carry 自身的原创代码、配置、模板和文档采用根目录 `LICENSE` 中的 Apache License 2.0。本文件只记录第三方材料；这些材料继续适用各自的许可证，不因 Agent Carry 的项目许可证而改变。完整合规边界与贡献检查见 `docs/open-source-compliance.md`。正式公开发布前仍须按最终候选文件集合复核许可证文件、第三方声明、版权署名和隐私边界。

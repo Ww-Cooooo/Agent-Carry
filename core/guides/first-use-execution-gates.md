@@ -63,7 +63,7 @@
 实例化事务只允许创建或更新下面这些内容：
 
 - `instance/manifest.toml`：实例 ID、`state`、创建来源和时间、已锁定方向、交流方式及既有策略选择；
-- `instance/profile/`：用户已经确认的方向、范围、边界、协作方式、环境假设和第一项真实任务说明；
+- `instance/profile/approved-profile.md`：用户已经确认的方向、范围、边界、协作方式、环境假设和第一项真实任务说明；`instance/profile/README.md` 是可升级目录说明，禁止写入用户正文；
 - `instance/maps/domain-map.toml`：只登记方向内的**初始任务族路线**，用于找到第一项真实任务需要的实例说明；
 - `instance/signals/control.toml`、`instance/maps/signal-map.toml`：写入一致的实例 ID，并从干净空态开始；
 - 三张 `instance/governance/` 正式治理卡及 `instance/maps/time-trigger-map.toml`：以真实实例化时间计算首轮日程；
@@ -89,7 +89,7 @@
 
 向用户报告创建完成前，重新读取最终文件并确认：
 
-1. 清单、档案、地图、信号、宿主注册表和快照使用同一实例 ID；方向已锁定，交流方式仍可修改；
+1. 清单、档案、地图、信号、宿主注册表和快照使用同一实例 ID；方向已锁定，交流方式仍可修改；`profile.user_preferences_ref` 指向真实存在的 `instance/profile/approved-profile.md`，没有继续引用目录说明；
 2. 初始任务族的 `target` 真实存在，且没有预先生成任何记忆、能力、SOP、经验、学习建议或普通待办；
 3. 三张状态为 `active` 的治理卡都有带时区的 `schedule_anchor_at` 和 `next_due_at`，非启动时间索引的 `scheduled_count` 与最早时间一致；
 4. 宿主注册表正好能定位当前宿主的一份最小档案；未知字段如实保留未知；

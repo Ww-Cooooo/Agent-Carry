@@ -140,6 +140,11 @@ const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repositoryRoot })
   .split('\0')
   .filter(Boolean)
 const trackedSet = new Set(tracked)
+// The public product and the maintainer-only workbench have independent
+// attribution bundles. Public compliance must not mistake private offline
+// build copies for public release assets; the private dashboard build checks
+// its own fonts, packages and notices before it succeeds.
+const publicTracked = tracked.filter((path) => !path.startsWith('maintainer-private/'))
 
 assert(projectAssets.schemaVersion === 1, 'Unsupported project-asset inventory schema.')
 assert(Array.isArray(projectAssets.assets), 'Project-asset inventory is invalid.')
@@ -164,7 +169,7 @@ for (const required of [
   assert(trackedSet.has(required), `Required compliance material is not tracked: ${required}`)
 }
 const reviewableAssetPattern = /\.(?:woff2?|ttf|otf|ttc|otc|eot|svg|png|jpe?g|gif|webp|avif|ico|pdf|zip|7z|tar|gz|mp3|wav|ogg|mp4|webm|mov|wasm|glb|gltf|obj|fbx|stl|ply|usdz|hdr|exr)$/i
-const trackedReviewableAssets = tracked.filter((path) => reviewableAssetPattern.test(path))
+const trackedReviewableAssets = publicTracked.filter((path) => reviewableAssetPattern.test(path))
 const unregisteredAssets = trackedReviewableAssets.filter((path) => !expectedFontAssets.has(path) && !expectedProjectAssets.has(path))
 assert(unregisteredAssets.length === 0, `Tracked assets need provenance review: ${unregisteredAssets.join(', ')}`)
 assert(!tracked.some((path) => path.includes('/node_modules/')), 'node_modules must never be tracked or distributed.')

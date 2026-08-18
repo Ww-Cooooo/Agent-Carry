@@ -10,7 +10,7 @@
 - `direction.locked`：实例化后永久为 `true`
 - `direction.domain_id`、`label`、`scope_statement`
 - `direction.out_of_scope_policy`：固定为 `create-new-instance`
-- `profile.user_preferences_ref`、`domain_map_ref`、`signal_control_ref`、`signal_map_ref`、`time_trigger_map_ref`、`host_registry_ref`
+- `profile.user_preferences_ref`、`domain_map_ref`、`signal_control_ref`、`signal_map_ref`、`time_trigger_map_ref`、`host_registry_ref`。空模板可以暂时让 `user_preferences_ref` 指向目录说明；正式实例必须改为真实用户档案（默认 `instance/profile/approved-profile.md`），不得继续引用升级时会被替换的 `instance/profile/README.md`。
 - `versions.product`、`extension_api`、`asset_schema`、`dashboard_snapshot_schema`、`cross_session_signal_schema`、`host_integration_schema`
 
 可选的 `learning` 小节保存实例级学习政策：

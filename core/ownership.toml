@@ -19,6 +19,9 @@ id = "instance-directory-guides"
 owns = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md"]
 upgrade_policy = "replace-exact-guides-from-target-template-before-restoring-user-assets"
 instance_may_modify = false
+live_reference_precondition = "if-an-instance-manifest-or-map-references-an-exact-guide-as-user-content-copy-and-hash-verify-that-content-to-a-user-owned-path-update-the-reference-and-only-then-replace-the-guide"
+legacy_profile_destination = "instance/profile/approved-profile.md"
+reference_collision_policy = "reuse-only-when-byte-identical-otherwise-stop-and-show-conflict"
 
 [[layers]]
 id = "instance-assets"
