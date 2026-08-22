@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
-import { CheckCircle2, CircleHelp, Clock3, ClipboardCopy, HardDrive, MonitorPlay, PackageOpen, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowRight, CheckCircle2, CircleHelp, Clock3, ClipboardCopy, HardDrive, Languages, MonitorPlay, PackageOpen, RefreshCw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +25,7 @@ import {
   EMPTY_COPY,
   ItemDialog,
   LogoMark,
+  SourceText,
   type CopyState,
   type DetailState,
 } from "@/components/dashboard/Shared";
@@ -43,6 +44,10 @@ import {
   profile,
 } from "@/lib/data";
 import { inspectDashboardIdentity, syncDashboardIdentity } from "@/lib/identity";
+import { DashboardScrollRootContext } from "@/lib/scroll-root";
+import { localizeAgentRequest, useDashboardLocale } from "@/lib/i18n";
+
+const SCROLL_STATE_EVENT = "agent-carry:scroll-state";
 
 export default function Dashboard() {
   const demoMode = (window as Window & { AGENT_CARRY_DEMO?: boolean }).AGENT_CARRY_DEMO === true;
@@ -60,6 +65,7 @@ export default function Dashboard() {
   const scrollRestoreRef = useRef<number | null>(null);
   const refreshingRef = useRef(false);
   const reduced = useReducedMotion();
+  const { locale, setLocale } = useDashboardLocale();
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -71,6 +77,34 @@ export default function Dashboard() {
     return () => {
       window.removeEventListener("hashchange", syncRoute);
       window.removeEventListener("popstate", syncRoute);
+    };
+  }, []);
+
+  useEffect(() => {
+    const wrapper = mainRef.current;
+    if (!wrapper) return;
+
+    let scrolling = false;
+    let idleTimer = 0;
+    const setScrolling = (active: boolean) => {
+      if (scrolling === active) return;
+      scrolling = active;
+      wrapper.dataset.scrollState = active ? "active" : "idle";
+      window.dispatchEvent(new CustomEvent(SCROLL_STATE_EVENT, { detail: active }));
+    };
+    const onScroll = () => {
+      setScrolling(true);
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => setScrolling(false), 140);
+    };
+
+    wrapper.dataset.scrollState = "idle";
+    wrapper.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      wrapper.removeEventListener("scroll", onScroll);
+      window.clearTimeout(idleTimer);
+      if (scrolling) window.dispatchEvent(new CustomEvent(SCROLL_STATE_EVENT, { detail: false }));
+      delete wrapper.dataset.scrollState;
     };
   }, []);
 
@@ -88,8 +122,10 @@ export default function Dashboard() {
       smoothWheel: true,
       syncTouch: false,
       overscroll: true,
+      respectReducedMotion: true,
     });
     lenisRef.current = lenis;
+    wrapper.dataset.scrollEngine = "lenis";
 
     const syncVisibility = () => {
       if (document.hidden) lenis.stop();
@@ -102,6 +138,7 @@ export default function Dashboard() {
       document.removeEventListener("visibilitychange", syncVisibility);
       lenisRef.current = null;
       lenis.destroy();
+      delete wrapper.dataset.scrollEngine;
     };
   }, [reduced]);
 
@@ -191,18 +228,18 @@ export default function Dashboard() {
       setIdentityIssueOpen(true);
       return;
     }
+    const localizedRequest = localizeAgentRequest(text);
     try {
-      await navigator.clipboard.writeText(text);
-      setCopyState({ open: true, copied: true, text, label });
+      await navigator.clipboard.writeText(localizedRequest);
+      setCopyState({ open: true, copied: true, text: localizedRequest, label });
     } catch {
-      setCopyState({ open: true, copied: false, text, label });
+      setCopyState({ open: true, copied: false, text: localizedRequest, label });
     }
   }, [dashboardIdentity.mismatch]);
 
   const currentNav = NAV_ITEMS.find((item) => item.page === route.page) ?? NAV_ITEMS[0];
   const localStatus = getSnapshotStatus(refreshError);
   const StatusIcon = localStatus.tone === "warning" ? TriangleAlert : localStatus.tone === "template" ? Clock3 : CheckCircle2;
-  const exportAction = getGlobalActions().find((action) => action.action_id === "instance.export-private-package");
   const rebuildAction = getGlobalActions().find((action) => action.action_id === "dashboard.refresh-snapshot");
 
   return (
@@ -230,7 +267,7 @@ export default function Dashboard() {
           <i aria-hidden="true" />
           <div>
             <small>{profile.state === "instance" ? "当前助手" : "当前状态"}</small>
-            <strong>{profile.state === "instance" ? profile.displayName : "尚未创建助手"}</strong>
+            <strong>{profile.state === "instance" ? <SourceText>{profile.displayName}</SourceText> : "尚未创建助手"}</strong>
           </div>
         </div>
 
@@ -254,13 +291,11 @@ export default function Dashboard() {
         </nav>
 
         <div className="rail-footer">
-          {exportAction ? (
-            <button type="button" className="rail-carry" onClick={() => void requestCopy(exportAction.request, exportAction.label)}>
-              <PackageOpen aria-hidden="true" />
-              <span><strong>迁移本地隐私</strong><small>导出隐私包到另一台电脑</small></span>
-              <ClipboardCopy aria-hidden="true" />
-            </button>
-          ) : null}
+          <button type="button" className="rail-carry" onClick={() => navigate({ page: "transfer" })}>
+            <PackageOpen aria-hidden="true" />
+            <span><strong>带走本地资料</strong><small>换电脑前查看并准备</small></span>
+            <ArrowRight aria-hidden="true" />
+          </button>
           <div className={`rail-status rail-status--${localStatus.tone}`}><i /><span>{localStatus.label}</span></div>
           <p>v{profile.version} · 数据默认留在本机</p>
         </div>
@@ -278,6 +313,16 @@ export default function Dashboard() {
           <div className="topbar-brand-compact"><LogoMark /><strong>Agent Carry</strong></div>
           <div className="topbar-title"><currentNav.icon aria-hidden="true" /><div><strong>{currentNav.label}</strong><span>{currentNav.description}</span></div></div>
           <div className="topbar-tools">
+            <button
+              type="button"
+              className="locale-switch"
+              aria-label={locale === "en" ? "切换到简体中文" : "Switch dashboard to English"}
+              title={locale === "en" ? "切换到简体中文" : "Switch dashboard to English"}
+              onClick={() => setLocale(locale === "en" ? "zh-Hans" : "en")}
+            >
+              <Languages aria-hidden="true" />
+              <span>{locale === "en" ? "中文" : "EN"}</span>
+            </button>
             <button
               type="button"
               className={`snapshot-chip snapshot-chip--${localStatus.tone}`}
@@ -323,37 +368,39 @@ export default function Dashboard() {
         ) : null}
 
         <main id="main-content" ref={mainRef} className="app-main" tabIndex={-1}>
-          <div className="page-frame">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={hashForRoute(route)}
-                initial={reduced ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduced ? undefined : { opacity: 0, y: -6 }}
-                transition={{ duration: 0.24, ease: [0.16, 0.84, 0.3, 1] }}
-              >
-                {route.page === "home" ? <HomeView onNavigate={navigate} onCopy={requestCopy} /> : null}
-                {route.page === "library" ? (
-                  <LibraryView
-                    kind={(route.kind as LibraryKind | undefined) ?? "memories"}
-                    onNavigate={navigate}
-                    onCopy={requestCopy}
-                    onInspect={setDetail}
-                  />
-                ) : null}
-                {route.page === "growth" ? (
-                  <GrowthView
-                    kind={(route.kind as GrowthKind | undefined) ?? "todos"}
-                    onNavigate={navigate}
-                    onCopy={requestCopy}
-                    onInspect={setDetail}
-                  />
-                ) : null}
-                {route.page === "transfer" ? <TransferView onCopy={requestCopy} /> : null}
-                {route.page === "system" ? <SystemView onRefresh={() => void refreshSnapshot()} onCopy={requestCopy} refreshIn={refreshIn} refreshFailed={refreshError} /> : null}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+          <DashboardScrollRootContext.Provider value={mainRef}>
+            <div className="page-frame">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={hashForRoute(route)}
+                  initial={reduced ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduced ? undefined : { opacity: 0, y: -6 }}
+                  transition={{ duration: 0.24, ease: [0.16, 0.84, 0.3, 1] }}
+                >
+                  {route.page === "home" ? <HomeView onNavigate={navigate} onCopy={requestCopy} /> : null}
+                  {route.page === "library" ? (
+                    <LibraryView
+                      kind={(route.kind as LibraryKind | undefined) ?? "memories"}
+                      onNavigate={navigate}
+                      onCopy={requestCopy}
+                      onInspect={setDetail}
+                    />
+                  ) : null}
+                  {route.page === "growth" ? (
+                    <GrowthView
+                      kind={(route.kind as GrowthKind | undefined) ?? "todos"}
+                      onNavigate={navigate}
+                      onCopy={requestCopy}
+                      onInspect={setDetail}
+                    />
+                  ) : null}
+                  {route.page === "transfer" ? <TransferView onCopy={requestCopy} /> : null}
+                  {route.page === "system" ? <SystemView onRefresh={() => void refreshSnapshot()} onCopy={requestCopy} refreshIn={refreshIn} refreshFailed={refreshError} /> : null}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </DashboardScrollRootContext.Provider>
         </main>
 
         <nav className="compact-window-nav" aria-label="紧凑窗口主要导航">

@@ -183,6 +183,18 @@ cleanup = "discard-temporary-impact-list-after-verification"
 failure = "retain-recovery-state-and-report-missing-links"
 
 [[rules]]
+id = "territory-terminology-gate"
+class_id = "action-gate"
+checkpoint = "before-agent-carry-authored-chinese-or-english-content-add-translation-generation-or-publication-that-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping"
+formal_owner = "core/protocols/TERRITORY_TERMINOLOGY.md"
+dynamic_state_owner = "none"
+route = "core/maps/assistant-maintenance.toml"
+startup_policy = "keep-only-root-map-trigger-terms-never-load-the-full-protocol-for-ordinary-startup-read-only-work-or-unrelated-tasks"
+gate = "use-reviewed-china-qualified-terms-preserve-user-and-source-text-run-terminology-validation-and-require-level-3-human-semantic-review-for-map-flag-sovereignty-or-public-release-context"
+cleanup = "discard-task-local-scan-list-after-validation-and-project-no-completed-state-to-startup"
+failure = "preserve-source-evidence-stop-the-product-copy-map-or-release-change-and-report-the-exact-unresolved-expression"
+
+[[rules]]
 id = "result-validation-gate"
 class_id = "explicit-event"
 checkpoint = "before-declaring-a-source-contract-or-schema-bound-result-complete-before-accepting-a-durable-multi-file-change-and-before-counting-learning-success"
@@ -377,14 +389,26 @@ failure = "preserve-current-instance-and-stop"
 [[rules]]
 id = "privacy-import-export"
 class_id = "action-gate"
-checkpoint = "before-private-github-repository-create-or-push-and-before-conflict-overwrite-or-new-sensitive-destination"
+checkpoint = "before-registering-or-retiring-private-asset-scope-before-private-export-or-import-before-private-github-repository-create-or-push-and-before-conflict-overwrite-or-new-sensitive-destination"
 formal_owner = "core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md"
-dynamic_state_owner = "temporary-preview-or-instance/signals/state/ only while unresolved"
+dynamic_state_owner = ".assistant-private/catalog.toml and .assistant-private/bindings.toml only after a relevant user-approved event; temporary-preview-or-instance/signals/state/ only while unresolved"
 route = "core/maps/local-operations.toml"
 startup_policy = "only-unresolved-import-or-recovery"
-gate = "local-safe-copy-and-local-private-export-are-directly-authorized-private-github-owner-name-visibility-branch-and-candidate-preview-require-explicit-user-confirmation-public-repositories-and-automatic-collaborators-are-forbidden-secrets-never-enter-model-git-or-package"
+gate = "ordinary-startup-does-not-load-private-catalog-user-approved-registered-and-referenced-scope-must-pass-no-silent-omission-reconciliation-before-complete-export-new-external-roots-private-github-owner-name-visibility-branch-and-candidate-preview-require-explicit-user-confirmation-public-repositories-and-automatic-collaborators-are-forbidden-secrets-never-enter-model-git-or-package"
 cleanup = "remove-temporary-preview-and-user-approved-rollback-copy"
 failure = "preserve-current-data-and-local-safe-copy-quarantine-unknown-input-and-never-fall-back-to-a-public-or-shared-repository"
+
+[[rules]]
+id = "user-decision-guidance"
+class_id = "explicit-event"
+checkpoint = "before-asking-the-user-for-a-multistep-technical-risky-durable-or-user-uncertain-choice-and-after-creating-or-changing-user-visible-durable-files"
+formal_owner = "core/protocols/USER_GUIDANCE.md"
+dynamic_state_owner = "current-task-only-unless-the-user-explicitly-requests-a-later-reminder-or-approves-a-formal-write"
+route = "core/maps/domain-lifecycle.toml"
+startup_policy = "assistant-toml-compact-interaction-baseline-only-never-load-the-full-protocol-for-every-ordinary-message"
+gate = "reuse-known-facts-explain-context-provide-two-to-four-options-with-consequences-and-recommendation-allow-unsure-before-requesting-the-user-decision"
+cleanup = "discard-unpersisted-choice-scaffolding-at-task-end-and-project-only-an-explicitly-deferred-action"
+failure = "do-not-replace-the-missing-guidance-with-a-vague-open-question-state-what-is-known-and-offer-an-unsure-path"
 
 [[rules]]
 id = "preference-reuse-import"

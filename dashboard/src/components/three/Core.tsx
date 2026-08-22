@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
+const SCROLL_STATE_EVENT = "agent-carry:scroll-state";
+const IDLE_FRAME_INTERVAL = 1000 / 60;
+const SCROLL_FRAME_INTERVAL = 1000 / 30;
+
 export interface Planet {
   key: string;
   label: string;
@@ -297,6 +301,7 @@ export default function Core({
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     let reduced = motionPreference.matches;
     let isIntersecting = true;
+    let scrolling = false;
     let requestRender = () => {};
 
     const scene = new THREE.Scene();
@@ -674,28 +679,43 @@ export default function Core({
     el.addEventListener("pointerleave", onPointerLeave);
 
     let frame = 0;
+    let frameTimer = 0;
+    let lastFrameAt = 0;
     let elapsed = 0;
     (window as unknown as { __carryPlanets: unknown }).__carryPlanets = [];
 
-    const renderFrame = () => {
+    const scheduleNextFrame = () => {
+      if (frame || frameTimer || reduced || document.hidden || !isIntersecting || disposed) return;
+      const delay = scrolling ? SCROLL_FRAME_INTERVAL : IDLE_FRAME_INTERVAL;
+      frameTimer = window.setTimeout(() => {
+        frameTimer = 0;
+        if (!frame && !document.hidden && isIntersecting && !disposed) frame = requestAnimationFrame(renderFrame);
+      }, delay);
+    };
+
+    const renderFrame = (now: number) => {
       frame = 0;
       if (!document.hidden && isIntersecting) {
         if (!reduced) {
-          elapsed += 1;
+          const frameScale = lastFrameAt === 0
+            ? 1
+            : THREE.MathUtils.clamp((now - lastFrameAt) / IDLE_FRAME_INTERVAL, 0.25, 4);
+          lastFrameAt = now;
+          elapsed += frameScale;
           for (let index = 0; index < arcGroups.length; index++) {
-            arcGroups[index].rotation.z += CORE_ARCS[index].speed;
+            arcGroups[index].rotation.z += CORE_ARCS[index].speed * frameScale;
           }
           for (let index = 0; index < orbitGroups.length; index++) {
-            carriers[index].rotation.z += ORBITS[index].speed;
-            orbitGroups[index].rotation.x += ORBITS[index].precession[0];
-            orbitGroups[index].rotation.y += ORBITS[index].precession[1];
-            orbitGroups[index].rotation.z += ORBITS[index].precession[2];
+            carriers[index].rotation.z += ORBITS[index].speed * frameScale;
+            orbitGroups[index].rotation.x += ORBITS[index].precession[0] * frameScale;
+            orbitGroups[index].rotation.y += ORBITS[index].precession[1] * frameScale;
+            orbitGroups[index].rotation.z += ORBITS[index].precession[2] * frameScale;
           }
           const planetPulse = 1 + Math.sin(elapsed * 0.021) * 0.02;
           if (coreMark) coreMark.scale.setScalar(CORE_PLANET_SCALE * planetPulse);
           if (planetSheen) {
             planetSheen.scale.setScalar(CORE_PLANET_SCALE * planetPulse);
-            planetSheen.material.rotation -= 0.0024;
+            planetSheen.material.rotation -= 0.0024 * frameScale;
             planetSheen.material.opacity = 0.34 + Math.sin(elapsed * 0.018) * 0.08;
           }
           if (coreSparkle) {
@@ -703,14 +723,14 @@ export default function Core({
             coreSparkle.material.opacity = 0.34 + sparkleWave * 0.62;
             coreSparkle.scale.setScalar(0.23 + sparkleWave * 0.065);
           }
-          coreCage.rotation.x -= 0.00055;
-          coreCage.rotation.y += 0.00145;
+          coreCage.rotation.x -= 0.00055 * frameScale;
+          coreCage.rotation.y += 0.00145 * frameScale;
           const cagePulse = Math.sin(elapsed * 0.015);
           coreCageBackMaterial.opacity = 0.4 + cagePulse * 0.025;
           coreCageFrontMaterial.opacity = 0.26 + cagePulse * 0.02;
-          nearMoonOrbit.rotation.z += 0.0042;
+          nearMoonOrbit.rotation.z += 0.0042 * frameScale;
           central.position.y = Math.sin(elapsed * 0.013) * 0.018;
-          calibrationPoints.rotation.z -= 0.00008;
+          calibrationPoints.rotation.z -= 0.00008 * frameScale;
           system.rotation.x = THREE.MathUtils.lerp(system.rotation.x, BASE_X + mouseY * 0.035, 0.04);
           system.rotation.y = THREE.MathUtils.lerp(system.rotation.y, BASE_Y + mouseX * 0.055, 0.04);
         }
@@ -762,11 +782,15 @@ export default function Core({
           label.style.opacity = "1";
         }
       }
-      if (!reduced && !document.hidden && isIntersecting) frame = requestAnimationFrame(renderFrame);
+      scheduleNextFrame();
     };
 
     requestRender = () => {
       if (frame || document.hidden || !isIntersecting) return;
+      if (frameTimer) {
+        window.clearTimeout(frameTimer);
+        frameTimer = 0;
+      }
       frame = requestAnimationFrame(renderFrame);
     };
 
@@ -776,6 +800,15 @@ export default function Core({
         cancelAnimationFrame(frame);
         frame = 0;
       }
+      if (frameTimer) {
+        window.clearTimeout(frameTimer);
+        frameTimer = 0;
+      }
+      lastFrameAt = 0;
+      requestRender();
+    };
+    const onScrollState = (event: Event) => {
+      scrolling = event instanceof CustomEvent && event.detail === true;
       requestRender();
     };
     const onVisibilityChange = () => syncRenderLoop();
@@ -789,11 +822,13 @@ export default function Core({
     intersectionObserver.observe(el);
     motionPreference.addEventListener("change", syncRenderLoop);
     document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener(SCROLL_STATE_EVENT, onScrollState);
     requestRender();
 
     return () => {
       disposed = true;
       cancelAnimationFrame(frame);
+      window.clearTimeout(frameTimer);
       el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerleave", onPointerLeave);
@@ -802,6 +837,7 @@ export default function Core({
       intersectionObserver.disconnect();
       motionPreference.removeEventListener("change", syncRenderLoop);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener(SCROLL_STATE_EVENT, onScrollState);
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points) {
           object.geometry.dispose();

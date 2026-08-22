@@ -10,6 +10,8 @@
 - `dashboard-action.schema.md`：看板复制给 Agent 的完整动作请求。
 - `dashboard-snapshot.schema.md`：只读看板快照。
 - `release-manifest.schema.md`：模板升级发布清单。
-- `migration-kit.schema.md`：完整换机迁移套件、两个独立包的内部清单、摘要和恢复前检查。
+- `private-asset-catalog.schema.md`：用户明确登记要随助手携带的本地资料、当前设备路径绑定、渐进加载和导出前无静默遗漏对账。
+- `migration-kit.schema.md`：完整换机迁移套件 2.0；主体包与一个或多个私密分卷分离，支持超大文件分块、覆盖证明、摘要和 1.0 旧套件兼容恢复。
+- `../templates/migration/PRIVATE-EXPORT-MANIFEST.template.toml`：Schema 2.0 单独隐私导出的顶层清单模板；与完整迁移套件分开命名，避免部分导出冒充完整换机。
 
 Schema 发生不兼容变化时必须提升对应 Schema 版本，并在发布清单中提供迁移说明。

@@ -35,6 +35,11 @@ html = html
   .replace(styleMatch[0], () => `<style data-agent-carry-inline>\n${css}\n</style>`)
   .replace(scriptMatch[0], () => `<script type="module" data-agent-carry-inline>\n${safeInlineJs}\n</script>`)
 
+// Vite preserves the checkout's shell line endings while generated assets use
+// LF. Normalize the final single-file artifact so Windows builds do not create
+// mixed-line-ending diffs or make carriage returns look like trailing spaces.
+html = html.replace(/\r\n?/g, '\n')
+
 await writeFile(indexPath, html, 'utf8')
 
 // The two generated files are now fully embedded. Removing only those exact

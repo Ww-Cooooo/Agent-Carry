@@ -78,8 +78,12 @@ service-account*.json
 
 # 本地隐私迁移包与脱敏检查报告（即使误放回工作区也不进入 Git）
 agent-carry-private-*.zip
+agent-carry-body-*.zip
 agent-carry-private-*.tar
 agent-carry-private-*.tar.gz
+/MIGRATION-MANIFEST.toml
+/CHECKSUMS.sha256
+/START-RESTORE.md
 git-safety-report*
 
 # 交付产物

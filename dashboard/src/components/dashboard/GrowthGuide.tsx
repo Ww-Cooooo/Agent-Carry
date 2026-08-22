@@ -12,6 +12,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Clock3, ListChecks, Route, ShieldCheck, Sparkles, Workflow } from "lucide-react";
 import type { GrowthKind } from "@/dashboard-config";
+import { localizeText } from "@/lib/i18n";
 
 type GuideTone = "blue" | "mint" | "amber" | "rose" | "slate";
 
@@ -57,7 +58,7 @@ function edge(id: string, source: string, target: string, label?: string): Edge 
     id,
     source,
     target,
-    label,
+    label: label ? localizeText(label) : undefined,
     type: "smoothstep",
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
     style: { strokeWidth: 1.4 },

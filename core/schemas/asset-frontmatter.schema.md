@@ -55,13 +55,13 @@ updated_at = ""
 - `topic_key`：稳定主题，例如 `visual-style`；`subject_key`：作用对象，例如 `dashboard-core`。两者用于先缩小同类候选，不要求全局本体库。
 - `aliases`、`conditions`：少量自然语言别名和适用条件；建议各不超过 8 项。
 - `source_refs`：稳定来源或事件引用，不复制原始日志、秘密或外部正文。
-- `private_refs`：可选的本机隐私正文稳定引用，只能指向 `.assistant-private/assets/` 下的相对目标或不泄露内容的本地对象 ID；不得把隐私原文、绝对路径、密钥片段或可公开解析的下载地址写入本字段。普通路由只看是否存在引用，任务命中后才读取必要正文。
+- `private_refs`：可选的本机隐私正文稳定引用。新写入优先使用 `private://<collection-id>/<relative-path>`；旧版 `.assistant-private/assets/` 相对目标继续兼容，并在下次命中使用、修改或导出时渐进建立 `legacy-private-ref` 目录项。不得写入隐私原文、绝对路径、密钥片段或公开下载地址。普通路由只看是否存在引用，任务命中后才按 `core/schemas/private-asset-catalog.schema.md` 读取对应目录项与必要正文。
 - `supersedes`：被本资产明确替代的稳定资产 ID；不能只靠同名推断替代关系。
 - `minimum_level`：安全理解和执行本资产所需的最低模型等级。生成或修改正式资产时按目标任务重新判断；不能机械继承候选审核、规划者或宿主模型的等级。清楚低风险流程通常为 1，重要架构与高影响决定仍需 3。
 - `approval_state`、`activation_basis`、`risk_tier`、`approved_by_user`：见第 3、4 节。
 - `updated_at`：本次资产实际写入时间，使用带偏移量的 ISO 8601；未知时留空，不伪造，也不复用实例创建时间、治理锚点或旧快照时间。能力与 SOP 的 `last_validated_at` 同样记录本次真正通过结果验证的时间。
 
-`topic_key`、`subject_key` 和 `summary` 只能保存低敏检索语义。原始隐私正文放在受 Git 排除的 `.assistant-private/assets/` 本地隐私层并通过 `private_refs` 按需取得；GitHub 私密备份只保留低敏元数据与引用存在性，不携带私密正文。凭据、完整对话、系统提示和攻击载荷不得进入这些字段。当前执行模型可以在任务命中后取得必要隐私正文，但 API 密钥、密码、令牌、Cookie、私钥、恢复码和登录态不得进入任何模型上下文或隐私层。
+`topic_key`、`subject_key` 和 `summary` 只能保存低敏检索语义。原始隐私正文位于受 Git 排除的本地隐私层或用户明确登记的外部集合，通过 `private_refs` 按需取得；目录与机器路径绑定也不进入普通启动。GitHub 私有仓库中的脱敏安全副本只保留低敏元数据与引用存在性，不携带私密正文。凭据、完整对话、系统提示和攻击载荷不得进入这些字段。当前执行模型可以在任务命中后取得必要隐私正文，但 API 密钥、密码、令牌、Cookie、私钥、恢复码和登录态不得进入任何模型上下文或隐私层。
 
 `todo`、`deferred-work` 和 `governance` 是任务／治理状态，不经过能力成熟度流程；它们继续使用各自模板中的时间、可见性和批准字段。读取旧模板时按第 9 节兼容，不要求为了补齐学习字段重写全部状态卡。
 

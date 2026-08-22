@@ -11,7 +11,7 @@
 - `direction.domain_id`、`label`、`scope_statement`
 - `direction.out_of_scope_policy`：固定为 `create-new-instance`
 - `profile.user_preferences_ref`、`domain_map_ref`、`signal_control_ref`、`signal_map_ref`、`time_trigger_map_ref`、`host_registry_ref`。空模板可以暂时让 `user_preferences_ref` 指向目录说明；正式实例必须改为真实用户档案（默认 `instance/profile/approved-profile.md`），不得继续引用升级时会被替换的 `instance/profile/README.md`。
-- `versions.product`、`extension_api`、`asset_schema`、`dashboard_snapshot_schema`、`cross_session_signal_schema`、`host_integration_schema`
+- `versions.product`、`extension_api`、`asset_schema`、`dashboard_snapshot_schema`、`cross_session_signal_schema`、`host_integration_schema`。1.2.0 起还记录 `private_asset_catalog_schema` 与 `migration_kit_schema`；旧实例缺失时只在相关迁移事件中按目标版本补齐，不为此全量改写。
 
 可选的 `learning` 小节保存实例级学习政策：
 
@@ -26,6 +26,9 @@
 - `additional_sensitive_destination`：默认 `explicit-authorization`。网站、邮件、MCP／插件、额外 API、其他 Agent／账号／人员、遥测／日志、Git 与公开位置属于额外接收方。
 - `git_storage`：固定 `exclude-private-and-secrets`；私密 Git 仓库也不自动放宽。
 - `credentials`：固定 `host-secret-mechanism-only`。API 密钥、密码、令牌、Cookie、私钥、恢复码和登录态不能进入模型上下文、资产、Git 或隐私迁移包。
+- `private_asset_catalog`：默认 `create-on-first-relevant-use`。空模板和没有私密资产需求的实例不预先创建目录。
+- `private_asset_catalog_load`：固定 `on-demand-only`。只有登记／取消登记资料、命中 `private_refs`、隐私导入导出或完整换机迁移时加载相关目录项。
+- `complete_export_scope`：固定 `registered-and-referenced`。完整结论只覆盖 Agent Carry 管理、正式引用或用户明确登记的资料，不声称扫描整台电脑。
 
 可选的 `profile.guidance_mode` 保存当前交流方式；旧实例缺失时按 `balanced` 处理：
 
@@ -34,7 +37,7 @@
 - `balanced`：已经用过一些 Agent 或编程工具，只补问会影响结果的关键信息。
 - `direct`：经常使用 Agent 或熟悉编程，可直接讨论标准、资料、工具、SOP 和自动化边界。
 
-`guidance_mode` 只控制说明密度、提问方式和协作节奏，不是用户能力评分，也不对应模型 Level 1／2／3。它可以在实例化后随时修改，不会改变实例方向、资产所有权或安全边界。
+`guidance_mode` 只控制说明密度、提问方式和协作节奏，不是用户能力评分，也不对应模型 Level 1／2／3。它可以在实例化后随时修改，不会改变实例方向、资产所有权或安全边界。三种模式都必须服从 `assistant.toml` 的极小交流基线和 `core/protocols/USER_GUIDANCE.md`：需要用户作出实质选择时，背景、完整选项、后果、能够成立的推荐和“不确定”入口不能因 `balanced` 或 `direct` 而省略。
 
 约束：
 
@@ -47,3 +50,4 @@
 - `host_registry_ref` 指向实例拥有的极小宿主接入索引。注册表不属于普通启动上下文，只在接入、恢复、变化、刷新或相关能力使用时按需读取；其中 `instance_id` 必须与本清单一致。
 - 修改 `learning.policy` 本身需要用户明确决定。切换为 `manual-only` 默认只影响未来晋升，不静默撤销既有政策资产；用户若选择复核，先按状态元数据筛选。该小节只保存一个极小策略选择，不复制风险定义、成熟度阈值或生命周期正文；详细规则命中学习事件后才加载。
 - 用户可以把 `privacy.current_execution_model` 改成更严格模式，但任何模式都不能放宽 `credentials` 和 `git_storage`。隐私小节只保存极小选择值；完整接收方、安全、导入导出和提示词攻击规则按事件加载，不扩写启动胶囊。
+- 私密资产目录和当前设备绑定都位于受 Git 排除的 `.assistant-private/`。模板升级保留现有目录、绑定和正文；目标设备不会原样复用旧绝对路径。

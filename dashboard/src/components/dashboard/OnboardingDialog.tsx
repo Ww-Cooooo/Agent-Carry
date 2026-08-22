@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Check,
+  CheckCircle2,
   CircleHelp,
   Code2,
   Compass,
@@ -167,7 +168,7 @@ function StepDots({ step }: { step: number }) {
       {[1, 2, 3].map((item) => (
         <li key={item} className={item === step ? "is-current" : item < step ? "is-complete" : undefined} aria-current={item === step ? "step" : undefined}>
           <span>{item < step ? <Check aria-hidden="true" /> : item}</span>
-          <small>{item === 1 ? "交流方式" : item === 2 ? "助手方向" : "核对选择"}</small>
+          <small>{item === 1 ? "选择交流方式" : item === 2 ? "选择助手方向" : "只需核对"}</small>
         </li>
       ))}
     </ol>
@@ -255,27 +256,43 @@ export function OnboardingDialog({
               ) : null}
 
               {step === 3 && selectedGuidance && selectedDirection ? (
-                <>
-                  <div className="onboarding-step__heading">
-                    <span>第 3 步</span>
-                    <h2>核对后，把完整指令交给 Agent</h2>
-                    <p>Agent 还会了解你的真实工作，并在正式写入前展示完整预览。你没有确认，它就不会创建。</p>
+                <section className="wizard-review-sheet wizard-review-sheet--onboarding" aria-label="创建助手信息核对单">
+                  <header className="wizard-review-sheet__hero">
+                    <span className="wizard-review-sheet__mark"><CheckCircle2 aria-hidden="true" /></span>
+                    <div>
+                      <small>第 3 步 · 核对单</small>
+                      <strong>这一步没有需要选择的内容</strong>
+                      <p>只需检查下面两项是否正确。内容正确就点击窗口底部的“核对无误”；需要调整就返回修改。</p>
+                    </div>
+                    <span className="wizard-review-sheet__badge">无需选择 · 只需核对</span>
+                  </header>
+                  <div className="wizard-review-sheet__title">
+                    <div><small>你刚刚选择的信息</small><strong>创建助手前的最后核对</strong></div>
+                    <span>共 2 项</span>
                   </div>
-                  <div className="onboarding-summary">
-                    <article>
-                      <span><selectedGuidance.icon aria-hidden="true" /></span>
-                      <div><small>交流方式</small><strong>{selectedGuidance.shortLabel}</strong><p>{selectedGuidance.description}</p></div>
-                    </article>
-                    <article>
-                      <span><selectedDirection.icon aria-hidden="true" /></span>
-                      <div><small>助手方向</small><strong>{selectedDirection.shortLabel}</strong><p>{selectedDirection.description}</p></div>
-                    </article>
-                  </div>
-                  <div className="onboarding-safety-note">
+                  <dl className="onboarding-review-list">
+                    <div>
+                      <dt>
+                        <span><selectedGuidance.icon aria-hidden="true" /></span>
+                        <div><small>交流方式</small><strong>{selectedGuidance.shortLabel}</strong></div>
+                        <em><Check aria-hidden="true" />已选择</em>
+                      </dt>
+                      <dd>{selectedGuidance.description}</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <span><selectedDirection.icon aria-hidden="true" /></span>
+                        <div><small>助手方向</small><strong>{selectedDirection.shortLabel}</strong></div>
+                        <em><Check aria-hidden="true" />已选择</em>
+                      </dt>
+                      <dd>{selectedDirection.description}</dd>
+                    </div>
+                  </dl>
+                  <footer className="wizard-review-sheet__footnote">
                     <Check aria-hidden="true" />
-                    <p><strong>方向不会在这里直接锁定。</strong>网页只整理你的选择；当前 Agent 完成访谈并把预览给你看后，还要等你明确确认。</p>
-                  </div>
-                </>
+                    <p><strong>网页不会直接创建或锁定助手。</strong>它只生成一段完整指令；当前 Agent 完成访谈并展示预览后，仍要等你明确确认。</p>
+                  </footer>
+                </section>
               ) : null}
             </motion.section>
           </AnimatePresence>
@@ -283,16 +300,18 @@ export function OnboardingDialog({
 
         <div className="onboarding-dialog__footer">
           <Button variant="ghost" className="onboarding-back" disabled={step === 1} onClick={() => setStep((value) => Math.max(1, value - 1))}>
-            <ArrowLeft aria-hidden="true" />上一步
+            <ArrowLeft aria-hidden="true" />{step === 3 ? "返回修改" : "上一步"}
           </Button>
           {step < 3 ? (
             <Button className="onboarding-next" disabled={!canContinue} onClick={() => setStep((value) => Math.min(3, value + 1))}>
               继续<ArrowRight aria-hidden="true" />
             </Button>
           ) : (
-            <Button className="onboarding-next" disabled={!canContinue} onClick={copyRequest}>
-              生成创建指令<ArrowRight aria-hidden="true" />
-            </Button>
+            <div className="wizard-final-action">
+              <Button className="onboarding-next onboarding-next--final" disabled={!canContinue} onClick={copyRequest}>
+                <CheckCircle2 aria-hidden="true" />核对无误，生成创建指令
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>

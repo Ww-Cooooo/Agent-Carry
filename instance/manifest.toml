@@ -1,7 +1,7 @@
 schema_version = 1
 instance_id = "template"
 state = "template"
-created_from = "agent-carry@1.1.3"
+created_from = "agent-carry@1.2.0"
 created_at = ""
 
 [direction]
@@ -33,11 +33,16 @@ current_execution_model = "allow-task-needed-private-context"
 additional_sensitive_destination = "explicit-authorization"
 git_storage = "exclude-private-and-secrets"
 credentials = "host-secret-mechanism-only"
+private_asset_catalog = "create-on-first-relevant-use"
+private_asset_catalog_load = "on-demand-only"
+complete_export_scope = "registered-and-referenced"
 
 [versions]
-product = "1.1.3"
+product = "1.2.0"
 extension_api = "1.0"
 asset_schema = "1.2"
 dashboard_snapshot_schema = "1.1"
 cross_session_signal_schema = "1.1"
 host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"

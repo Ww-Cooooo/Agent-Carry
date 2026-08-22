@@ -3,7 +3,7 @@ policy = "one-formal-owner-per-component"
 
 [[layers]]
 id = "template-core"
-owns = ["README.md", "INSTALL.md", "START-HERE.txt", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", ".gitignore", "LICENSE", "THIRD_PARTY_NOTICES.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "core/**", "docs/**"]
+owns = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "THIRD_PARTY_NOTICES.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "core/**", "docs/**"]
 upgrade_policy = "replace-or-migrate-by-release-manifest"
 instance_may_modify = false
 
@@ -46,12 +46,12 @@ instance_may_modify = true
 [[layers]]
 id = "local-private"
 owns = [".assistant-private/**", ".assistant-local/**", "maintainer-private/**"]
-upgrade_policy = "never-publish-never-overwrite-by-template"
+upgrade_policy = "never-publish-never-overwrite-by-template-preserve-private-catalog-bindings-and-bodies"
 instance_may_modify = true
 
 [[layers]]
 id = "derived-ui"
-owns = ["dashboard.html", "dashboard/**", "_data/**"]
+owns = ["dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**"]
 upgrade_policy = "replace-ui-preserve-local-snapshot"
 instance_may_modify = "extension-points-only"
 

@@ -39,12 +39,12 @@ confirmation = "per-action"
 
 [[routes]]
 id = "privacy-migration"
-summary = "把经过本地安全检查的非隐私内容备份到用户自己的 GitHub 私密仓库，或导出、导入和迁移只留在本地的隐私数据；两条通道都不包含秘密凭据。"
-triggers = ["GitHub私密备份", "Git安全副本", "上传Git", "Git备份", "打包带走", "隐私导出", "隐私导入", "换电脑", "迁移实例"]
+summary = "登记并核对要随助手携带的本地资料，把不含隐私正文的脱敏安全副本托管到用户自己的 GitHub 私有仓库，或在本地完整导出、导入和迁移已登记／已引用的隐私资料；秘密凭据永不进入模型、Git 或迁移包。"
+triggers = ["GitHub私密备份", "Git安全副本", "上传Git", "Git备份", "打包带走", "隐私导出", "隐私导入", "换电脑", "迁移实例", "随助手带走资料", "登记私密资料", "检查迁移范围", "大型视频迁移"]
 target = "core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md"
 state = "on-demand"
 minimum_level = 1
-confirmation = "local-safe-copy-is-directly-authorized-private-github-create-or-push-and-conflict-merges-require-explicit-confirmation"
+confirmation = "registered-scope-review-and-local-package-are-directly-authorized-new-external-root-private-github-create-or-push-and-conflict-merges-require-explicit-confirmation"
 
 [[routes]]
 id = "platform-adaptation"

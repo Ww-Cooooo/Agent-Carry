@@ -1,0 +1,41 @@
+schema_version = 2
+record_type = "agent-carry-private-export"
+export_id = "{{EXPORT_ID}}"
+created_at = "{{CREATED_AT}}"
+source_instance_id = "{{SOURCE_INSTANCE_ID}}"
+product_version = "{{PRODUCT_VERSION}}"
+asset_schema = "{{ASSET_SCHEMA}}"
+private_asset_catalog_schema = 1
+part_count = 0 # 生成时替换为 {{PRIVATE_PART_COUNT}} 整数
+entry_count = 0 # 生成时替换为 {{PRIVATE_ENTRY_COUNT}} 整数
+uncompressed_bytes = 0 # 生成时替换为 {{PRIVATE_UNCOMPRESSED_BYTES}} 整数
+catalog_revision = 0 # 生成时替换为 {{PRIVATE_CATALOG_REVISION}} 整数
+catalog_sha256 = "{{PRIVATE_CATALOG_SHA256}}"
+coverage_status = "{{PRIVATE_COVERAGE_STATUS}}" # complete 或 partial-approved
+coverage_started_at = "{{PRIVATE_COVERAGE_STARTED_AT}}"
+coverage_checked_at = "{{PRIVATE_COVERAGE_CHECKED_AT}}"
+coverage_snapshot_sha256 = "{{PRIVATE_COVERAGE_SNAPSHOT_SHA256}}"
+part_target_bytes = 0 # 生成时替换为 {{PRIVATE_PART_TARGET_BYTES}} 整数
+credentials_included = false
+
+# partial-approved 时按 omission_id 排序重复；complete 时移除本说明并保持 0 项。
+# [[coverage_omissions]]
+# omission_id = "omission.example"
+# collection_id = "private.collection.example"
+# scope_kind = "collection"
+# relative_scope = ""
+# reason_code = "user-selected-subset"
+# approved_by_user = true
+# approval_ref = "event.example"
+
+# 生成时按实际分卷数重复下面整块，并移除本说明注释。
+[[parts]]
+number = 0 # 生成时替换为 {{PRIVATE_PART_NUMBER}} 整数
+count = 0 # 生成时替换为 {{PRIVATE_PART_COUNT}} 整数
+file = "{{PRIVATE_PART_FILE}}"
+sha256 = "{{PRIVATE_PART_SHA256}}"
+manifest_path = "private-package/manifest.json"
+logical_entry_count = 0 # 生成时替换为 {{PRIVATE_PART_LOGICAL_ENTRY_COUNT}} 整数
+owned_logical_entry_count = 0 # 生成时替换为 {{PRIVATE_PART_OWNED_LOGICAL_ENTRY_COUNT}} 整数
+stored_entry_count = 0 # 生成时替换为 {{PRIVATE_PART_STORED_ENTRY_COUNT}} 整数
+uncompressed_bytes = 0 # 生成时替换为 {{PRIVATE_PART_UNCOMPRESSED_BYTES}} 整数

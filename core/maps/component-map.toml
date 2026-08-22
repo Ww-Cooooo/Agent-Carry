@@ -24,10 +24,17 @@ depends_on = ["identity-lifecycle", "external-safety"]
 projects_to = ["installation-experience", "host-integration", "cross-session-signals", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
 
 [[components]]
+id = "user-guidance"
+owner = "template-core"
+paths = ["core/protocols/USER_GUIDANCE.md"]
+depends_on = ["identity-lifecycle", "context-routing"]
+projects_to = ["asset-memory", "host-integration", "dashboard-actions", "privacy-migration", "installation-experience", "architecture-documentation"]
+
+[[components]]
 id = "asset-memory"
 owner = "template-core"
 paths = ["core/protocols/ASSET_LIFECYCLE.md", "core/schemas/asset-frontmatter.schema.md", "core/templates/memory/**", "core/templates/capability/**", "core/templates/sop/**", "core/templates/experience/**", "core/templates/evolution/**", "core/templates/todo/**", "core/templates/deferred/**", "core/templates/governance/**"]
-depends_on = ["context-routing", "model-orchestration", "result-validation"]
+depends_on = ["context-routing", "user-guidance", "model-orchestration", "result-validation"]
 projects_to = ["host-integration", "cross-session-signals", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
 
 [[components]]
@@ -90,7 +97,7 @@ projects_to = ["dashboard-snapshot-contract", "architecture-documentation"]
 id = "dashboard-actions"
 owner = "template-core"
 paths = ["core/maps/dashboard-actions.toml", "core/protocols/DASHBOARD_ACTIONS.md", "core/schemas/dashboard-action.schema.md"]
-depends_on = ["context-routing", "external-safety", "host-integration"]
+depends_on = ["context-routing", "user-guidance", "external-safety", "host-integration"]
 projects_to = ["dashboard-snapshot-contract", "dashboard-ui", "upgrade-system"]
 
 [[components]]
@@ -103,9 +110,16 @@ projects_to = ["dashboard-ui", "upgrade-system"]
 [[components]]
 id = "dashboard-ui"
 owner = "derived-ui"
-paths = ["dashboard.html", "dashboard/**", "_data/**", "docs/dashboard-design.md"]
+paths = ["dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "docs/dashboard-design.md", ".gitattributes"]
 depends_on = ["dashboard-actions", "dashboard-snapshot-contract"]
-projects_to = ["project-licensing", "installation-experience", "upgrade-system"]
+projects_to = ["localization", "project-licensing", "installation-experience", "upgrade-system"]
+
+[[components]]
+id = "localization"
+owner = "template-core"
+paths = ["README.en.md", "INSTALL.en.md", "START-HERE.en.txt", "dashboard.en.html", "core/protocols/TERRITORY_TERMINOLOGY.md", "docs/architecture.en.md", "docs/security-and-privacy.en.md", "docs/localization.md", "dashboard/src/lib/i18n.tsx", "dashboard/src/lib/i18n-catalog.ts", "dashboard/src/lib/localized-jsx/**", "dashboard/scripts/validate-localization-contract.mjs", "dashboard/scripts/validate-territory-terminology.mjs"]
+depends_on = ["identity-lifecycle", "dashboard-actions", "dashboard-snapshot-contract", "dashboard-ui", "external-safety"]
+projects_to = ["project-licensing", "upgrade-system", "architecture-documentation"]
 
 [[components]]
 id = "project-licensing"
@@ -124,15 +138,15 @@ projects_to = ["upgrade-system", "architecture-documentation"]
 [[components]]
 id = "installation-experience"
 owner = "template-core"
-paths = ["INSTALL.md", "START-HERE.txt"]
-depends_on = ["identity-lifecycle", "context-routing", "external-safety", "host-integration", "dashboard-ui", "project-licensing"]
+paths = ["INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt"]
+depends_on = ["identity-lifecycle", "context-routing", "external-safety", "host-integration", "dashboard-ui", "localization", "project-licensing"]
 projects_to = ["upgrade-system", "architecture-documentation"]
 
 [[components]]
 id = "privacy-migration"
 owner = "template-core"
-paths = ["core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md", "core/schemas/migration-kit.schema.md", "core/templates/migration/**", ".gitignore"]
-depends_on = ["identity-lifecycle", "asset-memory", "instance-assets", "instance-governance", "external-safety", "host-integration", "dashboard-actions"]
+paths = ["core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md", "core/schemas/migration-kit.schema.md", "core/schemas/private-asset-catalog.schema.md", "core/templates/migration/**", "core/templates/privacy/**", ".gitignore"]
+depends_on = ["identity-lifecycle", "user-guidance", "asset-memory", "instance-assets", "instance-governance", "external-safety", "host-integration", "dashboard-actions"]
 projects_to = ["upgrade-system", "architecture-documentation"]
 
 [[components]]

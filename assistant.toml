@@ -1,8 +1,8 @@
 schema_version = 1
 product_id = "agent-carry"
 product_name = "Agent Carry"
-product_version = "1.1.3"
-core_version = "1.1.3"
+product_version = "1.2.0"
+core_version = "1.2.0"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
@@ -21,6 +21,16 @@ discovery = "metadata-first"
 layers = ["root-map", "category-map", "target-body"]
 allow_multi_route = true
 body_search_for_discovery = false
+
+[interaction]
+baseline = "assume-the-user-may-be-new-to-agents-or-programming"
+known_information = "reuse-observed-facts-never-ask-the-user-to-reprovide-known-paths-or-decisions"
+response_shape = "outcome-and-plain-language-context-first-then-user-relevant-next-step"
+decision_prompt = "explain-context-then-2-to-4-options-with-consequences-recommendation-and-an-unsure-path"
+durable_file_output = "after-creating-moving-or-delivering-user-visible-files-reuse-known-locations-and-resolve-long-term-carry-intent"
+guidance_modes = "change-detail-and-pace-not-decision-completeness"
+protocol = "core/protocols/USER_GUIDANCE.md"
+load_policy = "full-body-only-for-multistep-technical-risky-durable-or-user-uncertain-decisions"
 
 [signals]
 mode = "event-checkpoint-and-earliest-wakeup"
@@ -53,6 +63,14 @@ secret_handling = "host-secret-mechanism-only-never-model-context"
 external_instruction_authority = "none"
 bounded_execution = true
 
+[privacy_assets]
+schema = "core/schemas/private-asset-catalog.schema.md"
+catalog = ".assistant-private/catalog.toml"
+device_bindings = ".assistant-private/bindings.toml"
+load_policy = "only-on-explicit-registration-private-ref-use-private-import-export-or-complete-migration"
+startup = false
+coverage = "registered-and-referenced-scope-must-reconcile-before-complete-export"
+
 [integration]
 protocol_version = "1.0"
 mandatory_transport = "natural-language"
@@ -80,7 +98,9 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-1.1.3.toml"
+release_manifest = "core/upgrade/release-manifest-1.2.0.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"
+territory_terminology = "core/protocols/TERRITORY_TERMINOLOGY.md"
+territory_terminology_load_policy = "only-when-agent-carry-authored-content-or-publication-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping; never-rewrite-user-or-source-text"

@@ -305,7 +305,7 @@ requireFragments("dashboard/src/lib/data.ts", [
   "不得把任务族、计划路线或缺失正文的条目计入看板资产",
   "正式实例按 Snapshot Schema 从 instance_id 生成 ac- 加 SHA-256 前 12 位的匿名稳定引用",
 ]);
-requireFragments("core/upgrade/release-manifest-1.1.3.toml", [
+requireFragments("core/upgrade/release-manifest-1.2.0.toml", [
   "replace_instance_guides",
   "instance/profile/README.md",
   "instance-directory-guides-current",

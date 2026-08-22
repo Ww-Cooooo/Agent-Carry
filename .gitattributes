@@ -1,0 +1,12 @@
+# Keep public source checkouts deterministic across Windows, macOS and Linux.
+* text=auto eol=lf
+
+# Bundled fonts and archive/media formats are raw binary bytes.
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary

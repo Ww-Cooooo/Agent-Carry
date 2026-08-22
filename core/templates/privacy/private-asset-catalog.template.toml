@@ -1,0 +1,27 @@
+schema_version = 1
+record_type = "agent-carry-private-asset-catalog"
+instance_id = "{{INSTANCE_ID}}"
+updated_at = "{{UPDATED_AT}}"
+catalog_revision = 1
+
+# 只有用户明确登记资料、正式资产形成 private_refs，或迁移前渐进整理旧引用时，
+# 才从下面的结构生成实际 .assistant-private/catalog.toml。空模板不创建实际目录文件。
+#
+# [[collections]]
+# id = "private.collection.example"
+# title = "用户能看懂的资料名称"
+# purpose = "为什么需要随 Agent Carry 携带"
+# source_kind = "external-binding"
+# binding_id = "binding.example.current-device"
+# include_mode = "recursive"
+# 路径规则统一使用 /、Unicode NFC 和 Schema 规定的跨系统 Glob；不要写绝对路径。
+# include = ["**/*"]
+# exclude = ["**/.cache/**", "**/*.tmp"]
+# future_files = "ask-before-include"
+# restore_mode = "managed-copy"
+# restore_relative_root = "collections/private.collection.example"
+# risk_tier = "high"
+# approved_by_user = true
+# 只写可解析的稳定事件或正式资产 ID，不写用户原话、姓名或路径。
+# approval_ref = "event.example"
+# status = "active"

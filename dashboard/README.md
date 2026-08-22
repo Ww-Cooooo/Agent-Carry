@@ -42,7 +42,7 @@ npm run build
 npm run analyze
 ```
 
-`npm run build` 会把应用脚本和样式内联进 `dist/index.html`，确保 `file://` 下可用。Noto Sans SC、Space Grotesk、Noto Sans Mono CJK SC、快照和许可证包作为本地同目录资源分发；不访问 CDN，也不依赖用户预装中文字体。不要删除 `scripts/make-offline.mjs`，否则浏览器可能因本地 ES 模块限制显示空白。
+`npm run build` 会把应用脚本和样式内联进 `dist/index.html`，确保 `file://` 下可用。公开仓库中的这条命令只读取公开产品树，不依赖私密维护者的 Release 正文、发布契约或本地工具。根 `.gitattributes` 统一以 LF 检出文本并把字体标记为二进制，使 Windows、macOS 和 Linux 的公开 Git 工作树保持一致；完整构建后不应出现只有换行不同的产物修改。Noto Sans SC、Space Grotesk、Noto Sans Mono CJK SC、快照和许可证包作为本地同目录资源分发；不访问 CDN，也不依赖用户预装中文字体。不要删除 `scripts/make-offline.mjs`，否则浏览器可能因本地 ES 模块限制显示空白。
 
 构建开始时会自动核对正式动作登记表、安装后首次创建契约、第三方许可证清单和开源合规清单；首次创建检查确保安装入口、ZIP 交接、极小启动、临门检查点、实例化指南、README 与看板仍共同要求“创建助手优先、看板和聊天双入口、三种路线有解释且不替用户选择、生成指令交回当前聊天、Level 1 迎接与 Level 3 正式实例化分离”。它还会拒绝退化成只报安装完成、提前制造资产、遗漏治理排期／宿主档案，或把没有正式正文的任务族和计划路线计为看板资产。构建结束后再检查字体哈希、OFL 文本、生产依赖声明、shadcn/ui 改写源码声明、根入口与远端资源。`npm run analyze` 只在被 Git 忽略的本地维护目录生成包体报告，不会把分析面板塞进看板或最终安装包。这些工具只服务于前端维护，不会出现在最终用户双击看板的流程中。
 

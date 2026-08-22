@@ -1,0 +1,129 @@
+schema_version = 2
+release = "1.2.0"
+core = "1.2.0"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.2"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+from_versions = ["1.0.0", "1.1.0", "1.1.1", "1.1.2", "1.1.3"]
+notes = "Backward-compatible private-asset portability and user-guidance feature. An instantiated assistant can register domain-neutral local collections such as videos, teaching materials or finance attachments without scanning the whole computer. When a connected Agent creates or moves user files, it reuses the observed location and asks only for the user's long-term intent through concrete options with consequences; it does not make the user maintain known paths. A compact novice-safe interaction baseline is always available, while the full guidance protocol loads only for multistep, technical, risky, durable or user-uncertain decisions. Portable catalog metadata is separated from current-device absolute-path bindings and both remain outside Git and ordinary startup context. Private export and complete computer migration reconcile registered collections, private_refs, managed private files and final package entries before reporting complete, preventing silent omission inside the declared scope. Migration Kit Schema 2.0 keeps assistant-body and private content separate, supports multiple private parts and verifiable chunks for oversized files, restores to managed relative paths on the target device, and still accepts valid Schema 1.0 five-file kits. Product and core versions advance to 1.2.0; extension, asset, Dashboard Snapshot, Dashboard Action, signal and host-integration schemas remain compatible."
+extension_changes = "Compatible with extension API 1.0; no extension migration is required."
+dashboard_changes = "Keeps Dashboard Snapshot Schema 1.1 and Action Schema 1.0. Adds one registered action for viewing and supplementing carry-along data, clarifies that Agent-known output paths are reused instead of user-maintained, and integrates the scope check into complete-computer migration. Assistant creation, complete migration, coverage review, private export and private import use explicit guided flows. Explanation, choice and review steps use distinct semantics and visuals: an explanation is one noninteractive linear flow, a choice step alone contains selectable cards, and a review is one read-only confirmation sheet with one visually dominant action and Return to edit. Assistant-creation steps share a stable viewport-bounded shell; only the middle content region scrolls when needed, while the footer action remains visible and redundant helper cues are omitted from final confirmation rows. Private export keeps coverage review inside the same task card instead of making users discover a detached prerequisite; private import distinguishes a complete output folder, uncertain materials and not-yet-exported data. Each copied request preserves the user's choice so the host continues without asking the user to start over. Repeated-card pages keep semantic DOM while using native offscreen rendering with calibrated intrinsic sizes; heterogeneous transfer sections pre-layout rather than shifting their full cost into active scroll. Lenis remains the sole desktop scroll owner, reduced motion falls back to native scrolling, and the Three.js core keeps an approximately 30 fps active-scroll cadence without changing animation speed before returning to its higher idle cadence. The primary action retains its visible low-intensity breathing glow through a separately composited opacity-and-scale layer instead of per-frame shadow interpolation. One dashboard codebase now supports a Chinese-default reviewed English user layer. dashboard.en.html supplies the English installation hint, the user can override and remember the language locally, HTML language, title, accessibility and date text switch together, unknown snapshot text is not translated, and English copied requests preserve the Chinese canonical protocol while requiring English user communication. The public Dashboard checks and build read only the public product tree; Release text and publication contracts remain private Level 3 gates instead of public build dependencies. The guide never reads private bodies or absolute paths. Large private data may use multiple local parts. The action registry and compiled offline mirror must be rebuilt together."
+dashboard_scroll_reveal = "Reveal observers use the actual .app-main scroll root. Cards remain hidden only while below the visible region, then enter once with compositor-friendly opacity, translation and slight scale plus short per-row staggering. The outer route presence layer must not suppress first-load card reveals; reduced-motion mode shows every card immediately."
+dashboard_motion_restore = "The primary action keeps its low-intensity breathing glow and sheen while its clickable control and hit target remain stationary; only a pointer-free composited glow layer changes opacity and scale. The Three.js core renders at approximately 30 fps while the main content is actively scrolling, then resumes its higher idle cadence. CSS smooth scrolling remains disabled because Lenis is the single scroll owner."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md"]
+migrate = ["instance/manifest.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**"]
+preserve = ["instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "A fixed instance/*/README.md may also match a broad preserve glob. After any applicable content migration, replace_instance_guides wins only for that exact README.md; sibling user files and subdirectories remain preserved."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+broad_globs_are_copy_commands = false
+
+[[migration_rules]]
+id = "legacy-profile-readme-to-approved-profile"
+from_versions = ["1.0.0", "1.1.0", "1.1.1", "1.1.2"]
+when_all = ["instance.state=instance", "instance.profile.user_preferences_ref=instance/profile/README.md", "source is confirmed as a real instance profile rather than a directory guide or placeholder; otherwise stop and ask"]
+source = "instance/profile/README.md"
+destination = "instance/profile/approved-profile.md"
+operation_order = ["copy-source-bytes", "verify-source-and-destination-sha256-equal", "update-instance-manifest-reference", "reparse-and-read-back-reference", "replace-source-with-target-directory-guide"]
+destination_collision = "reuse-only-if-byte-identical-otherwise-stop-and-show-conflict"
+idempotence = "second-run-makes-no-change"
+
+[[migration_rules]]
+id = "normalize-task-family-route-state"
+from_versions = ["1.0.0", "1.1.0", "1.1.1", "1.1.2"]
+when_all = ["instance/maps/domain-map.toml contains asset_kind=task-family"]
+source = "instance/maps/domain-map.toml"
+operation_order = ["for-each-task-family-route-set-only-state-to-on-demand", "preserve-all-other-route-fields", "reparse-domain-map", "verify-task-families-are-not-counted-as-assets"]
+idempotence = "second-run-makes-no-change"
+
+[[migration_rules]]
+id = "private-asset-catalog-on-demand"
+from_versions = ["1.0.0", "1.1.0", "1.1.1", "1.1.2", "1.1.3"]
+when_all = ["private registration, private_refs use, private export, private import or complete migration is explicitly requested", "no valid .assistant-private/catalog.toml exists"]
+source = "currently-hit private_refs and .assistant-private/assets managed root only"
+destination = ".assistant-private/catalog.toml"
+operation_order = ["do-not-scan-entire-computer", "create-catalog-from-template", "create-only-hit-legacy-private-ref-entries", "keep-current-device-paths-out-of-catalog", "verify-current-references-resolve", "leave-unrelated-assets-unread"]
+destination_collision = "valid-existing-catalog-is-preserved-invalid-or-instance-mismatch-stops-with-preview"
+idempotence = "second-run-with-no-new-hit-reference-makes-no-change"
+
+[verification]
+checks = [
+  "manifest-parses",
+  "version-1.2.0-aligned",
+  "upgrade-from-1.0.0-through-1.1.3-supported",
+  "formal-change-quality-route-hits-before-durable-write",
+  "ordinary-read-only-does-not-load-full-change-protocol",
+  "correction-learning-route-fixes-and-validates-current-result-before-candidate",
+  "one-off-error-and-full-log-do-not-become-assets-or-startup-context",
+  "core-schema-security-upgrade-release-decisions-require-level-3",
+  "target-file-allowlist-excludes-development-junk-and-private-maintainer-content",
+  "legacy-profile-bytes-migrated-before-guide-replace",
+  "legacy-profile-reference-readback-valid",
+  "task-family-routes-on-demand",
+  "formal-active-provisional-review-assets-have-direct-kind-matching-routes",
+  "map-targets-exist",
+  "instance-directory-guides-current",
+  "direction-lock-preserved",
+  "instance-assets-preserved",
+  "privacy-and-secret-boundaries-preserved",
+  "compact-user-guidance-baseline-loaded-without-full-protocol-at-startup",
+  "nontrivial-user-choice-includes-context-options-consequences-recommendation-and-unsure-path",
+  "agent-created-file-location-is-reused-instead-of-reasked",
+  "private-catalog-and-bindings-not-loaded-at-startup",
+  "existing-private-content-preserved",
+  "legacy-private-refs-readable-and-migrated-on-demand-only",
+  "registered-scope-no-silent-omission-reconciliation-valid",
+  "unregistered-computer-paths-not-scanned",
+  "secret-credentials-excluded-from-model-git-and-packages",
+  "migration-kit-v2-single-part-valid",
+  "migration-kit-v2-multipart-and-chunk-reassembly-valid",
+  "migration-kit-v1-import-compatible",
+  "missing-part-link-path-traversal-and-digest-mismatch-fail-closed",
+  "target-absolute-bindings-not-reused",
+  "dashboard-actions-aligned",
+  "dashboard-three-step-migration-guide-preserves-the-user-choice",
+  "dashboard-explanation-choice-review-use-distinct-semantics",
+  "dashboard-review-step-is-explicit-and-primary-action-visible",
+  "dashboard-guided-dialog-fits-compact-desktop-and-scrolls-body",
+  "dashboard-private-export-import-open-guided-dialogs",
+  "dashboard-progressive-offscreen-paint-valid",
+  "dashboard-card-reveal-uses-main-scroll-root-and-is-visible-on-first-load",
+  "dashboard-single-scroll-owner-and-reduced-motion-fallback-valid",
+  "dashboard-three-yields-during-scroll-and-pauses-offscreen-valid",
+  "dashboard-scroll-no-overflow-layout-shift-or-remote-resource",
+  "public-dashboard-build-is-self-contained-without-maintainer-private-files",
+  "public-dashboard-build-checkout-line-endings-are-deterministic",
+  "dashboard-offline-responsive-valid",
+  "chinese-entry-defaults-to-zh-hans-and-english-entry-to-en",
+  "dashboard-language-choice-overrides-entry-hint-and-remains-offline",
+  "english-primary-pages-and-first-use-guides-have-no-unintended-chinese",
+  "unknown-user-authored-snapshot-text-remains-untranslated",
+  "english-host-request-preserves-canonical-protocol-and-secret-boundary",
+  "english-readme-install-start-entry-pages-and-public-projection-aligned",
+  "territory-terminology-route-loads-only-for-relevant-agent-carry-owned-content",
+  "chinese-and-english-territory-terminology-canonical",
+  "taiwan-hong-kong-and-macao-not-presented-as-sovereign-states",
+  "user-authored-and-source-evidence-remain-verbatim-under-territory-gate",
+  "map-flag-and-country-region-grouping-require-level-3-semantic-review",
+  "compiled-dashboard-and-pages-projection-pass-territory-terminology-gate",
+  "startup-budget-preserved",
+  "upgrade-second-run-idempotent",
+  "rollback-restores-original-candidate-state",
+]
+risk_policy = "root-cause-and-user-data-reliability-first-targeted-internal-validation-with-light-user-experience"

@@ -11,6 +11,15 @@ minimum_level = 3
 confirmation = "before-durable-change"
 
 [[routes]]
+id = "territory-terminology"
+summary = "新增、翻译、审查或发布涉及国家、地区、行政区划、地图和旗帜的 Agent Carry 自有内容时，使用固定中英文称谓并保护用户原文。"
+triggers = ["地域称谓", "中国台湾", "中国香港", "中国澳门", "中英文地区名称", "国家和地区选择器", "地图", "旗帜", "版图表达"]
+target = "core/protocols/TERRITORY_TERMINOLOGY.md"
+state = "maintenance-only"
+minimum_level = 3
+confirmation = "before-map-flag-or-public-content-change"
+
+[[routes]]
 id = "template-upgrade"
 summary = "把模板更新安全应用到实例，保护实例资产并提供回退。"
 triggers = ["升级模板", "导入升级包", "检查新版本", "检查更新", "官方新版本"]

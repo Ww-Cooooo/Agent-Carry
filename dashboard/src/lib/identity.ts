@@ -1,3 +1,5 @@
+import { getDashboardLocale } from "./i18n";
+
 export type DashboardIdentityKind = "template" | "instance" | "demo" | "unavailable";
 
 export interface DashboardIdentityInput {
@@ -62,6 +64,13 @@ function expectedCapsule(input: DashboardIdentityInput): DashboardIdentityCapsul
 }
 
 function baseTitle(input: DashboardIdentityInput, kind: DashboardIdentityKind): string {
+  if (getDashboardLocale() === "en") {
+    if (kind === "demo") return "Online demo · Agent Carry";
+    if (kind === "template") return "No assistant yet · Agent Carry";
+    if (kind === "unavailable") return "Dashboard data unavailable · Agent Carry";
+    const displayName = input.displayName.trim() || "Unnamed assistant";
+    return `${displayName} · Agent Carry`;
+  }
   if (kind === "demo") return "在线演示 · Agent Carry";
   if (kind === "template") return "尚未创建助手 · Agent Carry";
   if (kind === "unavailable") return "看板数据不可用 · Agent Carry";
@@ -127,7 +136,8 @@ export function inspectDashboardIdentity(input: DashboardIdentityInput): Dashboa
     || incoming.ref !== expected.ref
     || incoming.version !== expected.version
   );
-  const title = `${mismatch ? "入口不一致 · " : ""}${baseTitle(input, expected.kind)}`;
+  const mismatchPrefix = mismatch ? (getDashboardLocale() === "en" ? "Entry mismatch · " : "入口不一致 · ") : "";
+  const title = `${mismatchPrefix}${baseTitle(input, expected.kind)}`;
 
   return {
     expected,

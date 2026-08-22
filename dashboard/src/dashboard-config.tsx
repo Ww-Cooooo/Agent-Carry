@@ -127,7 +127,7 @@ export const NAV_ITEMS: Array<{
   { page: "home", label: "总览", shortLabel: "总览", description: "待办、资产和最近变化", icon: Home },
   { page: "library", label: "随身资产", shortLabel: "资产", description: "记忆、流程、能力和经验", icon: Library },
   { page: "growth", label: "待办与成长", shortLabel: "待办", description: "待办、学习建议和长期改进", icon: Sparkles },
-  { page: "transfer", label: "迁移与安全", shortLabel: "迁移", description: "GitHub 备份和本地隐私迁移", icon: PackageOpen },
+  { page: "transfer", label: "迁移与安全", shortLabel: "迁移", description: "换 Agent、换电脑和安全备份", icon: PackageOpen },
   { page: "system", label: "当前状态", shortLabel: "状态", description: "模型等级和读取方式", icon: Settings2 },
 ];
 

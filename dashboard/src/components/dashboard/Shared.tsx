@@ -1,4 +1,4 @@
-import { useId, type ElementType, type ReactNode } from "react";
+import { createElement, useId, type ElementType, type ReactNode } from "react";
 import { Check, CircleHelp, ClipboardCopy, Copy, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,33 @@ export interface DetailState {
   kind: DashboardActionKind;
   item: DetailItem;
 }
+
+/**
+ * Renders content that came from an instantiated assistant or another source
+ * file without passing it through the product-interface translation catalog.
+ * Product labels around it still follow the selected dashboard language.
+ */
+export function SourceText({
+  children,
+  as = "span",
+  className,
+}: {
+  children: ReactNode;
+  as?: ElementType;
+  className?: string;
+}) {
+  return createElement(
+    as,
+    {
+      className,
+      translate: "no",
+      "data-agent-carry-source-text": "true",
+    },
+    children,
+  );
+}
+
+Object.defineProperty(SourceText, "agentCarrySourceText", { value: true });
 
 export function LogoMark({ className = "" }: { className?: string }) {
   return (
@@ -209,9 +236,9 @@ export function ItemDialog({
                 {category.label}
                 {detail.kind === "memories" ? <span>默认自动按需读取</span> : null}
               </div>
-              <DialogTitle className="item-dialog__title">{detail.item.title}</DialogTitle>
+              <DialogTitle className="item-dialog__title"><SourceText>{detail.item.title}</SourceText></DialogTitle>
               <DialogDescription className="item-dialog__summary">
-                {detail.item.summary || "这条内容还没有用途说明，请让 Agent 补充后重新生成看板数据。"}
+                {detail.item.summary ? <SourceText>{detail.item.summary}</SourceText> : "这条内容还没有用途说明，请让 Agent 补充后重新生成看板数据。"}
               </DialogDescription>
             </DialogHeader>
 
@@ -240,7 +267,7 @@ export function ItemDialog({
               <section className="evolution-dialog__trail" aria-label="这条学习建议的来源、建议去向和下一步">
                 <article>
                   <span>01 · 从哪里发现</span>
-                  <strong>{detail.item.sourceSummary || "来源说明待补充"}</strong>
+                  <strong>{detail.item.sourceSummary ? <SourceText>{detail.item.sourceSummary}</SourceText> : "来源说明待补充"}</strong>
                 </article>
                 <article>
                   <span>02 · 可能保存成</span>
@@ -249,7 +276,7 @@ export function ItemDialog({
                 </article>
                 <article>
                   <span>03 · 下一步</span>
-                  <strong>{detail.item.nextStep || "先核对来源、范围、风险和证据，再决定怎样处理。"}</strong>
+                  <strong>{detail.item.nextStep ? <SourceText>{detail.item.nextStep}</SourceText> : "先核对来源、范围、风险和证据，再决定怎样处理。"}</strong>
                 </article>
               </section>
             ) : null}
@@ -257,7 +284,7 @@ export function ItemDialog({
             {detail.item.purpose ? (
               <section className="item-dialog__section">
                 <h3>它负责什么</h3>
-                <p>{detail.item.purpose}</p>
+                <SourceText as="p">{detail.item.purpose}</SourceText>
               </section>
             ) : null}
 
@@ -265,7 +292,7 @@ export function ItemDialog({
               <section className="item-dialog__section">
                 <h3>你可以这样说</h3>
                 <ul className="prompt-examples">
-                  {detail.item.triggers.slice(0, 3).map((trigger) => <li key={trigger}>“{trigger}”</li>)}
+                  {detail.item.triggers.slice(0, 3).map((trigger) => <SourceText as="li" key={trigger}>“{trigger}”</SourceText>)}
                 </ul>
               </section>
             ) : null}
@@ -274,7 +301,7 @@ export function ItemDialog({
               <section className="item-dialog__section">
                 <h3>启动后会做</h3>
                 <ol className="detail-steps">
-                  {detail.item.steps.map((step) => <li key={step}>{step}</li>)}
+                  {detail.item.steps.map((step) => <SourceText as="li" key={step}>{step}</SourceText>)}
                 </ol>
               </section>
             ) : null}

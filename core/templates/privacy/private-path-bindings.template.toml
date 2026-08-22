@@ -1,0 +1,16 @@
+schema_version = 1
+record_type = "agent-carry-private-path-bindings"
+instance_id = "{{INSTANCE_ID}}"
+updated_at = "{{UPDATED_AT}}"
+
+# 本模板只用于在当前设备生成 .assistant-private/bindings.toml。
+# 绝对路径不进入 Git、公开地图、看板快照或目标设备恢复结果。
+#
+# [[bindings]]
+# id = "binding.example.current-device"
+# collection_id = "private.collection.example"
+# source_path = "{{CURRENT_DEVICE_ABSOLUTE_PATH}}"
+# path_kind = "directory"
+# follow_links = false
+# device_hint = "current-device"
+# status = "active"

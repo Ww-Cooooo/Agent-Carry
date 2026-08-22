@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   // 生产构建必须能通过 file:// 离线打开；不能依赖根路径或本地服务。
   base: './',
   plugins: [
-    react(),
+    react({ jsxImportSource: 'agent-carry-jsx' }),
     tailwindcss(),
     ...(mode === 'analyze'
       ? [visualizer({
@@ -20,7 +20,12 @@ export default defineConfig(({ mode }) => ({
         })]
       : []),
   ],
-  resolve: { alias: { '@': path.resolve(import.meta.dirname, './src') } },
+  resolve: {
+    alias: {
+      '@': path.resolve(import.meta.dirname, './src'),
+      'agent-carry-jsx': path.resolve(import.meta.dirname, './src/lib/localized-jsx'),
+    },
+  },
   // The final offline file intentionally inlines the application bundle.
   // A single larger chunk is expected here and avoids file:// module loading failures.
   build: { chunkSizeWarningLimit: 1800 },

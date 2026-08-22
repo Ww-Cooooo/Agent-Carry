@@ -1,0 +1,104 @@
+import { readFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const repositoryRoot = resolve(here, '..', '..')
+
+async function read(path) {
+  return readFile(resolve(repositoryRoot, path), 'utf8')
+}
+
+function requireFragments(text, label, fragments) {
+  for (const fragment of fragments) {
+    if (!text.includes(fragment)) throw new Error(`${label} is missing localization contract fragment: ${fragment}`)
+  }
+}
+
+const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, dashboard, shared, jsxRuntime, views, localization, territoryPolicy] = await Promise.all([
+  read('README.md'),
+  read('README.en.md'),
+  read('INSTALL.en.md'),
+  read('START-HERE.en.txt'),
+  read('dashboard.html'),
+  read('dashboard.en.html'),
+  read('dashboard/src/lib/i18n.tsx'),
+  read('dashboard/src/lib/i18n-catalog.ts'),
+  read('dashboard/src/Dashboard.tsx'),
+  read('dashboard/src/components/dashboard/Shared.tsx'),
+  read('dashboard/src/lib/localized-jsx/jsx-runtime.ts'),
+  read('dashboard/src/components/dashboard/Views.tsx'),
+  read('docs/localization.md'),
+  read('core/protocols/TERRITORY_TERMINOLOGY.md'),
+])
+
+requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.2.0`'])
+requireFragments(readmeEn, 'English README', [
+  '[简体中文](README.md)',
+  'AI changes quickly. Agents come and go.',
+  'Try the dashboard',
+  'INSTALL.en.md',
+  'dashboard.en.html',
+  'New to Agents',
+  'GitHub private repository',
+])
+requireFragments(installEn, 'English installer', [
+  'dashboard.en.html',
+  'ac_lang=en',
+  'first-use-execution-gates.md',
+  'New to Agents',
+  'Some experience',
+  'Frequent Agent user',
+  'create, commit, push, publish, or change a GitHub repository',
+])
+requireFragments(startEn, 'English ZIP entry', ['INSTALL.en.md', 'dashboard.en.html', 'first-use-execution-gates.md'])
+requireFragments(entryZh, 'Chinese dashboard entry', ['dashboard/dist/index.html', 'ac_kind', 'ac_ref', 'ac_version'])
+requireFragments(entryEn, 'English dashboard entry', ['lang="en"', 'ac_lang', '"en"', 'dashboard/dist/index.html', 'ac_kind', 'ac_ref', 'ac_version'])
+requireFragments(i18n, 'Dashboard locale runtime', [
+  'storedLocale() ?? queryLocale() ?? "zh-Hans"',
+  'document.documentElement.lang = locale',
+  'localizeAgentRequest',
+  'BEGIN CANONICAL AGENT CARRY REQUEST',
+  'Secrets such as API keys',
+])
+requireFragments(dashboard, 'Dashboard language control', ['useDashboardLocale', 'locale-switch', 'localizeAgentRequest'])
+requireFragments(shared, 'Source-text boundary', ['export function SourceText', 'data-agent-carry-source-text', 'agentCarrySourceText'])
+requireFragments(jsxRuntime, 'Localized JSX runtime', ['agentCarrySourceText', 'sourceText ? props : localizeProps(props)'])
+requireFragments(views, 'Source-text projections', [
+  '<SourceText>{profile.displayName}</SourceText>',
+  '<SourceText as="h2">{pending[0].title}</SourceText>',
+  '<SourceText className="content-card__title">{item.title}</SourceText>',
+  '<SourceText className="growth-row__title">{item.title}</SourceText>',
+])
+requireFragments(localization, 'Localization policy', [
+  'Simplified Chinese is the default',
+  'Unknown strings and user-authored',
+  'IP address or geographic location is never used',
+  'Use “assistant,” never “companion.”',
+  '中国台湾',
+  'Taiwan, China',
+])
+requireFragments(territoryPolicy, 'Territory terminology policy', [
+  '中国台湾',
+  '中国香港',
+  '中国澳门',
+  'Taiwan, China',
+  'Hong Kong SAR, China',
+  'Macao SAR, China',
+  '用户写入的记忆、能力、SOP、经验',
+  '普通启动、普通任务和不涉及地域表达的只读操作不加载本文',
+])
+
+if (/https?:\/\//i.test(i18n) || /fetch\s*\(/.test(i18n)) {
+  throw new Error('Dashboard locale runtime must not use a network translator or remote request.')
+}
+if (/searchParams\.set\(["']ac_lang["'],\s*["']en["']\)/.test(entryZh)) {
+  throw new Error('Chinese dashboard entry must not force English.')
+}
+
+const keys = [...catalog.matchAll(/^\s*"([^"]+)"\s*:/gm)].map((match) => match[1])
+const duplicates = keys.filter((key, index) => keys.indexOf(key) !== index)
+if (duplicates.length) throw new Error(`Localization catalog contains duplicate keys: ${[...new Set(duplicates)].join(', ')}`)
+if (keys.length < 300) throw new Error(`Localization catalog is unexpectedly small: ${keys.length} reviewed entries.`)
+
+console.log(`Localization contract passed: Chinese default, English install entry, ${keys.length} reviewed dashboard strings, offline runtime, canonical-request preservation, and user-content non-translation policy aligned.`)
