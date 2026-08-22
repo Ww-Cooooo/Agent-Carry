@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "agent-carry-synthetic-pages-demo",
   "publicRepository": "Ww-Cooooo/Agent-Carry",
   "expectedUrl": "https://ww-cooooo.github.io/Agent-Carry/",
@@ -9,8 +9,10 @@
   "includedInPublicMain": false,
   "includedInReleaseArchive": false,
   "source": {
-    "dashboardIndexSha256": "56de4d3c2ee1db8a2a8f96dbb23cab2a2dc8079be8b30957f61ec6c23df0b206",
-    "formalEmptySnapshotSha256": "07f02d4b8fe40134b8e2ff15c9ba979e269f411a0bcee1d016d6da091bae2e51",
-    "syntheticDemoSnapshotSha256": "29fe22de5df1ed82f9af2804fed3f9927e6aac6248c9afb727455691a8be5ac5"
+    "dashboardIndexSha256": "9e2ce6b1e009a09f8a7987aab0e42adeeb2a342875db882aa06e3b6981d6b285",
+    "formalEmptySnapshotSha256": "e29715e8d9f74e9db7db2ef93a99b0a890c83c098ac97ca75348793b1c5000ba",
+    "syntheticDemoSnapshotSha256": "6eb20c9452833aa4260afd03714347e7cf6154fee8eb218581d2b9266e34e77b",
+    "englishSyntheticDemoSnapshotSha256": "22fb6f9fc030aa24a92475808f0fdf74aad7b58fe6e7b6a1a7512abd719ee752",
+    "englishDashboardIndexSha256": "55bd2d3ad8cbdb0c3be102e4bb139668c99db9fa806726c92d0aacb030343603"
   }
 }

@@ -4,7 +4,7 @@
 window.AGENT_CARRY_DEMO = true;
 window.AGENT_CARRY_IS_REAL = true;
 window.AGENT_CARRY_SNAPSHOT = {
-  meta: { schema_version: "1.1", generated_at: new Date().toISOString(), product_version: "1.1.3", state: "instance", freshness_seconds: 86400, source_digest: "github-pages-synthetic-demo-v3", identity_ref: "public-demo" },
+  meta: { schema_version: "1.1", generated_at: new Date().toISOString(), product_version: "1.2.0", state: "instance", freshness_seconds: 86400, source_digest: "github-pages-synthetic-demo-v4", identity_ref: "public-demo" },
   overview: { product: "AgentCarry", state: "instance", domain: "general-personal-assistant", startup_chars: 6000, startup_budget: 20000 },
   profile: { display_name: "我的随身工作助手", mission: "记住我的习惯，把验证过的做法沉淀下来，换一个 Agent 也能继续使用。", domain_id: "general-personal-assistant", guidance_mode: "balanced", language: "简体中文 / UTC+8" },
   model: { level: 1, name: "Level 1 日常模型", platform: "示例宿主 Agent", confirmed_at: new Date().toISOString(), status: "confirmed" },
@@ -16,7 +16,7 @@ window.AGENT_CARRY_SNAPSHOT = {
   ],
   sops: [
     { id: "mock.sop.weekly-review", title: "每周工作复盘", summary: "汇总本周完成事项、阻塞与下周优先级，形成可直接复用的复盘稿。", reliability: "可使用", triggers: ["帮我做本周复盘", "整理一下这周完成的工作"] },
-    { id: "mock.sop.portable-export", title: "备份到 GitHub 私密仓库，并单独迁移本地隐私", summary: "先在本地检查准备上传的内容，你确认后再备份到自己的 GitHub 私密仓库。隐私内容另存为本地迁移包，密钥需要在新设备上重新配置。", reliability: "可使用", triggers: ["备份到 GitHub 私密仓库", "我要换电脑继续用这个助手", "导出本地隐私包"] },
+    { id: "mock.sop.portable-export", title: "备份到 GitHub 私有仓库，并单独迁移本地隐私", summary: "先在本地排除隐私正文和密钥，你确认后再把脱敏安全副本备份到自己的 GitHub 私有仓库。已登记和已引用的本地资料会先做覆盖核对；大型资料可以放进同一个迁移套件文件夹里的多个私密分卷，密钥仍需在新设备上重新配置。", reliability: "可使用", triggers: ["备份到 GitHub 私有仓库", "我要换电脑继续用这个助手", "导出本地隐私包"] },
     { id: "mock.sop.material-review", title: "审阅多份材料并核对结论", summary: "先确认材料范围和检查标准，再分批找出证据、矛盾和遗漏，最后给出可以回到原文核对的结论。", reliability: "需要复核", triggers: ["帮我审阅这些材料", "检查这批文件有没有矛盾"] },
     { id: "mock.sop.meeting-follow-up", title: "把会议结论整理成行动清单", summary: "从会议记录中找出决定、负责人和时间要求，再整理成方便继续跟进的行动清单。", reliability: "待验证", triggers: ["把这次会议整理成行动清单", "帮我跟进会议结论"] }
   ],
