@@ -12,6 +12,8 @@
 - `release-manifest.schema.md`：模板升级发布清单。
 - `private-asset-catalog.schema.md`：用户明确登记要随助手携带的本地资料、当前设备路径绑定、渐进加载和导出前无静默遗漏对账。
 - `migration-kit.schema.md`：完整换机迁移套件 2.0；主体包与一个或多个私密分卷分离，支持超大文件分块、覆盖证明、摘要和 1.0 旧套件兼容恢复。
+- `extension-manifest.schema.md`：可选专业工作区的稳定所有权、可携带／派生／本机／私密边界，以及升级、事务和按需加载要求；普通实例不创建。
 - `../templates/migration/PRIVATE-EXPORT-MANIFEST.template.toml`：Schema 2.0 单独隐私导出的顶层清单模板；与完整迁移套件分开命名，避免部分导出冒充完整换机。
+- `../templates/extension/blank-extension-manifest.toml`：只在真实专业工作区形成后使用的空扩展清单；不是预装领域模板。
 
 Schema 发生不兼容变化时必须提升对应 Schema 版本，并在发布清单中提供迁移说明。

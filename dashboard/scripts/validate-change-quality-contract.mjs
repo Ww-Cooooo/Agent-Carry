@@ -418,6 +418,16 @@ requireFragments("core/upgrade/release-manifest-1.2.0.toml", [
   '"public-dashboard-build-checkout-line-endings-are-deterministic"',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.2.1.toml", [
+  'release = "1.2.1"',
+  'extension_manifest_schema = "1.0"',
+  '"durable-multi-file-transaction-rolls-back-as-one-action"',
+  '"corrupt-input-preserved-and-not-treated-as-missing"',
+  '"windows-sacl-owner-and-elevation-are-never-implicitly-required"',
+  '"stable-dashboard-entry-verified-before-directory-switch"',
+  '"local-dashboard-composite-evidence-does-not-require-address-bar-access-alone"',
+]);
+
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",

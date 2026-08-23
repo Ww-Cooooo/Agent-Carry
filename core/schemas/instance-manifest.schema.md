@@ -11,7 +11,7 @@
 - `direction.domain_id`、`label`、`scope_statement`
 - `direction.out_of_scope_policy`：固定为 `create-new-instance`
 - `profile.user_preferences_ref`、`domain_map_ref`、`signal_control_ref`、`signal_map_ref`、`time_trigger_map_ref`、`host_registry_ref`。空模板可以暂时让 `user_preferences_ref` 指向目录说明；正式实例必须改为真实用户档案（默认 `instance/profile/approved-profile.md`），不得继续引用升级时会被替换的 `instance/profile/README.md`。
-- `versions.product`、`extension_api`、`asset_schema`、`dashboard_snapshot_schema`、`cross_session_signal_schema`、`host_integration_schema`。1.2.0 起还记录 `private_asset_catalog_schema` 与 `migration_kit_schema`；旧实例缺失时只在相关迁移事件中按目标版本补齐，不为此全量改写。
+- `versions.product`、`extension_api`、`asset_schema`、`dashboard_snapshot_schema`、`cross_session_signal_schema`、`host_integration_schema`。1.2.0 起还记录 `private_asset_catalog_schema` 与 `migration_kit_schema`；1.2.1 起可记录 `extension_manifest_schema`。旧实例缺失时只在相关迁移、升级或专业扩展事件中按目标版本补齐，不为此全量改写。
 
 可选的 `learning` 小节保存实例级学习政策：
 
@@ -51,3 +51,4 @@
 - 修改 `learning.policy` 本身需要用户明确决定。切换为 `manual-only` 默认只影响未来晋升，不静默撤销既有政策资产；用户若选择复核，先按状态元数据筛选。该小节只保存一个极小策略选择，不复制风险定义、成熟度阈值或生命周期正文；详细规则命中学习事件后才加载。
 - 用户可以把 `privacy.current_execution_model` 改成更严格模式，但任何模式都不能放宽 `credentials` 和 `git_storage`。隐私小节只保存极小选择值；完整接收方、安全、导入导出和提示词攻击规则按事件加载，不扩写启动胶囊。
 - 私密资产目录和当前设备绑定都位于受 Git 排除的 `.assistant-private/`。模板升级保留现有目录、绑定和正文；目标设备不会原样复用旧绝对路径。
+- 专业工作区是可选实例层。没有 `workspace/` 的实例不创建扩展字段或清单；存在 `workspace/**` 时，每个受 Agent Carry 管理的扩展必须使用 `workspace/<extension-id>/extension.toml`，并遵守 `core/schemas/extension-manifest.schema.md`。普通启动不得枚举工作区；未登记工作区在升级或迁移时进入冲突预览，不能被模板递归接管。

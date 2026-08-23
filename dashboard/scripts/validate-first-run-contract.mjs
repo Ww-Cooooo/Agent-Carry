@@ -316,6 +316,15 @@ requireFragments("core/upgrade/release-manifest-1.2.0.toml", [
   "target-file-allowlist-excludes-development-junk-and-private-maintainer-content",
   "formal-active-provisional-review-assets-have-direct-kind-matching-routes",
 ]);
+requireFragments("core/upgrade/release-manifest-1.2.1.toml", [
+  'release = "1.2.1"',
+  'extension_manifest_schema = "1.0"',
+  '"workspace/**"',
+  "registered-workspace-paths-classified-without-recursive-guessing",
+  "legacy-profile-and-task-family-migrations-apply-to-1.2.0-sources",
+  "merged-instance-truth-rebuilds-public-and-dist-snapshots-byte-identically",
+  "startup-budget-preserved",
+]);
 
 forbidFragments("INSTALL.md", ["完成后只告诉我", "## 8. 安装完成报告"]);
 forbidFragments("START-HERE.txt", ["以及我唯一需要回答的下一步"]);

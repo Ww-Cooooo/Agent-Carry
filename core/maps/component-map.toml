@@ -52,6 +52,20 @@ depends_on = ["asset-memory", "cross-session-signals"]
 projects_to = ["privacy-migration", "instance-signal-projection", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
 
 [[components]]
+id = "professional-extension-contract"
+owner = "template-core"
+paths = ["core/schemas/extension-manifest.schema.md", "core/templates/extension/**"]
+depends_on = ["identity-lifecycle", "context-routing", "external-safety", "result-validation"]
+projects_to = ["instance-professional-extensions", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
+id = "instance-professional-extensions"
+owner = "instance-professional-extensions"
+paths = ["workspace/**"]
+depends_on = ["professional-extension-contract", "instance-identity", "context-routing", "asset-memory", "external-safety", "result-validation"]
+projects_to = ["privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
+
+[[components]]
 id = "external-safety"
 owner = "template-core"
 paths = ["core/maps/external-safety.toml", "core/protocols/EXTERNAL_CONTENT_SAFETY_BOUNDARY.md", "core/protocols/NETWORK_AGENT_SECURITY.md"]
@@ -145,15 +159,15 @@ projects_to = ["upgrade-system", "architecture-documentation"]
 [[components]]
 id = "privacy-migration"
 owner = "template-core"
-paths = ["core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md", "core/schemas/migration-kit.schema.md", "core/schemas/private-asset-catalog.schema.md", "core/templates/migration/**", "core/templates/privacy/**", ".gitignore"]
-depends_on = ["identity-lifecycle", "user-guidance", "asset-memory", "instance-assets", "instance-governance", "external-safety", "host-integration", "dashboard-actions"]
+paths = ["core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md", "core/schemas/migration-kit.schema.md", "core/schemas/private-asset-catalog.schema.md", "core/templates/migration/**", "core/templates/privacy/**", "core/tools/**", ".gitignore"]
+depends_on = ["identity-lifecycle", "user-guidance", "asset-memory", "instance-assets", "instance-governance", "instance-professional-extensions", "external-safety", "host-integration", "dashboard-actions"]
 projects_to = ["upgrade-system", "architecture-documentation"]
 
 [[components]]
 id = "upgrade-system"
 owner = "template-core"
 paths = ["core/guides/upgrade-guide.md", "core/upgrade/**", "core/schemas/release-manifest.schema.md"]
-depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "instance-governance", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "dashboard-actions", "installation-experience", "privacy-migration", "project-licensing", "open-source-community", "result-validation"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "instance-governance", "instance-professional-extensions", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "dashboard-actions", "installation-experience", "privacy-migration", "project-licensing", "open-source-community", "result-validation"]
 projects_to = ["architecture-documentation"]
 
 [[components]]
@@ -167,7 +181,7 @@ projects_to = ["dashboard-snapshot-contract", "architecture-documentation"]
 id = "architecture-documentation"
 owner = "template-core"
 paths = ["docs/architecture.md", "docs/security-and-privacy.md", "docs/host-integration.md", "docs/cross-session-signal-map.md", "docs/asset-evolution.md", "docs/dashboard-design.md", "docs/developer-guide.md", "docs/roadmap.md"]
-depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "model-orchestration", "installation-experience", "privacy-migration", "project-licensing", "upgrade-system", "component-change", "result-validation"]
+depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "professional-extension-contract", "instance-professional-extensions", "cross-session-signals", "instance-signal-projection", "external-safety", "host-integration", "model-orchestration", "installation-experience", "privacy-migration", "project-licensing", "upgrade-system", "component-change", "result-validation"]
 projects_to = []
 
 [change_rule]

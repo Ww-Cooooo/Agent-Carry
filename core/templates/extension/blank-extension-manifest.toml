@@ -1,0 +1,34 @@
+schema_version = 1
+record_type = "agent-carry-professional-extension"
+extension_id = "replace-me"
+instance_id = ""
+title = ""
+summary = ""
+extension_version = "0.1.0"
+status = "review"
+root = "workspace/replace-me"
+load_policy = "on-demand-only"
+
+[ownership]
+portable_paths = ["extension.toml"]
+derived_paths = []
+device_local_root = ".assistant-local/extensions/replace-me"
+private_collection_refs = []
+unclassified_policy = "review-before-upgrade-or-migration"
+
+[entry]
+route_ids = []
+
+[upgrade]
+template_policy = "preserve-extension-and-migrate-by-manifest"
+unknown_file_policy = "stop-and-preview"
+second_run = "no-change"
+
+[writes]
+multi_file_policy = "transaction-required-when-two-or-more-durable-files-change"
+corrupt_input = "preserve-bytes-and-stop"
+temporary_name_policy = "short-sibling-name"
+
+[local_write]
+mode = "none"
+security_protocol = "core/protocols/NETWORK_AGENT_SECURITY.md#本地-loopback-写入面"

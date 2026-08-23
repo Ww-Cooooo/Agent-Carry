@@ -38,6 +38,15 @@ upgrade_policy = "merge-template-body-preserve-instance-schedule-by-stable-id"
 instance_may_modify = true
 
 [[layers]]
+id = "instance-professional-extensions"
+owns = ["workspace/**"]
+upgrade_policy = "preserve-registered-extension-by-manifest; unregistered-workspace-stops-for-conflict-preview"
+instance_may_modify = true
+manifest_pattern = "workspace/*/extension.toml"
+ordinary_startup = "never-enumerate"
+complete_migration = "include-only-manifest-portable-paths; private-collection-refs-use-private-parts; device-local-root-excluded"
+
+[[layers]]
 id = "instance-derived"
 owns = ["instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml"]
 upgrade_policy = "rebuild-from-instance-assets"
@@ -52,8 +61,15 @@ instance_may_modify = true
 [[layers]]
 id = "derived-ui"
 owns = ["dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**"]
-upgrade_policy = "replace-ui-preserve-local-snapshot"
+excludes = ["dashboard/public/snapshot.js", "dashboard/dist/snapshot.js"]
+upgrade_policy = "replace-ui"
 instance_may_modify = "extension-points-only"
+
+[[layers]]
+id = "dashboard-snapshot"
+owns = ["dashboard/public/snapshot.js", "dashboard/dist/snapshot.js"]
+upgrade_policy = "target-template-snapshot-may-be-intermediate-only; final-instance-snapshot-rebuilds-from-merged-instance-truth-and-both-copies-match"
+instance_may_modify = true
 
 [conflict]
 default = "stop-and-explain"

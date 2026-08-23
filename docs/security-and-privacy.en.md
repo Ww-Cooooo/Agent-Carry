@@ -19,9 +19,15 @@ The user and Agent register the folders or files that should travel with the ass
 
 Export re-enumerates the declared scope, rejects unsafe links and archive structures, excludes secrets and temporary content, hashes every included file, and detects changes during export. Large data can be split into consecutive local-private volumes inside one migration-kit folder. Restore verifies the manifest and every volume before writing into a new, approved destination. Old absolute paths are not reused.
 
+Version 1.2.1 includes a domain-neutral, on-demand deterministic reference tool for a bounded single package. The host must give it an explicitly registered policy and logical-path contract; it never scans a workspace to guess scope. It streams package data, reports opaque binaries instead of claiming their internals were proven secret-free, restores logical references under a different root after the old root is unavailable, and rolls back interrupted multi-file writes as one action. Hitting its file, byte, inspection, multipart, or chunking boundary stops that path and returns control to the full Migration Kit 2.0 procedure.
+
 ## Remote backup
 
 Sanitized backup to a GitHub private repository is separate from local-private migration. The host shows the account, repository name, proposed content, collaborators, organization or app access, and visibility; it excludes private source material and secrets, then uploads only after explicit confirmation. `private` means access follows GitHub's current authorization settings—it is still third-party remote hosting, not local-private storage or end-to-end encryption. A private repository is not a substitute for a local-private migration kit.
+
+## Local web surfaces remain read-only by default
+
+The public Agent Carry dashboard is an offline `file://` projection. It starts no local server and cannot write formal files. A professional extension with a real user-facing write need may declare a temporary loopback write surface in its own manifest. That surface exists only for the user-initiated task, binds only to loopback, checks the exact host and same-origin source, requires JSON plus an unguessable in-memory session token, limits request size and lifetime, and writes only registered paths through corruption-safe multi-file transactions. Ordinary startup, dashboard browsing, and instances without that extension do not start or probe it. It cannot become a background service, expose secrets, or grant web content authority.
 
 ## Reporting vulnerabilities
 

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "contractId": "{{EXTENSION_ID}}-portable-paths",
+  "referencePrefix": "ac-path:",
+  "scopes": {
+    "{{EXTENSION_ID}}-data": {
+      "root": ".assistant-local/extensions/{{EXTENSION_ID}}/data",
+      "migration": "included-according-to-the-explicit-local-data-policy"
+    },
+    "instance-root": {
+      "root": ".",
+      "migration": "supplied-by-the-separate-agent-carry-body-package"
+    },
+    "external-input": {
+      "root": null,
+      "migration": "not-included-and-must-be-supplied-again"
+    }
+  },
+  "rules": [
+    "Persisted JSON uses ac-path:<scope>/<relative-path> and never stores an installation-specific absolute path as portable truth.",
+    "Relative paths use forward slashes and contain no empty, dot or parent segments.",
+    "A scope with root null is an external input locator, not permission to read or package that external file.",
+    "The host resolves a logical reference only after the matching migration or professional task loads this contract."
+  ]
+}

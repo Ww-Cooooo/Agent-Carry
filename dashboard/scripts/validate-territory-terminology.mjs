@@ -187,7 +187,7 @@ async function validateContractGraph() {
     'territory_terminology_load_policy = "only-when-agent-carry-authored-content-or-publication-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping; never-rewrite-user-or-source-text"',
   ])
   await requireContractFragments('core/manifest.toml', ['territory_terminology = "core/protocols/TERRITORY_TERMINOLOGY.md"'])
-  await requireContractFragments('core/upgrade/release-manifest-1.2.0.toml', [
+  await requireContractFragments('core/upgrade/release-manifest-1.2.1.toml', [
     '"chinese-and-english-territory-terminology-canonical"',
     '"user-authored-and-source-evidence-remain-verbatim-under-territory-gate"',
     '"compiled-dashboard-and-pages-projection-pass-territory-terminology-gate"',

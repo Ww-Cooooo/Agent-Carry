@@ -387,6 +387,18 @@ cleanup = "remove-resolved-transient-state"
 failure = "preserve-current-instance-and-stop"
 
 [[rules]]
+id = "durable-multi-file-recovery"
+class_id = "transaction-recovery"
+checkpoint = "before-any-two-or-more-file-durable-write-and-at-the-next-active-checkpoint-only-when-that-write-was-interrupted"
+formal_owner = "core/protocols/COMPONENT_CHANGE.md"
+dynamic_state_owner = "task-local-transaction-journal-or-one-minimum-instance/signals/state/recovery-route-only-while-unresolved"
+route = "core/maps/assistant-maintenance.toml"
+startup_policy = "never-project-completed-transactions-and-never-load-the-protocol-at-ordinary-startup-only-one-short-unresolved-recovery-route-may-project"
+gate = "freeze-the-relative-write-set-and-old-digests-distinguish-missing-from-corrupt-validate-all-candidates-before-commit-and-recover-the-whole-action-before-another-write"
+cleanup = "remove-agent-created-candidates-backups-and-recovery-route-only-after-the-whole-new-state-validates-preserve-user-owned-backups"
+failure = "keep-the-old-state-or-recover-it-as-a-whole-preserve-corrupt-evidence-and-stop-before-partial-overwrite"
+
+[[rules]]
 id = "privacy-import-export"
 class_id = "action-gate"
 checkpoint = "before-registering-or-retiring-private-asset-scope-before-private-export-or-import-before-private-github-repository-create-or-push-and-before-conflict-overwrite-or-new-sensitive-destination"

@@ -29,6 +29,15 @@ minimum_level = 3
 confirmation = "before-upgrade"
 
 [[routes]]
+id = "professional-extension-contract"
+summary = "为真实专业工作区登记稳定所有权、可携带与派生边界；没有专业工作区的实例不创建，也不在启动时扫描。"
+triggers = ["创建专业扩展", "登记专业工作区", "工作区所有权", "复杂实例升级", "工作区迁移", "本地网页写入"]
+target = "core/schemas/extension-manifest.schema.md"
+state = "maintenance-only"
+minimum_level = 3
+confirmation = "before-claiming-an-existing-workspace-or-changing-its-ownership"
+
+[[routes]]
 id = "task-orchestration"
 summary = "由高等级模型规划、低等级模型执行，并通过密封任务包沟通。"
 triggers = ["Level 3规划", "交给Level 1执行", "跨Agent执行"]

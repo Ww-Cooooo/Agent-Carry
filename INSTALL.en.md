@@ -109,7 +109,7 @@ Verify three layers:
 
 1. the entry exists in the location the user actually sees;
 2. an operating-system-recognized reader resolves its target to this installation's `dashboard.en.html` and its working directory to this project root;
-3. launching the entry opens `dashboard/dist/index.html`, retains `ac_lang=en`, shows an English title and main interface, and carries an identity capsule matching the local snapshot (`ac_kind`, anonymous `ac_ref`, and `ac_version`).
+3. launching the entry opens `dashboard/dist/index.html`, retains `ac_lang=en`, shows an English title and main interface, and carries an identity capsule matching the local snapshot (`ac_kind`, anonymous `ac_ref`, and `ac_version`). Prefer direct final-URL observation. If the host cannot reliably read the address bar, use independent combined evidence instead: the entry target and working directory read back correctly; the root entry, final offline resources, and snapshot identity match; launch creates a new local page with no missing-file or browser error state; and the relevant offline checks pass. When all of those agree, actual-open verification may complete while explicitly noting the address-bar limitation. Insufficient evidence is limited completion; a real error page, identity mismatch, or missing resource still fails.
 
 The capsule is diagnostic, not an authorization token. It must never contain the assistant name, domain, user data, disk path, private content, or secrets.
 
@@ -185,7 +185,7 @@ Do not claim a check you did not perform. If the browser address cannot be inspe
 - [ ] An easy-to-find **Agent Carry Dashboard** entry exists, or limited completion is reported with the direct path.
 - [ ] The entry resolves to the installed `dashboard.en.html` and the project root working directory.
 - [ ] Launching the entry opens the offline dashboard without npm, a terminal, a local server, or a CDN.
-- [ ] `ac_lang=en`, the identity capsule, English title, and English primary UI were observed.
+- [ ] `ac_lang=en`, the identity capsule, English title, and English primary UI were observed; when the exact address bar was unavailable, independent entry, resource, identity, non-error-page, and offline-check evidence was recorded.
 - [ ] The host re-read the first-use reply gate after entry verification rather than relying on memory from the beginning of installation.
 - [ ] The first reply leads with assistant creation, offers dashboard and chat paths, explains all three collaboration routes, and asks one answerable question.
 - [ ] The host did not choose or lock collaboration style or direction for the user.

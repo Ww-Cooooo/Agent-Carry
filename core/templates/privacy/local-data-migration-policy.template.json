@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "policyId": "{{EXTENSION_ID}}-local-data-migration",
+  "sourceRoot": ".assistant-local/extensions/{{EXTENSION_ID}}/data",
+  "archiveRoot": "private-package/business-data/{{EXTENSION_ID}}",
+  "restoreRoot": ".assistant-local/extensions/{{EXTENSION_ID}}/data",
+  "purposePrefix": "business-data:{{EXTENSION_ID}}",
+  "portableScope": "{{EXTENSION_ID}}-data",
+  "pathContract": "portable-path-contract.json",
+  "includePatterns": [
+    "*",
+    "**/*"
+  ],
+  "excludePatterns": [
+    "**/*.log",
+    "**/*.tmp",
+    "**/*.lock",
+    "**/__pycache__/**",
+    "**/.cache/**"
+  ],
+  "allowedExtensions": [
+    ".csv",
+    ".docx",
+    ".json",
+    ".md",
+    ".mp3",
+    ".mp4",
+    ".pdf",
+    ".png",
+    ".srt",
+    ".txt",
+    ".vtt",
+    ".xlsx"
+  ],
+  "categories": {},
+  "limits": {
+    "maxFiles": 10000,
+    "maxTotalBytes": 2147483648,
+    "maxSingleFileBytes": 1073741824,
+    "maxCompressionRatio": 1000
+  }
+}

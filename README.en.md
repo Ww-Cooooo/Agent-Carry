@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.2.0`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.2.1`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -190,6 +190,18 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.2.1</strong></summary>
+
+- A professional instance may optionally declare which workspace content is portable, rebuildable, device-local, or linked to a separate private package. Blank templates install no domain content and gain no startup reads.
+- Upgrade and restore rebuild both dashboard snapshots from the merged instance truth, preventing a live assistant from reverting to template state, an old name, or incorrect asset counts.
+- Windows adoption distinguishes normal inherited access from genuinely required explicit permissions. It does not silently require audit permissions, ownership copying, elevation, or policy changes.
+- Deep paths, corrupt inputs, interrupted multi-file writes, full-tree identity, and stable dashboard entries now have explicit stop and rollback rules. If automation cannot read the browser address bar, several independent local-page checks may prove the result without weakening real error detection.
+- Local-data migration now includes a domain-neutral, on-demand deterministic reference tool. It accepts only an explicitly registered policy and logical-path contract, never scans a workspace to guess scope, restores under a different root after the old root is gone, rolls back interrupted multi-file writes as one action, and stops instead of pretending a bounded single package is a complete multi-volume migration.
+- A 1.2.0 source still runs applicable legacy-profile protection, task-family normalization, and on-demand private-catalog migration instead of skipping a structural problem merely because the product version is recent.
+
+</details>
 
 Agent Carry is released under the [Apache License 2.0](LICENSE). Bundled third-party dependencies, fonts, and adapted source notices are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [open-source compliance](docs/open-source-compliance.md).
 

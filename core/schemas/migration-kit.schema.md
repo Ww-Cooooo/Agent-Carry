@@ -66,6 +66,8 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 
 每个 `entries` 项包含 `relative_path`、`size` 与 `sha256`。相对路径必须来自实例正式组件允许集合，不能是绝对路径、`..`、重复规范化路径、链接、Git 元数据、本地隐私正文、维护者材料、缓存、日志、回滚副本、构建依赖或无关工具。清单项与 ZIP 内普通正文一一对应；解压后的根目录必须仍能通过 `BOOTSTRAP.md`、`assistant.toml`、`instance/manifest.toml` 和模板正式地图识别。
 
+主体包内部清单可以增加 `extensions` 数组；没有专业工作区时省略或为空，保持 Schema 2 兼容。每项只记录通过 `core/schemas/extension-manifest.schema.md` 校验的扩展 ID、清单 Schema 版本、扩展清单自身相对路径／摘要和实际纳入的 `portable_paths`。这些路径必须全部位于对应 `workspace/<extension-id>/` 且与主体 `entries` 一一对应。`derived_paths`、设备本地根、缓存、构建依赖和秘密不得进入主体包；`private_collection_refs` 只用于与私密分卷的集合 ID 对账，不把私密正文或当前设备绑定复制进主体包。存在工作区但缺少合法扩展清单、便携路径重叠、越界或无法分类时，完整迁移失败关闭，不静默认领或遗漏。
+
 ## 4. 本地隐私分卷
 
 每个私密 ZIP 只允许：
@@ -138,6 +140,16 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 5. 匹配统一区分大小写，先判断 `include`，再让 `exclude` 覆盖。`single-file` 必须恰好一个不含通配符的 `include`；`recursive` 至少一个 `include`。`future_files = "include-when-matching-policy"` 只能复用同一组规则，不得扩大集合根。
 
 `catalog_sha256` 的输入是每个分卷内部清单所携带的同一份 `catalog_snapshot`：使用 UTF-8、无 BOM、LF 换行的规范 JSON；对象键按本节固定顺序，集合按 `id` 排序，数组保持目录规则顺序。摘要、规范化快照与全部分卷必须一致。生成方只在脱敏报告中说明修订号、集合数、摘要和规范化方法；恢复方直接从通过校验的快照重建逻辑目录，不要求拥有旧设备绝对路径。
+
+### 5.2 按需确定性参考工具
+
+`core/tools/private_data_migration.py` 是一个可选的、本地有限范围参考实现，不是普通启动依赖，也不是完整 Migration Kit 2.0 的唯一生成器。只有迁移、导入、资料根移动或外部输入重绑事件命中后，宿主才可在具备 Python 标准库运行环境时调用它；缺少环境时使用满足本 Schema 的等价本地实现，不要求普通用户自己安装或操作终端。
+
+调用导出、目标验证、预览或导入时必须用 `--policy` 指向当前实例或专业扩展已经登记的策略。工具不会扫描 `workspace/` 猜测策略。策略至少声明 `sourceRoot`、`archiveRoot`、`restoreRoot`、`purposePrefix`、`portableScope`、`pathContract`、包含／排除规则、允许扩展名和资源限制；路径契约至少声明 `referencePrefix = "ac-path:"` 与 `scopes`。模板见 `core/templates/privacy/local-data-migration-policy.template.json` 和 `portable-path-contract.template.json`。
+
+逻辑引用统一为 `ac-path:<scope>/<relative-path>`：`root = "."` 的 scope 指向目标实例根；有相对 `root` 的 scope 指向目标实例内登记的本地数据根；`root = null` 只表示必须重新提供的外部输入，不能授权读取或打包旧路径。工具只返回逻辑范围、相对路径、数量、摘要和脱敏问题位置，不把旧设备绝对源路径写入包内清单。
+
+该工具的单包策略达到文件数、单文件、总字节或文本确定性检查上限时必须停止。需要多分卷、超大文件分块、完整目录覆盖证明或不透明归档深层检查时，宿主回到本 Schema 的完整流程；不能把参考工具的一次单包成功冒充完整换机迁移。多文件导入使用短同目录临时名、暂存、旧字节备份、事务清单、写后摘要和整组回滚；损坏 JSON 或事务清单必须保留原字节并失败关闭。
 
 ## 6. `CHECKSUMS.sha256`
 
