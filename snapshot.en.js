@@ -3,7 +3,7 @@
 window.AGENT_CARRY_DEMO = true;
 window.AGENT_CARRY_IS_REAL = true;
 window.AGENT_CARRY_SNAPSHOT = {
-  meta: { schema_version: "1.1", generated_at: new Date().toISOString(), product_version: "1.2.0", state: "instance", freshness_seconds: 86400, source_digest: "github-pages-synthetic-demo-en-v1", identity_ref: "public-demo" },
+  meta: { schema_version: "1.1", generated_at: new Date().toISOString(), product_version: "1.2.1", state: "instance", freshness_seconds: 86400, source_digest: "github-pages-synthetic-demo-en-v1", identity_ref: "public-demo" },
   overview: { product: "AgentCarry", state: "instance", domain: "general-personal-assistant", startup_chars: 6000, startup_budget: 20000 },
   profile: { display_name: "My portable work assistant", mission: "Remember how I prefer to work, preserve methods that have been verified, and continue with me when I change Agents.", domain_id: "general-personal-assistant", guidance_mode: "balanced", language: "English / UTC+8" },
   model: { level: 1, name: "Level 1 everyday model", platform: "Synthetic host Agent", confirmed_at: new Date().toISOString(), status: "confirmed" },
