@@ -1,0 +1,56 @@
+schema_version = 1
+registry_id = "asset-confirmation-gates"
+
+[[gates]]
+id = "none"
+phase = "none"
+summary = "正文只提供低风险参考，不额外增加资产级动作确认；具体工具、外发、删除、发布和不可逆动作仍走各自协议。"
+legacy_aliases = []
+
+[[gates]]
+id = "risk-dependent-before-action"
+phase = "before-action"
+summary = "正文可以按需读取，但在把它用于真实动作前，按本次动作的风险、安全协议和用户当前决定完成确认。"
+legacy_aliases = ["risk-dependent"]
+
+[[gates]]
+id = "explicit-before-action"
+phase = "before-action"
+summary = "每次把正文用于会改变结果的真实动作前，都先用普通语言说明范围和后果并取得用户明确确认。"
+legacy_aliases = ["explicit"]
+
+[[gates]]
+id = "before-sensitive-context"
+phase = "before-read"
+summary = "读取或使用受保护的个人正文前，先核对当前任务确实需要、引用范围正确且秘密凭据不会进入模型。"
+legacy_aliases = []
+
+[[gates]]
+id = "before-external-send"
+phase = "before-action"
+summary = "向网站、邮件、插件、额外 Agent、其他账号或人员发送内容前，先展示接收方、内容范围和风险并取得确认。"
+legacy_aliases = []
+
+[[gates]]
+id = "before-durable-change"
+phase = "before-action"
+summary = "写入长期资产、设置、仓库或其他持久状态前，先展示将修改的对象、范围和回退方法并取得确认。"
+legacy_aliases = ["before-write"]
+
+[[gates]]
+id = "before-destructive-change"
+phase = "before-action"
+summary = "覆盖、移动、删除或执行其他难以恢复的操作前，先精确核对目标、备份和回退并取得确认。"
+legacy_aliases = []
+
+[[gates]]
+id = "before-publication"
+phase = "before-action"
+summary = "提交、推送、发布、公开分享或改变可见性前，先完成内容、安全、隐私和目标预览并取得确认。"
+legacy_aliases = []
+
+[[gates]]
+id = "before-financial-legal-medical-action"
+phase = "before-action"
+summary = "涉及资金、法律、医疗或其他高后果决定时，只提供有边界的辅助；执行或代替用户作决定前必须明确确认。"
+legacy_aliases = []

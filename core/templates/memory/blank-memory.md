@@ -1,6 +1,7 @@
 +++
 id = "memory.replace-me"
 kind = "memory"
+subtype = "general"
 status = "candidate"
 title = "待命名记忆"
 summary = "一句话说明"
@@ -17,6 +18,7 @@ source_refs = []
 private_refs = []
 supersedes = []
 minimum_level = 1
+confirmation = "risk-dependent-before-action"
 approval_state = "pending"
 activation_basis = "candidate"
 risk_tier = "high"
@@ -30,6 +32,8 @@ updated_at = ""
 # 适用条件与例外
 
 说明在什么范围和时间条件下有效；存在不同条件的偏好时保存为条件分支，不互相覆盖。
+
+如果这是用户习惯，把 `subtype` 改为 `habit`，并使用用户当前交流语言说明以后在哪类任务中会自动采用、哪些情况不采用、用户怎样纠正或要求停止沿用。用户不需要记住本文件标题；把已确认的日常说法整理进少量 `triggers`／`aliases`，包含隐私的原句只做低敏改写。
 
 # 历史与替代关系
 

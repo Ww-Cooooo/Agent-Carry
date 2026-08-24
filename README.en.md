@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.2.1`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.3.0`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -43,7 +43,7 @@ flowchart LR
 | **Model or model API** | Understand, reason, plan, summarize, and generate |
 | **Agent Carry** | Store your long-term assets and define how they are loaded, validated, improved, and moved |
 
-A host's existing hidden memory stays in that host. Agent Carry cannot secretly read or automatically move inaccessible data. If you can export, show, or explicitly provide part of it, that material may become a sourced candidate, and you decide whether it belongs in Agent Carry.
+A host's existing hidden memory stays in that host. Agent Carry cannot secretly read or automatically move inaccessible data. Even when you export, show, or explicitly provide some of it, that material begins only as input for the current task; it is not automatically written into Agent Carry. The current host first explains what may be worth keeping and where it should apply, then offers four plain-language choices: keep it, observe it first, remind me later, or do not save it. Only your choice creates a formal asset, candidate, or reminder. “Do not save” or no answer creates none of that learning content. To resume the unanswered question across one chat turn, the local machine may briefly keep a time-limited operational receipt containing digests but no semantic body; it is not loaded at startup or included in migration. Existing authorization can carry forward only from the same user's verifiable Agent Carry master copy when the original authorization evidence can be read back.
 
 Compatibility comes from open files, a small root entry, and natural-language protocols—not from hard-coded buttons or one vendor API. A host needs local read access to use an existing Agent Carry and local write access to save lasting changes. A text-only host may participate through a bounded task capsule, but a file-capable host must install, upgrade, and persist the assistant.
 
@@ -52,7 +52,7 @@ Compatibility comes from open files, a small root entry, and natural-language pr
 | What matters | What you gain |
 | --- | --- |
 | **Your long-term work can move** | New memories, capabilities, experience, and SOPs created after connection are stored in Agent Carry instead of only one host |
-| **Learning is visible and correctable** | You see what was learned on the dashboard, discuss it with the current host Agent, and correct, narrow, postpone, or remove it |
+| **Learning is visible and correctable** | You do not have to say “create a memory or SOP.” At a natural checkpoint in real work, the Agent explains what it noticed, then you confirm, correct, or reject it |
 | **The assistant can become truly yours** | Build a general personal assistant or a professional-domain assistant shaped by real work |
 | **You can begin without understanding Agents** | Describe your job, current difficulty, and desired result in ordinary language; the host follows Agent Carry's guidance to help you find the first useful AI task |
 
@@ -83,16 +83,18 @@ The kit can include registered local materials such as course files, video files
 Agent Carry does not hide “self-improvement” in unexplained background changes.
 
 1. You give a real task to the current host Agent; the host and model complete it and verify the result.
-2. If a result is wrong, the host fixes the current task first. Only a root cause that could improve future work becomes a learning candidate; a one-off mistake and its full log do not become permanent memory.
-3. The candidate records where it came from, where it applies, what evidence exists, and what remains uncertain.
+2. If a result is wrong, the host fixes the current task first. A reusable root cause is initially kept only inside the current task; a one-off mistake and its full log do not become permanent memory.
+3. At a natural stopping point, the host explains the finding, future use, scope, and limits, then offers four choices. **Keep it** saves the exact reviewed content when every safety and transaction gate closes. **Observe it first** creates a reversible candidate. **Remind me later** creates that candidate plus a bounded reminder. **Do not save it** creates no learning content. If a safe direct save is unavailable, the option says so before you choose and creates only a non-executable Level 3 handoff; it never pretends the formal asset was saved.
 4. **Who sees it?** You see it on the Agent Carry dashboard.
 5. **Who do you discuss it with?** You speak naturally with the current Codex, Claude Code, Trae, WorkBuddy, or other host Agent.
 6. **How is it corrected?** Say “that part is wrong,” “only use this in this situation,” “do not keep this,” or give the corrected step. The host updates, narrows, withdraws, or continues validating the corresponding Agent Carry content.
-7. Procedural learning can first be saved as a candidate or an awaiting-validation SOP. Repeated validated use raises its evidence maturity; permission to use and maturity remain separate. A later environment change or failure moves it back to review. Useful nonprocedural content may become a memory, capability, or task experience. Weak evidence stays a candidate; obsolete or repeatedly useless material is reviewed, merged, archived, or removed.
+7. Even if you just said “remember this,” every current host first shows one exact, content-bound preview and asks for one real keep choice. The generic template neither treats model-supplied JSON as proof of your message role nor claims to have a host-authentication channel that the model cannot access. Runtime receipts bind this preview, choice, and write transaction; they do not prove who spoke, so the current host must actually show the preview and wait for your reply. If a future host truly exposes such an authenticated event, it belongs in a separate, security-reviewed host integration rather than a simulated shortcut here. Nothing is saved silently, and the same preview choice is not asked repeatedly. A keep choice can write the formal asset, direct route, and both dashboard snapshots only when duplicate, risk, model-level, secret, path, map, and rollback gates all close. Otherwise the choice is clearly labelled as a Level 3 architecture-and-risk review; that preview choice is retained and is not requested again unless the content or scope changes. Repeated validated use raises evidence maturity; permission and maturity remain separate. A later environment change or failure moves the asset back to review. Weak evidence stays a candidate; obsolete or repeatedly useless material is reviewed, merged, archived, or removed.
 
-During assistant creation, you can choose a risk-tiered learning policy or require confirmation for every candidate. Under the risk-tiered policy, only a low-risk candidate that has succeeded in another independent real task, has no conflict, has a clear scope, and can be reversed may enter provisional use after the host notifies you and explains the evidence and rollback. Medium- and high-risk learning always waits for your confirmation. Permission to try an asset does not make it validated; its dashboard maturity can still be awaiting validation.
+During assistant creation, you can choose risk-tiered candidate handling or confirmation at every candidate step. Risk-tiered handling never replaces the first plain-language question: only after you choose “observe this” may Agent Carry create a candidate and accumulate later evidence. If you choose “ask me later,” Agent Carry saves the same tiny, reversible candidate plus a reminder that refers only to its ID and revision, then tells you what was saved and how to cancel it; it does not create a reminder with no source record. “Do not keep it,” refusing that tiny reminder record, or no answer leaves no candidate, signal, or reminder. Risk tier affects which observed candidates are validated and reviewed first; it never authorizes a formal memory, capability, experience, or SOP. Before a candidate can participate in ordinary work, the host must show you the specific content, scope, evidence, and rollback and receive your explicit choice to adopt or trial it. Permission to use an asset still does not make it validated; maturity requires closed real-task evidence.
 
-Important changes do not become long-term truth because of one model guess. You do not have to manage every file, but you can always learn what changed, why it was kept, and how to correct it.
+You do not have to decide whether something is a memory, capability, experience, or SOP. When a repeated habit, a verified method, or an important correction appears, the current host Agent explains in plain language what it noticed, where it could help later, whether you want to keep it, and whether its scope should be narrower. Agent Carry handles the internal type, files, natural-language entry points, and dashboard update.
+
+Important changes do not become long-term truth because of one model guess. You do not have to manage every file, but you can always learn what changed, why it was kept, and how to correct it. Confirmed communication and work habits appear together under “My habits,” where you can correct, narrow, or stop using them.
 
 </details>
 
@@ -155,16 +157,16 @@ If you are unsure, describe your job, your biggest current difficulty, and what 
 
 ```mermaid
 flowchart LR
-    T["You give a real task"] --> B["Read the tiny startup entry"]
-    B --> R["Match a small route map"]
+    T["You describe a real task in ordinary language"] --> B["Read the tiny startup entry"]
+    B --> R["Match a small route map using titles, summaries, and natural triggers"]
     R --> A["Load only relevant memories / capabilities / SOPs / experience"]
     A --> W["Host Agent and model execute and verify"]
-    W --> L["Create a candidate only when learning has future value"]
+    W --> L["Show an exact preview at a natural checkpoint and ask how to handle it"]
     L --> V["You see, discuss, correct, and validate it"]
     V --> P["Keep, merge, review, or remove"]
 ```
 
-The detailed rules may be strong, but ordinary startup stays small. A task first reads a tiny entry, then a route map, then only the source files that task needs. Formal modification work also loads a root-cause quality principle: fix the real problem and prove user reliability first, then keep user-facing operation clear and lightweight. Read-only use does not load that full protocol.
+The detailed rules may be strong, but ordinary startup stays small. A task first reads a tiny entry, then compares ordinary wording against low-sensitive titles, summaries, aliases, and scope in a route map, then loads only the source files that task needs. You can say “do this like last time” without knowing an asset ID or file path. For a fuzzy request with one clear candidate, the Agent names the old approach and asks “is this the one?” before loading it; an explicitly named approach or stable dashboard action does not repeat that confirmation. When several materially different candidates remain, the Agent offers two or three human-readable choices. Formal modification work also loads a root-cause quality principle: fix the real problem and prove user reliability first, then keep user-facing operation clear and lightweight. Read-only use does not load that full protocol.
 
 ## Migration, backup, and local-private data are different actions
 
@@ -190,6 +192,17 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.3.0</strong></summary>
+
+- Ordinary startup reads a strict, minimal, rebuildable startup capsule. Display text, unknown manifest fields, and tampered content cannot enter model context before the safety boundary is established.
+- Natural-language recall uses small route metadata and at most a few candidates to understand requests such as “do it like last time,” then opens only the selected source. Users do not need asset IDs, filenames, or exact technical terms.
+- Risk-tiered learning now affects candidate observation, validation, and review priority only. A formal memory, capability, experience, or SOP always requires the user's explicit confirmation of its content and scope.
+- Capability, SOP, and host-experience maturity must close against real result records in the validation index. An older maturity label or self-reported count without evidence becomes needs-evidence/review; migration never invents historical proof.
+- Cross-session learning updates use digest binding, candidate revisions, context deduplication, and recoverable transaction plans. Replayed messages, repeated returns, and retries inside one task cannot manufacture learning counts.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.2.1</strong></summary>

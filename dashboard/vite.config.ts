@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   // 生产构建必须能通过 file:// 离线打开；不能依赖根路径或本地服务。
   base: './',
   plugins: [
-    react({ jsxImportSource: 'agent-carry-jsx' }),
+    react(),
     tailwindcss(),
     ...(mode === 'analyze'
       ? [visualizer({
@@ -25,6 +25,11 @@ export default defineConfig(({ mode }) => ({
       '@': path.resolve(import.meta.dirname, './src'),
       'agent-carry-jsx': path.resolve(import.meta.dirname, './src/lib/localized-jsx'),
     },
+  },
+  // jsxImportSource is declared in tsconfig so the React plugin only forces
+  // React itself into the dependency cache. This local runtime must stay live.
+  optimizeDeps: {
+    exclude: ['agent-carry-jsx', 'agent-carry-jsx/jsx-runtime', 'agent-carry-jsx/jsx-dev-runtime'],
   },
   // The final offline file intentionally inlines the application bundle.
   // A single larger chunk is expected here and avoids file:// module loading failures.

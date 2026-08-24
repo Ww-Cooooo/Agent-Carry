@@ -16,7 +16,7 @@ instance_may_modify = true
 
 [[layers]]
 id = "instance-directory-guides"
-owns = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md"]
+owns = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md"]
 upgrade_policy = "replace-exact-guides-from-target-template-before-restoring-user-assets"
 instance_may_modify = false
 live_reference_precondition = "if-an-instance-manifest-or-map-references-an-exact-guide-as-user-content-copy-and-hash-verify-that-content-to-a-user-owned-path-update-the-reference-and-only-then-replace-the-guide"
@@ -26,7 +26,7 @@ reference_collision_policy = "reuse-only-when-byte-identical-otherwise-stop-and-
 [[layers]]
 id = "instance-assets"
 owns = ["instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**"]
-excludes = ["instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/signals/README.md", "instance/hosts/README.md"]
+excludes = ["instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/evolution/index.toml", "instance/todo/README.md", "instance/deferred/README.md", "instance/signals/README.md", "instance/hosts/README.md"]
 upgrade_policy = "preserve"
 instance_may_modify = true
 
@@ -36,6 +36,14 @@ owns = ["instance/governance/**"]
 excludes = ["instance/governance/README.md"]
 upgrade_policy = "merge-template-body-preserve-instance-schedule-by-stable-id"
 instance_may_modify = true
+
+[[layers]]
+id = "instance-validation-evidence"
+owns = ["instance/validations/**"]
+excludes = ["instance/validations/README.md"]
+upgrade_policy = "preserve-and-schema-migrate-without-inventing-evidence"
+instance_may_modify = true
+ordinary_startup = "never-load"
 
 [[layers]]
 id = "instance-professional-extensions"
@@ -48,22 +56,28 @@ complete_migration = "include-only-manifest-portable-paths; private-collection-r
 
 [[layers]]
 id = "instance-derived"
-owns = ["instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml"]
+owns = ["instance/startup-capsule.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/evolution/index.toml"]
 upgrade_policy = "rebuild-from-instance-assets"
 instance_may_modify = true
 
 [[layers]]
 id = "local-private"
-owns = [".assistant-private/**", ".assistant-local/**", "maintainer-private/**"]
+owns = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**"]
 upgrade_policy = "never-publish-never-overwrite-by-template-preserve-private-catalog-bindings-and-bodies"
 instance_may_modify = true
 
 [[layers]]
 id = "derived-ui"
 owns = ["dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**"]
-excludes = ["dashboard/public/snapshot.js", "dashboard/dist/snapshot.js"]
+excludes = ["dashboard/scripts/**", "dashboard/public/snapshot.js", "dashboard/dist/snapshot.js"]
 upgrade_policy = "replace-ui"
 instance_may_modify = "extension-points-only"
+
+[[layers]]
+id = "dashboard-runtime"
+owns = ["dashboard/scripts/**"]
+upgrade_policy = "replace-or-migrate-by-release-manifest"
+instance_may_modify = false
 
 [[layers]]
 id = "dashboard-snapshot"

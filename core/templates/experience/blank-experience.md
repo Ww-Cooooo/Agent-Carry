@@ -18,6 +18,7 @@ source_refs = []
 private_refs = []
 supersedes = []
 minimum_level = 1
+confirmation = "risk-dependent-before-action"
 approval_state = "pending"
 activation_basis = "candidate"
 risk_tier = "high"
@@ -38,4 +39,4 @@ updated_at = ""
 
 # 可复用结论、适用范围与反例
 
-说明未来什么时候值得参考、什么时候不能套用，以及应关联哪份能力或 SOP。
+说明未来什么时候值得参考、什么时候不能套用，以及应关联哪份能力或 SOP。把用户以后可能使用的低敏日常说法整理进 `triggers`／`aliases`，例如“别再犯上次那个错误”；不能保存含隐私的完整原句。

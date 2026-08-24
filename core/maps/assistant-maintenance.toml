@@ -3,12 +3,12 @@ map_id = "assistant-maintenance"
 
 [[routes]]
 id = "component-change"
-summary = "正式新增、修改、删除、重命名、移动、迁移、升级或发布前，先按根因与用户可见结果确定质量门，再同步关联入口与投影。"
+summary = "正式新增、修改、删除、重命名、移动、迁移、升级或发布前，先读取共同质量原则；协议再按目标类型与风险决定模型等级，稳定低风险实例资产不会因此一律要求 Level 3。"
 triggers = ["修改助手", "修改正式内容", "新增功能", "删除功能", "移动文件", "重命名组件", "迁移正式内容", "准备升级", "准备发布"]
 target = "core/protocols/COMPONENT_CHANGE.md"
 state = "maintenance-only"
-minimum_level = 3
-confirmation = "before-durable-change"
+minimum_level = 1
+confirmation = "target-and-risk-dependent-before-durable-change"
 
 [[routes]]
 id = "territory-terminology"
@@ -63,6 +63,15 @@ target = "core/protocols/CROSS_SESSION_SIGNALS.md"
 state = "maintenance-only"
 minimum_level = 3
 confirmation = "none"
+
+[[routes]]
+id = "validation-evidence-maintenance"
+summary = "只在写入或重建结果验证索引时发现容量达到 80% 后，整理被更强证据替代的旧成功记录；未解决失败不能隐藏。"
+triggers = ["结果验证索引接近容量", "验证证据达到 80%", "整理成熟度证据", "validation evidence capacity"]
+target = "core/schemas/result-validation-evidence-index.schema.md"
+state = "maintenance-only"
+minimum_level = 3
+confirmation = "before-removing-validation-evidence"
 
 [[routes]]
 id = "governance-memory-research"

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { access, readFile, readdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { runInNewContext } from 'node:vm'
+import { parseSnapshotEnvelope } from './snapshot-envelope.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const dashboardRoot = resolve(here, '..')
@@ -36,13 +36,12 @@ assert(html.includes('data-agent-carry-inline'), 'Offline index is missing the i
 assert(await exists(resolve(dist, 'snapshot.js')), 'Offline dashboard is missing its local snapshot.js.')
 
 const snapshotSource = await readFile(resolve(dist, 'snapshot.js'), 'utf8')
-const snapshotSandbox = { window: {} }
-runInNewContext(snapshotSource, snapshotSandbox, { timeout: 1000 })
-const snapshot = snapshotSandbox.window.AGENT_CARRY_SNAPSHOT
+const snapshot = parseSnapshotEnvelope(snapshotSource, 'offline formal snapshot')
 assert(snapshot?.meta?.schema_version === '1.1', 'Formal dashboard snapshot is not Schema 1.1.')
 assert(snapshot?.meta?.state === 'template' && snapshot?.overview?.state === 'template', 'Formal dashboard snapshot is not a template.')
 assert(snapshot?.meta?.identity_ref === 'template', 'Formal template snapshot has the wrong dashboard identity ref.')
 assert(snapshot?.profile?.guidance_mode === 'unselected', 'Formal template snapshot must leave guidance mode unselected.')
+assert(snapshot?.profile?.learning_policy === 'unselected', 'Formal template snapshot must leave learning policy unselected.')
 for (const key of ['memories', 'sops', 'capabilities', 'experiences', 'evolution', 'todo', 'governance']) {
   assert(Array.isArray(snapshot[key]) && snapshot[key].length === 0, `Formal template snapshot contains ${key} data.`)
 }

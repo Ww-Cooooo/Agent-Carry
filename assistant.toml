@@ -1,18 +1,24 @@
 schema_version = 1
 product_id = "agent-carry"
 product_name = "Agent Carry"
-product_version = "1.2.1"
-core_version = "1.2.1"
+product_version = "1.3.0"
+core_version = "1.3.0"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
-disposable_derivatives = ["signal-map", "time-trigger-map", "local-index", "cache", "vector-store", "dashboard-snapshot", "report", "log", "platform-memory", "session-receipt", "task-capsule", "return-envelope"]
+disposable_derivatives = ["startup-capsule", "signal-map", "time-trigger-map", "local-index", "cache", "vector-store", "dashboard-snapshot", "report", "log", "platform-memory", "session-receipt", "task-capsule", "return-envelope"]
 
 [bootstrap]
 entry = "BOOTSTRAP.md"
 root_map = "core/maps/root-map.toml"
 instance_manifest = "instance/manifest.toml"
+instance_manifest_load_policy = "model-external-source-for-capsule-only-never-raw-startup-model-context"
+startup_capsule = "instance/startup-capsule.toml"
+startup_capsule_query = "dashboard/scripts/query-startup-capsule.mjs"
 maximum_characters = 20000
+maximum_instance_manifest_bytes = 2560
+maximum_startup_capsule_bytes = 4096
+maximum_startup_signal_summary_characters = 1024
 policy = "minimum-sufficient-context"
 
 [routing]
@@ -28,6 +34,8 @@ known_information = "reuse-observed-facts-never-ask-the-user-to-reprovide-known-
 response_shape = "outcome-and-plain-language-context-first-then-user-relevant-next-step"
 decision_prompt = "explain-context-then-2-to-4-options-with-consequences-recommendation-and-an-unsure-path"
 durable_file_output = "after-creating-moving-or-delivering-user-visible-files-reuse-known-locations-and-resolve-long-term-carry-intent"
+natural_recall = "accept-ordinary-imprecise-language-match-only-small-route-metadata-and-offer-the-most-likely-prior-method-without-requiring-asset-names-or-paths"
+proactive_learning = "at-natural-task-checkpoints-notice-reusable-habits-corrections-and-methods-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"
 guidance_modes = "change-detail-and-pace-not-decision-completeness"
 protocol = "core/protocols/USER_GUIDANCE.md"
 load_policy = "full-body-only-for-multistep-technical-risky-durable-or-user-uncertain-decisions"
@@ -48,7 +56,7 @@ registry = "core/maps/trigger-registry.toml"
 protocol = "core/protocols/CROSS_SESSION_SIGNALS.md"
 schema = "core/schemas/cross-session-signal.schema.md"
 template = "core/templates/signal/blank-signal.toml"
-maximum_projection_bytes = 8192
+maximum_projection_bytes = 1536
 background = false
 projection_rebuildable = true
 metadata_only_rebuild = true
@@ -95,16 +103,18 @@ maximum_profile_bytes = 16384
 template_and_instance_share_structure = true
 direction_lock = "permanent-after-instantiation"
 guidance_mode = "mutable-independent-of-direction-and-model-level"
-formal_learning_policy = "signal-gated-risk-tiered"
+candidate_learning_policy = "signal-gated-risk-tiered"
+formal_asset_activation = "explicit-user-or-verified-existing-approval-only"
 explicit_user_authorization = "no-repeat-confirmation"
-low_risk_policy_promotion = true
+low_risk_policy_promotion = false
+risk_tier_scope = "observation-candidate-priority-and-review-order-only"
 medium_high_requires_user_approval = true
 policy_change_requires_user_approval = true
 
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-1.2.1.toml"
+release_manifest = "core/upgrade/release-manifest-1.3.0.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"

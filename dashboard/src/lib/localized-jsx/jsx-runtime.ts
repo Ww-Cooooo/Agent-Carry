@@ -1,6 +1,8 @@
 import { Fragment, jsx as reactJsx, jsxs as reactJsxs } from "react/jsx-runtime";
 import { localizeText } from "../i18n";
 
+export type { JSX } from "react";
+
 const LOCALIZED_ATTRIBUTES = new Set(["aria-label", "aria-description", "title", "placeholder", "alt"]);
 
 function localizeChild(value: unknown): unknown {
@@ -30,14 +32,17 @@ function localizeProps(props: Record<string, unknown> | null): Record<string, un
   return next ?? props;
 }
 
+export function localizeJsxProps(type: unknown, props: Record<string, unknown> | null) {
+  const sourceText = typeof type === "function" && (type as { agentCarrySourceText?: boolean }).agentCarrySourceText === true;
+  return sourceText ? props : localizeProps(props);
+}
+
 export { Fragment };
 
 export function jsx(type: unknown, props: Record<string, unknown> | null, key?: unknown) {
-  const sourceText = typeof type === "function" && (type as { agentCarrySourceText?: boolean }).agentCarrySourceText === true;
-  return reactJsx(type as never, (sourceText ? props : localizeProps(props)) as never, key as never);
+  return reactJsx(type as never, localizeJsxProps(type, props) as never, key as never);
 }
 
 export function jsxs(type: unknown, props: Record<string, unknown> | null, key?: unknown) {
-  const sourceText = typeof type === "function" && (type as { agentCarrySourceText?: boolean }).agentCarrySourceText === true;
-  return reactJsxs(type as never, (sourceText ? props : localizeProps(props)) as never, key as never);
+  return reactJsxs(type as never, localizeJsxProps(type, props) as never, key as never);
 }

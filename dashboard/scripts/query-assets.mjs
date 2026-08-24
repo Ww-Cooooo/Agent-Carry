@@ -1,0 +1,131 @@
+// Optional defense-in-depth adapter for hosts that already provide a JavaScript
+// runtime. Agent Carry installation and the offline dashboard do not require it.
+// The repository root is derived from this file; callers cannot supply a path.
+//
+// A body read is deliberately inseparable from the query that selected it. This
+// process never accepts a bare stable ID as a body-read capability and never
+// treats a caller's model-level claim as an authorization ticket.
+
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { inspectShortlistedFormalAsset, queryFormalAssetShortlist, stableAssetId } from "./asset-route-contract.mjs";
+import { normalizeRetrievalRequest } from "./bounded-retrieval.mjs";
+import { assertLocationFreeProjection } from "./safe-output-boundary.mjs";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const decoder = new TextDecoder("utf-8", { fatal: true });
+const queryPurposes = new Set(["task-recall", "learning-review"]);
+const learningSignals = new Set(["none", "user-explicit-learning-review", "formal-no-match-with-reusable-pattern"]);
+const safeReasonCodes = new Set([
+  "input-size-invalid", "input-json-invalid", "query-fields-invalid", "query-invalid", "query-too-long", "query-empty",
+  "intent-hints-invalid", "intent-hint-invalid", "query-purpose-or-learning-signal-invalid",
+  "task-recall-cannot-assert-learning-signal", "selected-id-invalid", "selected-id-not-in-current-shortlist",
+  "operation-unsupported", "output-size-exceeded", "unsafe-output",
+]);
+
+function stop(reason) {
+  const code = safeReasonCodes.has(reason) ? reason : "request-failed-closed";
+  process.stdout.write(`${JSON.stringify({ decision: "request-rejected", reason: code, executable: false })}\n`);
+  process.exitCode = 2;
+}
+
+function exactKeys(value, allowed) {
+  return value && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype
+    && Object.keys(value).every((key) => allowed.has(key) && !["__proto__", "prototype", "constructor"].includes(key));
+}
+
+function validateQueryInput(input, { withSelection = false } = {}) {
+  const allowed = new Set(["operation", "queryText", "intentHints", "purpose", "learningSignal"]);
+  if (withSelection) allowed.add("selectedId");
+  if (!exactKeys(input, allowed)) throw new Error("query-fields-invalid");
+  const retrieval = normalizeRetrievalRequest(input.queryText, input.intentHints ?? []);
+  if (!retrieval.ok) throw new Error(retrieval.reason);
+  const purpose = input.purpose ?? "task-recall";
+  const learningSignal = input.learningSignal ?? "none";
+  if (!queryPurposes.has(purpose) || !learningSignals.has(learningSignal)) throw new Error("query-purpose-or-learning-signal-invalid");
+  if (purpose === "task-recall" && learningSignal !== "none") throw new Error("task-recall-cannot-assert-learning-signal");
+  if (withSelection && !stableAssetId.test(input.selectedId ?? "")) throw new Error("selected-id-invalid");
+  return Object.freeze({ retrieval, purpose, learningSignal });
+}
+
+function selectionDigest(selected) {
+  return `sha256:${createHash("sha256").update(JSON.stringify(selected)).digest("hex")}`;
+}
+
+function buildBoundedQuery(input, controls) {
+  const formal = queryFormalAssetShortlist(root, { queryText: input.queryText, intentHints: input.intentHints ?? [] });
+  const formalCandidates = formal.candidates.slice(0, 3);
+  // Candidate evidence is more sensitive than ordinary formal-route metadata.
+  // A stateless stdin caller cannot prove that the current user asked to review
+  // learning, so this CLI never opens the candidate index or candidate source.
+  const evolutionDecision = controls.purpose === "learning-review" || controls.learningSignal !== "none"
+    ? "trusted-host-confirmation-required" : "not-opened";
+  const evolutionCandidates = [];
+  return Object.freeze({
+    result: Object.freeze({
+      decision: "query-complete", executable: false, purpose: controls.purpose, learningSignal: controls.learningSignal,
+      learningSignalTrust: controls.learningSignal === "none" ? "not-applicable" : "caller-assertion-requires-conversational-grounding",
+      formal,
+      evolutionCandidates: Object.freeze({ decision: evolutionDecision, candidates: Object.freeze(evolutionCandidates) }),
+      visibleCandidateCount: formalCandidates.length + evolutionCandidates.length, visibleCandidateLimit: 3,
+    }),
+    formal, formalCandidates, evolutionCandidates,
+  });
+}
+
+let inputBytes;
+try { inputBytes = readFileSync(0); } catch { stop("request-failed-closed"); }
+if (process.exitCode) process.exit();
+if (inputBytes.length === 0 || inputBytes.length > 8192) stop("input-size-invalid");
+if (process.exitCode) process.exit();
+
+let input;
+try { input = JSON.parse(decoder.decode(inputBytes)); } catch { stop("input-json-invalid"); }
+if (process.exitCode) process.exit();
+
+let result;
+try {
+  if (input.operation === "query") {
+    const controls = validateQueryInput(input);
+    result = buildBoundedQuery(input, controls).result;
+  } else if (input.operation === "query-read") {
+    const controls = validateQueryInput(input, { withSelection: true });
+    const bounded = buildBoundedQuery(input, controls);
+    const formal = bounded.formalCandidates.find((entry) => entry.id === input.selectedId);
+    const candidate = bounded.evolutionCandidates.find((entry) => entry.id === input.selectedId);
+    if (!formal && !candidate) throw new Error("selected-id-not-in-current-shortlist");
+    if (formal) {
+      const digest = selectionDigest(formal);
+      if (formal.requiredLevel > 1) result = Object.freeze({ decision: "host-level-confirmation-required", executable: false, selected: formal, selectionDigest: digest, levelTrust: "not-assertable-through-this-cli", disposition: "use-a-host-profile-or-model-level-route-that-can-be-verified-outside-this-cli" });
+      else {
+        const inspected = inspectShortlistedFormalAsset(root, bounded.formal, formal.id);
+        result = inspected.decision === "selection-confirmation-required" || inspected.decision === "read-confirmation-required"
+          ? Object.freeze({
+            ...inspected,
+            selectionDigest: digest,
+            nextOperation: null,
+            disposition: "this-stateless-cli-cannot-consume-or-resume-confirmations; protected-body-reading-requires-a-stateful-trusted-host-integration-that-keeps-the-challenge-in-the-same-live-process",
+          })
+          : inspected;
+      }
+    } else {
+      const digest = selectionDigest(candidate);
+      result = Object.freeze({ decision: "candidate-selection-confirmation-required",
+        executable: false, selected: candidate, selectionDigest: digest, contentRole: "candidate-metadata-only", authorizedActions: Object.freeze([]),
+        levelTrust: "candidate-evidence-requires-level-2-or-higher-and-is-not-assertable-through-this-cli",
+        nextOperation: null,
+        disposition: "this-stateless-cli-cannot-complete-candidate-selection; use-a-stateful-trusted-host-integration-that-keeps-selection-state-in-the-same-live-process",
+      });
+    }
+  } else {
+    throw new Error("operation-unsupported");
+  }
+  assertLocationFreeProjection(result);
+  const output = JSON.stringify(result);
+  if (Buffer.byteLength(output, "utf8") > 160 * 1024) throw new Error("output-size-exceeded");
+  process.stdout.write(`${output}\n`);
+} catch (error) {
+  stop(String(error?.message ?? "request-failed-closed"));
+}

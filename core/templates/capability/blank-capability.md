@@ -17,6 +17,7 @@ source_refs = []
 private_refs = []
 supersedes = []
 minimum_level = 1
+confirmation = "risk-dependent-before-action"
 approval_state = "pending"
 activation_basis = "candidate"
 risk_tier = "high"
@@ -25,6 +26,7 @@ maturity = "unvalidated"
 independent_task_count = 0
 successful_use_count = 0
 failed_use_count = 0
+distinct_context_count = 0
 distinct_host_count = 0
 last_validated_at = ""
 validation_refs = []
@@ -37,7 +39,7 @@ updated_at = ""
 
 # 触发、排除与所需资产
 
-写清用户表达、任务状态或输入特征怎样命中；哪些相似情况不能使用；执行前还要按 ID 加载哪些记忆、SOP 或安全边界。
+写清用户用日常语言可能怎样表达目标、任务状态或输入特征怎样命中；至少保留一个不依赖正式能力名称的低敏说法，并补充哪些相似情况不能使用。用户无需知道能力 ID 或文件路径。执行前还要按 ID 加载哪些记忆、SOP 或安全边界。
 
 # 输入、输出与质量标准
 
@@ -65,7 +67,7 @@ updated_at = ""
 
 # 用户可见结果
 
-规定最终要用普通语言告诉用户什么：实际完成、验证证据、限制、需要决定的事项，以及本次是否形成学习。
+规定最终要用普通语言告诉用户什么：实际完成、验证证据、限制、需要决定的事项，以及本次是否形成学习。发现可复用的新方法时，先说明未来用途并询问是否留下，不要求用户判断内部资产类型。
 
 # 成熟度与学习更新
 

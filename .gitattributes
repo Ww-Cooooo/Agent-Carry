@@ -1,6 +1,10 @@
 # Keep public source checkouts deterministic across Windows, macOS and Linux.
 * text=auto eol=lf
 
+# These two files form one exact-byte startup trust boundary.
+instance/manifest.toml text eol=lf
+instance/startup-capsule.toml text eol=lf
+
 # Bundled fonts and archive/media formats are raw binary bytes.
 *.woff2 binary
 *.png binary

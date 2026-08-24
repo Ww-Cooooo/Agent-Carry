@@ -1,7 +1,8 @@
+# UTF-8/LF source of truth for the startup capsule; instance setup updates both transactionally.
 schema_version = 1
 instance_id = "template"
 state = "template"
-created_from = "agent-carry@1.2.1"
+created_from = "agent-carry@1.3.0"
 created_at = ""
 
 [direction]
@@ -15,6 +16,9 @@ out_of_scope_policy = "create-new-instance"
 [profile]
 status = "not-instantiated"
 guidance_mode = "unselected"
+display_name = ""
+mission = ""
+language = "zh-CN"
 user_preferences_ref = "instance/profile/README.md"
 domain_map_ref = "instance/maps/domain-map.toml"
 signal_control_ref = "instance/signals/control.toml"
@@ -24,9 +28,12 @@ host_registry_ref = "instance/hosts/registry.toml"
 
 [learning]
 policy = "risk-tiered"
-low_risk_promotion = "notify-and-reversible"
+low_risk_promotion = "explicit-confirmation-after-notice"
 medium_high = "explicit-confirmation"
 direct_user_instruction = "direct-authorization"
+
+[validation]
+evidence_index_ref = "instance/validations/index.toml"
 
 [privacy]
 current_execution_model = "allow-task-needed-private-context"
@@ -38,12 +45,16 @@ private_asset_catalog_load = "on-demand-only"
 complete_export_scope = "registered-and-referenced"
 
 [versions]
-product = "1.2.1"
+product = "1.3.0"
 extension_api = "1.0"
-asset_schema = "1.2"
+asset_schema = "1.3"
 dashboard_snapshot_schema = "1.1"
 cross_session_signal_schema = "1.1"
 host_integration_schema = "1.0"
 private_asset_catalog_schema = "1.0"
 migration_kit_schema = "2.0"
 extension_manifest_schema = "1.0"
+evolution_candidate_index_schema = "1.0"
+asset_confirmation_gate_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"

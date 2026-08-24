@@ -10,8 +10,11 @@ import {
   FileCheck2,
   History,
   Lightbulb,
+  MessageCircleMore,
   RefreshCw,
   Route,
+  ScanSearch,
+  Settings2,
   Sparkles,
   Workflow,
 } from "lucide-react";
@@ -34,8 +37,8 @@ export function MemoryAccessGuide() {
       <div className="memory-access-guide__head">
         <div>
           <SectionEyebrow icon={Brain}>记忆怎样参与任务</SectionEyebrow>
-          <h2 id="memory-access-guide-title">平时会自动按需使用，需要时也可以手动指定</h2>
-          <p>你只需要像平常一样告诉 Agent 要做什么。Agent Carry 会先用极小目录判断哪些记忆相关，命中后才读取少量正文。</p>
+          <h2 id="memory-access-guide-title">直接说想做什么，不必记住记忆或流程的准确名称</h2>
+          <p>Agent Carry 会先用极小目录理解你的日常说法，只比较少量标题、摘要和适用范围；找到以后才读取真正相关的正文。</p>
         </div>
         <span className="memory-access-guide__default">默认自动进行</span>
       </div>
@@ -44,14 +47,14 @@ export function MemoryAccessGuide() {
         <div className="memory-auto-route">
           <span className="memory-route-label">平时这样用</span>
           <div className="memory-auto-route__steps" aria-label="记忆自动按需读取过程">
-            <article><span>01</span><strong>直接说要做什么</strong><small>不用先打开记忆卡片</small></article>
+            <article><span>01</span><strong>用日常语言说任务</strong><small>“按上次那样弄”也可以</small></article>
             <motion.span
               aria-hidden="true"
               initial={reduceMotion ? false : { opacity: 0.35, x: -4 }}
               whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
               viewport={{ once: true }}
             ><ArrowRight /></motion.span>
-            <article><span>02</span><strong>极小目录判断相关性</strong><small>不会一次读取全部记忆</small></article>
+            <article><span>02</span><strong>极小目录找候选</strong><small>只比较低敏摘要，不读全部正文</small></article>
             <motion.span
               aria-hidden="true"
               initial={reduceMotion ? false : { opacity: 0.35, x: -4 }}
@@ -59,7 +62,7 @@ export function MemoryAccessGuide() {
               viewport={{ once: true }}
               transition={{ delay: 0.08 }}
             ><ArrowRight /></motion.span>
-            <article><span>03</span><strong>命中后读取相关记忆</strong><small>再把它用于当前任务</small></article>
+            <article><span>03</span><strong>提醒或确认后再读取</strong><small>只加载命中的一项和必要依赖</small></article>
           </div>
         </div>
 
@@ -70,7 +73,48 @@ export function MemoryAccessGuide() {
         </aside>
       </div>
 
-      <p className="memory-access-guide__note"><CheckCircle2 aria-hidden="true" />卡片上的手动按钮不会改变默认方式；即使不点击，相关记忆仍会在任务命中时自动读取。</p>
+      <p className="memory-access-guide__note"><CheckCircle2 aria-hidden="true" />只有一个明显候选时，Agent 会先提醒你再沿用；有多个不同候选时才请你选。卡片上的手动按钮始终只是备用入口。</p>
+    </section>
+  );
+}
+
+export function HabitLearningGuide({ count }: { count: number }) {
+  const reduceMotion = useReducedMotion();
+  const steps = [
+    { icon: ScanSearch, label: "在真实任务中发现", note: "重复习惯、有效做法或一次重要纠正" },
+    { icon: MessageCircleMore, label: "Agent 用你听得懂的话问你", note: "只问要不要留下，以及适用于哪些情况" },
+    { icon: Settings2, label: "确认后按需使用", note: "以后能自动找到，也能随时纠正或停止沿用" },
+  ];
+
+  return (
+    <section className="habit-learning-guide" aria-labelledby="habit-learning-guide-title">
+      <div className="habit-learning-guide__intro">
+        <div>
+          <SectionEyebrow icon={Sparkles}>我的习惯</SectionEyebrow>
+          <h2 id="habit-learning-guide-title">你只管正常做事，值得留下的习惯会先问过你</h2>
+          <p>不需要说“写入记忆”或“形成 SOP”。Agent Carry 负责发现和分类，你只需确认内容是否正确、以后哪些情况要沿用。</p>
+        </div>
+        <span className={count ? "habit-learning-guide__count is-active" : "habit-learning-guide__count"}>
+          <strong>{count}</strong>
+          <small>{count ? "条习惯记录" : "还没有习惯记录"}</small>
+        </span>
+      </div>
+      <div className="habit-learning-guide__flow" aria-label="习惯从发现到使用的过程">
+        {steps.map((step, index) => (
+          <motion.article
+            key={step.label}
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.55 }}
+            transition={{ duration: 0.34, delay: index * 0.08 }}
+          >
+            <span><step.icon aria-hidden="true" /></span>
+            <div><strong>{step.label}</strong><small>{step.note}</small></div>
+            <b>{String(index + 1).padStart(2, "0")}</b>
+          </motion.article>
+        ))}
+      </div>
+      <p className="habit-learning-guide__note"><CheckCircle2 aria-hidden="true" />保存后会出现在下面的“我的习惯”分组；换 Agent 或换电脑时，它会和其他 Agent Carry 记忆一起带走。</p>
     </section>
   );
 }
@@ -138,7 +182,7 @@ const ORIGIN_STEPS = [
   {
     number: "04",
     title: "获得授权后，以真实成熟度保存",
-    detail: "你明确要求保存，或实例允许的低风险学习政策满足条件后，它才进入正式资产。授权只表示允许保存和使用；没有真实成功证据时仍然是“待验证”。",
+    detail: "只有你明确确认具体内容和适用范围后，它才进入正式资产。风险分级只决定哪些候选更早请你复核，不能代替这次确认；没有真实成功证据时仍然是“待验证”。",
   },
 ];
 

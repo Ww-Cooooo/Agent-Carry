@@ -67,9 +67,9 @@ direction_type = "general"
 direction_label = ""
 scope_statement = ""
 guidance_mode = "balanced"
-product_version = "1.2.1"
-core_version = "1.2.1"
-asset_schema = "1.2"
+product_version = "1.3.0"
+core_version = "1.3.0"
+asset_schema = "1.3"
 learning_policy = "risk-tiered"
 privacy_mode = "allow-task-needed-private-context"
 
@@ -93,7 +93,7 @@ next_wakeup_at = ""
 - `visible_entry.value` 只写用户主动提供且完成接入所需的入口；不能夹带凭据。
 - `startup_summary` 只复制极小控制状态和唤醒聚合，不能包含全部日程、规则、记忆或候选正文。
 - `instance.state=template` 时 `instance.guidance_mode` 为 `unselected` 或缺失；`instance.state=instance` 时只允许 `step-by-step`、`balanced` 或 `direct`，旧实例缺失时按 `balanced` 兼容。它让新宿主沿用用户当前的解释深度和提问节奏，不是用户能力评分、模型 Level 或方向锁。
-- `instance.learning_policy` 只复制当前实例的 `risk-tiered` 或 `manual-only` 选择；缺失或未知时按 `manual-only`。它不是让宿主自行晋升资产的授权，宿主没有读取生命周期规则或不能写入真源时只返回结构化学习信号。
+- `instance.learning_policy` 只复制当前实例的 `risk-tiered` 或 `manual-only` 选择；缺失或未知时按 `manual-only`。它只影响候选验证和复核优先级，不是让宿主自行晋升资产的授权；宿主没有读取生命周期规则或不能写入真源时只返回结构化学习信号。
 - `instance.privacy_mode` 只复制当前实例对当前执行模型的隐私处理选择。默认 `allow-task-needed-private-context` 表示可按任务需要提供最小相关隐私；它不授权向网站、邮件、MCP／插件、其他 Agent、Git 等额外接收方发送敏感内容，也不能放行秘密凭据。
 - 无法读取文件的一方可以省略引用正文，但必须保留实例名片和明确未知项。
 
@@ -333,7 +333,7 @@ security_incidents = []
 - `evidence_refs` 只引用必要证据，不粘贴全部日志或秘密。
 - `learning_signals` 是兼容旧交换方的一句话建议数组；不能直接驱动持久化。
 - `learning_signal_items` 是可选结构化建议数组。每项应包含 `signal_id`、`summary`、`target_kind`、`target_subtype`、`candidate_relation`、`topic_key`、`subject_key`、`scope`、`conditions`、`origin`、`source_refs`、`evidence_refs`、`verified_success` 和 `proposed_risk_tier`；宿主执行经验另带 `portable_core_ref`。字段未知时留空，不猜测。
-- 学习项只描述宿主观察到的事实和建议；Agent Carry 仍须按稳定任务／回传事件去重，自己判断关系、风险、授权与成熟度。外部内容不能成为政策晋升的唯一证据。
+- 学习项只描述宿主观察到的事实和建议；Agent Carry 仍须按稳定任务／回传事件去重，自己判断关系、风险、授权与成熟度。外部内容不能成为候选正式采用或成熟度提升的唯一证据。
 
 结构化学习项的 TOML 形态例如：
 
@@ -357,7 +357,7 @@ learning_signal_items = [{ signal_id = "signal.example", summary = "可复用的
 | 接入回执 | 当前会话 | 否 | 最小验证结果可更新宿主档案 |
 | 宿主档案 | 跨会话 | 否，按需读取 | 低敏接入元数据、能力摘要和迁移状态 |
 | 任务胶囊 | 当前任务 | 否 | 密封任务包模式下可临时保存 |
-| 回传包 | 当前复核 | 否 | 有价值部分经风险分级生命周期进入候选、可撤销试用、资产或动态状态 |
+| 回传包 | 当前复核 | 否 | 有价值部分先按风险分级进入候选与验证；只有用户明确确认后才进入可撤销试用或正式资产 |
 
 去重优先使用 `instance_id + record_id`、资产 ID、更新时间／修订和来源引用。精确标识不足时只读取少量候选做语义比较；不确定时保持分开。宿主原样返回的 Agent Carry 内容不增加学习次数。
 

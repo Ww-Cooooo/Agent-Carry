@@ -1,0 +1,14 @@
+schema_version = 1
+index_id = "evolution-candidates"
+instance_id = "template"
+state = "empty"
+source_revision = 0
+generated_at = ""
+budget_bytes = 32768
+overflow = false
+candidate_count = 0
+indexed_count = 0
+active_count = 0
+
+# 只有实例中真实存在、仍需匹配或处理的候选才添加 [[candidates]]。
+# 本索引不在普通启动时读取，也不保存证据正文、绝对路径、秘密或私密资料。

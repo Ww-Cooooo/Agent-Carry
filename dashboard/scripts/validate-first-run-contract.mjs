@@ -70,10 +70,11 @@ requireFragments("assistant.toml", [
 ]);
 
 requireFragments("BOOTSTRAP.md", [
-  "[signals].startup_reads",
-  "[signals].projections",
-  "不是启动读取清单",
-  "日期未到时不得读取 `instance/maps/time-trigger-map.toml`",
+  "query-startup-capsule.mjs",
+  "模型上下文外",
+  "原始 `assistant.toml`、`instance/manifest.toml`",
+  "启动不得自行打开原始信号 TOML",
+  "日期未到时不得读取时间索引",
 ]);
 
 requireFragments("core/guides/instantiation-guide.md", [
@@ -291,18 +292,23 @@ requireFragments("dashboard/src/components/dashboard/OnboardingDialog.tsx", [
   "生成创建指令",
 ]);
 requireFragments("dashboard/src/lib/data.ts", [
-  'target: "core/guides/first-use-execution-gates.md"',
-  "B. 首项任务开始前的实例化交接门",
-  "C. 实例化写入门",
+  'import generatedDashboardActions from "../generated/dashboard-actions.json"',
+  "generatedDashboardActions.map((action) => ({ ...action }))",
   "function assetReliability(item: any): string",
   'status === "review"',
   'status === "provisional"',
   "reliability: assetReliability(s)",
   "reliability: assetReliability(c)",
-  "不得在模板态索取首项任务的当天金额、真实文件或开始执行",
-  "不得在用户确认 Level 3 前进入实例结构设计",
-  "首个真实任务前资产计数通常全部为 0",
-  "不得把任务族、计划路线或缺失正文的条目计入看板资产",
+]);
+requireFragments("dashboard/src/generated/dashboard-actions.json", [
+  '"target": "core/guides/first-use-execution-gates.md"',
+  "B. 首项任务开始前的实例化交接门",
+  "C. 实例化写入门",
+  "准备索取当天金额或真实文件前",
+  "不得索取当天金额、真实业务文件或执行首项任务",
+  "只有我已经明确确认当前模型处于 Level 3 才能进入实例结构设计",
+  "快照资产计数通常应全部为 0",
+  "不能把候选任务、计划路线或缺失正文的条目算成资产",
   "正式实例按 Snapshot Schema 从 instance_id 生成 ac- 加 SHA-256 前 12 位的匿名稳定引用",
 ]);
 requireFragments("core/upgrade/release-manifest-1.2.0.toml", [

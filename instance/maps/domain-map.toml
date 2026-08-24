@@ -4,21 +4,32 @@ instance_id = "template"
 direction = "unselected"
 status = "empty-until-instantiation"
 
+[budget]
+soft_max_bytes = 32768
+hard_max_bytes = 49152
+soft_max_routes = 96
+hard_max_routes = 128
+max_route_bytes = 2048
+candidate_limit = 3
+overflow_state = "ok"
+
 # 实例化后先登记本实例方向内的任务族；真实任务形成正式资产后，再增加资产入口。实例化本身只使用下面的任务族格式：
 # [[routes]]
 # id = "task-family.first-real-task"
+# title = "用户能看懂、低敏的第一项任务名称"
 # summary = "一句话说明第一项真实任务会得到什么结果"
-# triggers = ["用户可能怎么说"]
+# triggers = ["用户真正可能怎么说，包括不准确但能表达目标的日常说法"]
 # asset_kind = "task-family"
 # topic_key = "example-topic"
 # subject_key = "example-subject"
-# aliases = []
+# aliases = ["经过确认的低敏近似说法；不包含隐私原句"]
 # scope = []
 # conditions = ["这只是任务族，不表示能力或SOP已经形成", "用户确认结果正确或要求以后继续使用时，先走result-validation，再走asset-lifecycle"]
+# excludes = ["写出容易误命中的相邻任务或不适用情况"]
 # related_asset_ids = []
 # target = "instance/profile/replace-with-real-profile.md"
 # state = "on-demand"
 # minimum_level = 1
 # confirmation = "none"
 
-# 正式能力、SOP、记忆或经验必须有真实正文，路线 target 必须指向该正文；没有正式文件的计划、候选或任务族不得计入看板资产。
+# 正式能力、SOP、记忆或经验必须有真实正文，路线 target 必须指向该正文；没有正式文件的计划、候选或任务族不得计入看板资产。正式路线还要包含普通用户可能使用的自然语言触发、范围和排除条件，使“按上次那种办法做”这类表达可以先命中少量候选，而不要求用户记住资产名或文件路径。

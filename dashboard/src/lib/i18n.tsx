@@ -69,7 +69,36 @@ function preserveOuterWhitespace(source: string, translated: string): string {
   return `${leading}${translated}${trailing}`;
 }
 
+const ASSET_NOUN_EN: Record<string, string> = {
+  "记忆": "memory",
+  "流程": "workflow",
+  "能力": "capability",
+  "经验": "experience",
+};
+
+const ASSET_OPERATION_EN: Record<string, { imperative: string; passive: string }> = {
+  "读取": { imperative: "read", passive: "read" },
+  "执行": { imperative: "run", passive: "run" },
+  "调用": { imperative: "invoke", passive: "invoked" },
+  "参考": { imperative: "reference", passive: "referenced" },
+};
+
+const englishAssetNoun = (value: string) => ASSET_NOUN_EN[value] ?? value;
+const englishAssetOperation = (value: string) => ASSET_OPERATION_EN[value] ?? { imperative: value, passive: value };
+
 const DYNAMIC_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
+  [/^任务命中后按需(读取|执行|调用|参考)$/u, (match) => `${englishAssetOperation(match[1]).imperative[0].toUpperCase()}${englishAssetOperation(match[1]).imperative.slice(1)} on demand when a relevant task matches`],
+  [/^这条(记忆|流程|能力|经验)有可核验的使用授权。Agent 仍会先核对当前范围、条件和风险，再只加载必要正文。$/u, (match) => `This ${englishAssetNoun(match[1])} has verifiable use authorization. The Agent still checks the current scope, conditions, and risk, then loads only the necessary content.`],
+  [/^这条(记忆|流程|能力|经验)尚未成为稳定资产。只有当前任务精确命中已登记范围且没有冲突时才可(读取|执行|调用|参考)；范围外或影响不清时先询问用户。$/u, (match) => `This ${englishAssetNoun(match[1])} is not yet a stable asset. It may be ${englishAssetOperation(match[2]).passive} only when the current task exactly matches its recorded scope and there is no conflict; ask the user first outside that scope or when the impact is unclear.`],
+  [/^这条(记忆|流程|能力|经验)的旧证据、适用范围或当前环境需要重新检查。复核完成前不能把它当作可用资产。$/u, (match) => `Earlier evidence, scope, or the current environment for this ${englishAssetNoun(match[1])} needs review. It cannot be treated as usable until that review is complete.`],
+  [/^这条(记忆|流程|能力|经验)只保留用于解释、审计或以后恢复；重新启用前必须核对当前内容、范围和授权。$/u, (match) => `This ${englishAssetNoun(match[1])} is kept only for explanation, auditing, or possible restoration. Its current content, scope, and authorization must be checked before re-enabling it.`],
+  [/^这条(记忆|流程|能力|经验)仍是候选或等待处理，不能仅凭看板内容直接(读取|执行|调用|参考)。$/u, (match) => `This ${englishAssetNoun(match[1])} is still a candidate or awaiting handling and cannot be ${englishAssetOperation(match[2]).passive} directly from dashboard content.`],
+  [/^看板缺少足以确认这条(记忆|流程|能力|经验)可用的状态或授权信息。核对前不得自动或手动(读取|执行|调用|参考)正文。$/u, (match) => `The dashboard lacks enough status or authorization information to confirm that this ${englishAssetNoun(match[1])} is usable. Do not automatically or manually ${englishAssetOperation(match[2]).imperative} its content before verification.`],
+  [/^查看(记忆|流程|能力|经验)历史状态$/u, (match) => `Check ${englishAssetNoun(match[1])} history status`],
+  [/^复制(记忆|流程|能力|经验)复核指令$/u, (match) => `Copy ${englishAssetNoun(match[1])} review request`],
+  [/^核对(记忆|流程|能力|经验)保存状态$/u, (match) => `Check ${englishAssetNoun(match[1])} saved status`],
+  [/^核对(记忆|流程|能力|经验)状态$/u, (match) => `Check ${englishAssetNoun(match[1])} status`],
+  [/^说明缺失：请让 Agent 补齐这条(记忆|流程|能力|经验)的用途说明，并重建看板数据。$/u, (match) => `Description missing: ask the Agent to add a purpose summary for this ${englishAssetNoun(match[1])} and rebuild the dashboard data.`],
   [/^当前助手[：·]\s*(.+)$/u, (match) => `Current assistant · ${match[1]}`],
   [/^当前可携带资产\s*(\d+)\s*项$/u, (match) => `${match[1]} portable assets`],
   [/^第\s*(\d+)\s*步$/u, (match) => `Step ${match[1]}`],

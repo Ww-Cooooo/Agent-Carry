@@ -9,6 +9,9 @@
 - 正式变更交付前按 `RESULT_VALIDATION.md` 重新比较变更依据与最终文件，并只做相关的来源、解析、稳定 ID、引用、投影和边界检查；裸写“已通过”不是验收。
 - 处理顺序固定为：先从根因修好问题，再证明用户数据与使用可靠性，最后减少无意义的流程和用户负担。内部验证可以充分，不能把终端、回归和内部字段转嫁给普通用户。
 - 实例正式资产变化还要做地图—frontmatter 可达性闭包；升级遇到被实时引用的目录说明时，必须先迁移用户正文和引用，再替换说明。
+- 启动入口变化同时命中 `startup-capsule-runtime` 与 `instance-startup-capsule`：前者拥有严格加载、生成和校验逻辑，后者是实例自己的可重建投影；严格实例清单先在模型外生成有界胶囊，普通启动只读胶囊。版本、身份或清单变化后必须在同一事务中重建并核对摘要，不能让原始展示文字提前进入上下文。
+- 成熟度、成功计数或宿主可携带性变化同时命中 `result-validation` 与 `instance-validation-evidence`：代表性 `validation_refs` 必须在按需证据索引中闭合；旧标签缺证据时进入 needs-evidence/review，不能补造记录。
+- `dashboard-ui` 不再拥有 `dashboard/scripts/**` 或两份 `snapshot.js`。修改自然语言检索、候选事务、启动胶囊或快照生成器时分别命中 `asset-retrieval-runtime`、`learning-signal-runtime`、`startup-capsule-runtime` 或 `snapshot-runtime`；两份真实快照由 `dashboard-snapshot-projection` 拥有，再按投影关系检查界面、升级和公开发布。
 - 私密迁移语义变化还要同步私密目录 Schema、迁移套件 Schema、模板、`private_refs`、触发注册表、看板动作、升级保留、README 与私密到公开发布检查；实际目录、绑定和正文都不能进入公开候选。
 - 专业工作区变化先命中 `professional-extension-contract`：同步扩展清单 Schema、`workspace/**` 所有权、主体／隐私迁移边界、升级冲突、派生快照与公开发布分类。没有扩展的实例必须保持零变化；未登记工作区不能被递归认领。
 - 人机选择语义变化以 `core/protocols/USER_GUIDANCE.md` 为正式所有者；同步极小启动基线、交流方式定义、宿主接入提示词、相关任务协议、看板动作、升级说明和公开 README。详细协议仍须按需加载，不能把每个示例塞进启动上下文。

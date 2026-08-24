@@ -17,6 +17,7 @@ source_refs = []
 private_refs = []
 supersedes = []
 minimum_level = 1
+confirmation = "risk-dependent-before-action"
 approval_state = "pending"
 activation_basis = "candidate"
 risk_tier = "high"
@@ -25,6 +26,7 @@ maturity = "unvalidated"
 independent_task_count = 0
 successful_use_count = 0
 failed_use_count = 0
+distinct_context_count = 0
 distinct_host_count = 0
 last_validated_at = ""
 validation_refs = []
@@ -40,7 +42,7 @@ updated_at = ""
 
 # 2. 触发条件与禁止触发条件
 
-写用户可能怎样表达、哪些任务状态会触发，以及什么条件下即使关键词相似也不能运行。
+写用户可能怎样用日常语言表达结果、哪些任务状态会触发，以及什么条件下即使关键词相似也不能运行。至少保留一个不依赖 SOP 正式名称的低敏说法；用户无需知道稳定 ID 或文件路径。
 
 # 3. 执行前按需加载
 
@@ -91,7 +93,7 @@ updated_at = ""
 
 # 14. 任务后学习与成熟度更新
 
-只有命中学习价值信号才更新候选或资产。按稳定事件 ID 去重；只有最终 `validated` 才记录一次成功，同一事件内修正不重复计数，`limited`／`failed` 记录限制或失败。保留适用条件和最多 5 个代表性证据；宿主实现变化写入宿主执行经验，不改写可携带核心。
+只有命中学习价值信号才更新候选或资产。按稳定事件 ID 去重；只有最终 `validated` 才记录一次成功，同一事件内修正不重复计数，`limited`／`failed` 记录限制或失败。保留适用条件和最多 5 个代表性证据；宿主实现变化写入宿主执行经验，不改写可携带核心。发现这套步骤值得以后复用时，Agent 在自然停点说明未来用途与当前证据，再让用户决定是否留下及适用范围，不要求用户先说“形成 SOP”。
 
 # 15. 示例与常见错误（需要时填写）
 

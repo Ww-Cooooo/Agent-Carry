@@ -5,7 +5,11 @@
 - `instance-manifest.schema.md`：实例身份、可调整的交流方式与永久方向锁。
 - `map-entry.schema.md`：小地图路由条目。
 - `asset-frontmatter.schema.md`：记忆、能力、SOP、经验、延期任务、治理和候选资产，以及授权依据、风险、证据成熟度和宿主执行经验引用。
+- `asset-confirmation-gates.schema.md`：正式资产确认门的已知 ID、语义、执行边界和旧实例保守兼容规则。
+- `result-validation-evidence-index.schema.md`：正式能力、SOP 与宿主执行经验的低敏验证证据索引；只在成熟度核对、升级、维护或快照重建时按需读取，不能凭资产自报计数伪造闭包。
+- `startup-capsule.schema.md`：由严格实例清单在模型上下文外生成的极小启动派生物；规定精确字段、摘要绑定、事务重建、失败关闭和普通启动可见边界。
 - `cross-session-signal.schema.md`：统一触发控制记录、动态状态卡、极小唤醒胶囊、非启动时间索引和可选时间字段。
+- `evolution-candidate-index.schema.md`：只在学习信号命中后读取的候选元数据索引；支持跨任务同类匹配，不进入普通启动，也不复制候选正文。
 - `host-integration.schema.md`：跨 Agent 接入胶囊、回执、宿主档案、任务胶囊和回传包。
 - `dashboard-action.schema.md`：看板复制给 Agent 的完整动作请求。
 - `dashboard-snapshot.schema.md`：只读看板快照。
@@ -17,3 +21,5 @@
 - `../templates/extension/blank-extension-manifest.toml`：只在真实专业工作区形成后使用的空扩展清单；不是预装领域模板。
 
 Schema 发生不兼容变化时必须提升对应 Schema 版本，并在发布清单中提供迁移说明。
+
+运行时、界面与实例投影不是同一组件。资产检索、跨会话学习事务、启动胶囊和快照生成器位于 `dashboard/scripts/`，由组件地图中的独立运行时组件拥有；`dashboard-ui` 只拥有用户界面与构建后的离线页面；两份 `snapshot.js` 由独立的实例快照投影组件拥有。实例中的 `startup-capsule.toml` 是可重建派生物，`instance/validations/index.toml` 是实例拥有的正式低敏证据索引，两者都不属于普通启动时可随意扩展的界面数据。

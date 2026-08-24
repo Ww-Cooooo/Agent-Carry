@@ -1,0 +1,128 @@
+schema_version = 2
+release = "1.3.0"
+core = "1.3.0"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.3"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+extension_manifest_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"
+from_versions = ["1.2.1"]
+notes = "Unreleased local 1.3.0 candidate. Asset Schema 1.3 separates candidate prioritization from formal authorization: risk-tiered affects only proactive observation, validation and review order, while every formal asset requires explicit user confirmation or a verified existing approval. It adds a strict model-external startup capsule, an on-demand validation evidence index, bounded natural-language retrieval metadata and evidence-backed maturity closure. Git-metadata-free release archives are checked in a complete-tree strict mode that rejects private, local-only, dependency, unregistered and linked entries instead of silently filtering them; ordinary installed builds use a separate explicit dependency allowance. This manifest is an upgrade contract only; it does not authorize a release, repository operation or instance replacement."
+asset_changes = "Asset Schema 1.3 adds confirmation-gate projection and evidence-index closure. Legacy 1.2 policy-authorized assets cannot be treated as explicitly approved. Missing confirmation fields receive conservative deterministic compatibility values only during an authorized upgrade. Practiced, reliable or portable labels without real indexed evidence become needs-evidence or review; the migration must never invent validation records."
+dashboard_changes = "Dashboard Snapshot Schema remains 1.1. The UI and dashboard/scripts runtime are separate owned components. Both public and dist snapshots are rebuilt from merged instance truth after migration; the target template snapshot is never accepted as the final instance snapshot."
+extension_changes = "Extension API and Extension Manifest Schema remain 1.0. Registered workspace extensions remain preserved by manifest ownership; unregistered workspace content remains a conflict and is never recursively guessed."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md"]
+migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**", "instance/validations/index.toml"]
+preserve = ["workspace/**", "instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", "instance/validations/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "Only the exact README files in replace_instance_guides are target-template guides. Sibling user files, validation records and migrated profiles remain instance-owned."
+validation_overlap_note = "instance/validations/index.toml is migrated before the broad instance/validations/** preserve rule. Existing real evidence records are preserved; the index may be rebuilt only from those records and verified asset references."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+broad_globs_are_copy_commands = false
+
+[[migration_rules]]
+id = "asset-schema-1.3-confirmation-gates"
+from_versions = ["1.2.1"]
+when_all = ["one or more formal asset frontmatters or matching instance-domain routes lack confirmation", "user explicitly authorized this 1.3.0 upgrade"]
+source = "instance memory, capability, SOP and experience frontmatters plus their direct instance/maps/domain-map.toml routes"
+destination = "the same asset frontmatters and matching direct routes"
+operation_order = ["use map target and frontmatter identity to pair each formal route with exactly one formal asset", "read only paired frontmatter and matching route metadata", "derive low-risk missing confirmation as none", "derive medium-high-or-unknown-risk missing confirmation as risk-dependent-before-action", "never weaken an existing known stricter registered gate", "update paired frontmatter and route in one transaction", "reparse both files", "verify confirmation is registered and byte-for-byte equal in route and frontmatter"]
+unknown_or_ambiguous = "stop that asset in review; do not read its body and do not guess a gate"
+authorization_effect = "a confirmation gate is a future action boundary, not proof that the user approved the asset"
+idempotence = "second-run-makes-no-change"
+
+[[migration_rules]]
+id = "asset-schema-1.3-formal-authorization"
+from_versions = ["1.2.1"]
+when_all = ["a formal asset uses activation_basis=policy-authorized or approval_state=policy"]
+source = "the asset frontmatter and its direct route"
+destination = "the same asset and route after an authorization review"
+operation_order = ["search only low-sensitive existing approval references already named by the asset or instance metadata", "if a real explicit prior user approval is independently verifiable set approval_state=explicit and activation_basis=existing-approved-migration", "otherwise set the asset and route to review and block ordinary use", "preserve original bytes in the upgrade backup", "show the user which assets need confirmation", "activate only after a new explicit user confirmation", "reparse and verify route-frontmatter agreement"]
+forbidden = ["treating low risk as approval", "treating repeated success as approval", "treating a model statement or old policy flag as approval", "creating an approval record that did not exist"]
+idempotence = "second-run-makes-no-change"
+
+[[migration_rules]]
+id = "asset-schema-1.3-maturity-evidence-closure"
+from_versions = ["1.2.1"]
+when_all = ["an ability, SOP or host execution experience declares maturity, success counts, context counts or portability"]
+source = "asset frontmatter validation_refs and existing instance validation evidence only"
+destination = "instance/validations/index.toml and conservative asset maturity state"
+operation_order = ["create an empty identity-bound validation index when none exists", "preserve every existing real validation record byte-for-byte before normalization", "resolve each declared validation_ref to one indexed low-sensitive record", "verify unique task events, independent contexts, outcomes and host evidence required by the declared maturity", "retain a maturity label only when its minimum evidence closes", "otherwise mark the claim needs-evidence or review and exclude it from ordinary executable recall", "never count one repair loop as multiple independent tasks", "reparse index and verify record_count source_revision budget and instance identity"]
+forbidden = ["inventing a validation record", "backfilling dates from file timestamps", "turning test fixtures or model claims into real-task evidence", "declaring all old assets invalid without per-asset closure"]
+ordinary_startup = "never-load-index-or-validation-records"
+idempotence = "second-run-makes-no-change"
+
+[[migration_rules]]
+id = "strict-startup-capsule-1.3"
+from_versions = ["1.2.1"]
+when_all = ["instance manifest has been migrated and verified"]
+source = "strictly parsed instance/manifest.toml plus fixed core routing references"
+destination = "instance/startup-capsule.toml"
+operation_order = ["require the source manifest to be UTF-8 without BOM and exact LF bytes", "parse manifest outside model context with exact-key and size limits", "derive only the capsule allowlisted fields", "compute source_manifest_digest from the exact trusted manifest bytes", "write the LF capsule transactionally", "reparse under the startup capsule schema", "verify instance identity version direction language references and digest", "prove normal startup reads the capsule instead of raw manifest display text", "prove the fixed Git object candidate and extracted distribution ZIP return startup-capsule-valid"]
+forbidden = ["copying profile prose into the capsule", "loading raw manifest strings into the model before validation", "accepting model-supplied expected identity", "adding validation index or asset bodies to startup", "binding the capsule only to CRLF bytes from one private Windows working tree", "normalizing candidate bytes after the digest was computed"]
+idempotence = "same-manifest-second-run-is-byte-identical"
+
+[[migration_rules]]
+id = "learning-policy-1.3-conservative-default"
+from_versions = ["1.2.1"]
+when_all = ["instance manifest learning fields are missing or use a 1.2 policy that implied formal promotion"]
+source = "instance/manifest.toml learning metadata"
+destination = "instance/manifest.toml Asset Schema 1.3 learning metadata"
+operation_order = ["preserve user-selected observation preference when semantically compatible", "set missing-or-ambiguous learning mode to manual-only", "set formal activation to explicit-user-confirmation", "record that risk tier controls only observation validation and review priority", "reparse manifest", "rebuild startup capsule"]
+forbidden = ["assuming silence authorizes a formal asset", "promoting low-risk candidates during upgrade"]
+idempotence = "second-run-makes-no-change"
+
+[verification]
+checks = [
+  "manifest-parses",
+  "version-1.3.0-and-asset-schema-1.3-aligned",
+  "only-1.2.1-is-a-direct-source",
+  "real-1.2.1-instance-fixture-migrates-without-user-data-loss",
+  "startup-capsule-is-rebuilt-after-manifest-and-raw-manifest-is-not-model-input",
+  "startup-capsule-digest-and-identity-close",
+  "startup-capsule-is-valid-for-fixed-git-object-and-distribution-zip-bytes",
+  "ordinary-startup-does-not-load-validation-index-or-assets",
+  "validation-index-identity-budget-count-and-references-close",
+  "old-maturity-without-real-evidence-enters-needs-evidence-or-review",
+  "no-validation-approval-or-task-evidence-is-invented",
+  "no-policy-authorized-formal-asset-remains-ordinary-executable",
+  "risk-tiered-affects-only-candidate-observation-validation-and-review-order",
+  "every-formal-asset-has-explicit-current-or-verifiable-existing-user-approval",
+  "frontmatter-and-route-confirmation-gates-match-and-are-registered",
+  "unknown-confirmation-gate-fails-closed-per-route",
+  "formal-active-provisional-review-assets-have-direct-kind-matching-routes",
+  "direction-lock-profile-user-assets-private-data-and-registered-extensions-are-preserved",
+  "unregistered-workspace-is-preserved-and-reported-as-conflict",
+  "dashboard-runtime-and-ui-are-both-present-but-privately-owned-maintainer-files-are-absent",
+  "merged-instance-truth-rebuilds-public-and-dist-snapshots-byte-identically",
+  "target-file-allowlist-excludes-maintainer-private-development-junk-and-local-private-content",
+  "public-distribution-manifest-closes-in-git-and-strict-complete-tree-github-source-archive-mode-without-reading-user-local-data",
+  "strict-source-archive-rejects-private-local-dependency-unregistered-linked-and-non-regular-entries",
+  "second-run-is-idempotent",
+  "rollback-restores-original-complete-tree"
+]
+risk_policy = "root-cause-and-user-data-reliability-first; necessary internal complexity stays inside the system while ordinary user operation remains lightweight"
+
+[release_boundary]
+status = "local-unreleased-candidate"
+publication_authorized = false
+repository_operation_authorized = false
+instance_replacement_authorized = false
+maintainer_private_paths = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**", "workspace/**"]

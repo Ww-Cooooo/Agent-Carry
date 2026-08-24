@@ -18,6 +18,7 @@ source_refs = []
 private_refs = []
 supersedes = []
 minimum_level = 1
+confirmation = "risk-dependent-before-action"
 approval_state = "pending"
 activation_basis = "candidate"
 risk_tier = "high"
@@ -30,6 +31,8 @@ maturity = "unvalidated"
 independent_task_count = 0
 successful_use_count = 0
 failed_use_count = 0
+distinct_context_count = 0
+distinct_host_count = 0
 last_validated_at = ""
 validation_refs = []
 updated_at = ""
@@ -56,4 +59,4 @@ updated_at = ""
 
 # 证据与成熟度
 
-只记录真实独立任务。只有最终通过 `core/protocols/RESULT_VALIDATION.md` 的结果才计成功，同一事件内修正不重复累计；一次成功可进入低风险可撤销试用，重复验证后最高为 `reliable`，永远不能标为 `portable`。
+只记录真实独立任务。只有最终通过 `core/protocols/RESULT_VALIDATION.md` 且能在 `instance/validations/index.toml` 闭合的结果才计成功，同一事件内修正不重复累计；一次成功最多证明 `maturity=practiced`，只有用户当次明确授权才可进入 `provisional` 或 `active`。`risk-tiered` 只改变候选验证和复核优先级，不能替代正式采用确认。重复验证后最高为 `reliable`，永远不能标为 `portable`。

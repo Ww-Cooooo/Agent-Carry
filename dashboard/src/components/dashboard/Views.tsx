@@ -34,7 +34,7 @@ import {
   X,
 } from "lucide-react";
 import Core from "@/components/three/Core";
-import { AssetValidationGuide, ExperienceExplainer, MemoryAccessGuide } from "@/components/dashboard/AssetGuides";
+import { AssetValidationGuide, ExperienceExplainer, HabitLearningGuide, MemoryAccessGuide } from "@/components/dashboard/AssetGuides";
 import GrowthGuide from "@/components/dashboard/GrowthGuide";
 import { GuidanceModeDialog, OnboardingDialog } from "@/components/dashboard/OnboardingDialog";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,9 @@ import {
   getGlobalActions,
   getSnapshotStatus,
   governance,
+  assetMaturityStatusToken,
+  assetUsagePresentation,
+  habitPresentation,
   memories,
   meta,
   overview,
@@ -423,11 +426,98 @@ export function LibraryView({
   const category = categoryFor(kind);
   const normalized = query.trim().toLocaleLowerCase();
   const filtered = useMemo(
-    () => items.filter((item) => !normalized || `${item.title} ${item.summary ?? ""}`.toLocaleLowerCase().includes(normalized)),
+    () => items.filter((item) => {
+      if (!normalized) return true;
+      const searchable = [
+        item.title,
+        item.summary,
+        item.scopeSummary,
+        item.sourceSummary,
+        ...(item.triggers ?? []),
+      ].filter(Boolean).join(" ").toLocaleLowerCase();
+      return searchable.includes(normalized);
+    }),
     [items, normalized],
   );
+  const habitItems = kind === "memories" ? filtered.filter((item) => item.subtype === "habit") : [];
+  const regularItems = kind === "memories" ? filtered.filter((item) => item.subtype !== "habit") : filtered;
   const instantiate = findAction("instance.instantiate");
   const showValidationGuide = kind === "sops" || kind === "capabilities";
+
+  const renderAssetCards = (cardItems: DetailItem[], section?: { title: string; description: string; tone: "habit" | "regular" }) => (
+    <div className={`library-asset-section ${section ? `library-asset-section--${section.tone}` : ""}`}>
+      {section ? (
+        <header className="library-asset-section__head">
+          <div><span>{section.tone === "habit" ? "正常说任务就会命中 · 由你管理" : "长期保留 · 任务命中后读取"}</span><h2>{section.title}</h2></div>
+          <p>{section.description}</p>
+        </header>
+      ) : null}
+      <section className="asset-card-grid" aria-live="polite">
+        {cardItems.map((item, index) => {
+          const action = buildDashboardAction(kind, item);
+          const isHabit = kind === "memories" && item.subtype === "habit";
+          const habit = isHabit ? habitPresentation(item.status, item.approvalState, item.activationBasis, item.riskTier, item.approvedByUser) : null;
+          const usage = isHabit ? null : assetUsagePresentation(kind, item);
+          const maturityStatus = !isHabit ? assetMaturityStatusToken(kind, item) : undefined;
+          return (
+            <motion.article
+              key={`${item.id || "missing-asset"}-${index}`}
+              className={`content-card content-card--${kind} render-deferred ${isHabit ? `content-card--habit content-card--habit-${habit?.key}` : ""}`}
+              data-reveal-card
+              style={{ "--category-color": category.color } as React.CSSProperties}
+              initial={reduced ? false : REVEAL_INITIAL}
+              whileInView={reduced ? undefined : REVEAL_VISIBLE}
+              viewport={revealViewport}
+              transition={reduced ? undefined : revealTransition((index % 2) * 0.075)}
+            >
+              <button type="button" className="content-card__open" onClick={() => onInspect({ kind, item })}>
+                <span className="content-card__icon"><category.icon aria-hidden="true" /></span>
+                <SourceText className="content-card__title">{item.title}</SourceText>
+                <ChevronRight aria-hidden="true" />
+              </button>
+              {item.summary ? <SourceText as="p">{item.summary}</SourceText> : <p>这条内容还没有用途说明，请让 Agent 补充后重新生成看板数据。</p>}
+              <div className="content-card__meta">
+                {kind === "memories" ? (
+                  isHabit ? (
+                    <>
+                      <span className="habit-memory-badge"><Sparkles aria-hidden="true" />我的习惯 · {habit?.label}</span>
+                      <span className="content-card__trigger">{item.scopeSummary ? <SourceText>{item.scopeSummary}</SourceText> : habit?.groupLine}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="content-card__states">
+                        <span><small>使用</small><StatusBadge value={usage?.statusToken} showHelp={false} /></span>
+                      </span>
+                      <span className="content-card__trigger">{usage?.behaviorTitle}</span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <span className="content-card__states">
+                      <span><small>使用</small><StatusBadge value={usage?.statusToken} showHelp={false} /></span>
+                      {maturityStatus ? <span><small>成熟度</small><StatusBadge value={maturityStatus} showHelp={false} /></span> : null}
+                    </span>
+                    {item.triggers?.[0] ? <span className="content-card__trigger">可以这样告诉 Agent：“<SourceText>{item.triggers[0]}</SourceText>”</span> : null}
+                  </>
+                )}
+              </div>
+              {isHabit ? (
+                <Button variant="ghost" className="card-action card-action--memory card-action--habit-manage" onClick={() => onInspect({ kind, item })}>
+                  <Sparkles aria-hidden="true" />
+                  查看与管理
+                </Button>
+              ) : (
+                <Button variant="ghost" className={`card-action ${kind === "memories" ? "card-action--memory" : ""}`} onClick={() => onCopy(action.text, action.buttonLabel)}>
+                  <ClipboardCopy aria-hidden="true" />
+                  {action.buttonLabel}
+                </Button>
+              )}
+            </motion.article>
+          );
+        })}
+      </section>
+    </div>
+  );
 
   return (
     <div className="page-stack">
@@ -461,59 +551,22 @@ export function LibraryView({
         </div>
         <label className="search-field">
           <Search aria-hidden="true" />
-          <span className="sr-only">搜索当前分类</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`搜索${category.label}`} />
+          <span className="sr-only">搜索当前分类，可匹配标题、触发语和适用范围</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、常用说法或适用范围" />
           {query ? <button type="button" aria-label="清除搜索" onClick={() => setQuery("")}><X aria-hidden="true" /></button> : null}
         </label>
       </div>
 
-      {kind === "memories" ? <Reveal><div className="render-deferred library-guide-deferred"><MemoryAccessGuide /></div></Reveal> : null}
       {showValidationGuide ? <Reveal><div className="render-deferred library-guide-deferred"><AssetValidationGuide /></div></Reveal> : null}
       {kind === "experiences" ? <Reveal><div className="render-deferred library-guide-deferred"><ExperienceExplainer /></div></Reveal> : null}
 
       {filtered.length ? (
-        <section className="asset-card-grid" aria-live="polite">
-          {filtered.map((item, index) => {
-            const action = buildDashboardAction(kind, item);
-            const state = item.reliability ?? item.status;
-            return (
-              <motion.article
-                key={item.id ?? item.title}
-                className={`content-card content-card--${kind} render-deferred`}
-                data-reveal-card
-                style={{ "--category-color": category.color } as React.CSSProperties}
-                initial={reduced ? false : REVEAL_INITIAL}
-                whileInView={reduced ? undefined : REVEAL_VISIBLE}
-                viewport={revealViewport}
-                transition={reduced ? undefined : revealTransition((index % 2) * 0.075)}
-              >
-                <button type="button" className="content-card__open" onClick={() => onInspect({ kind, item })}>
-                  <span className="content-card__icon"><category.icon aria-hidden="true" /></span>
-                  <SourceText className="content-card__title">{item.title}</SourceText>
-                  <ChevronRight aria-hidden="true" />
-                </button>
-                {item.summary ? <SourceText as="p">{item.summary}</SourceText> : <p>这条内容还没有用途说明，请让 Agent 补充后重新生成看板数据。</p>}
-                <div className="content-card__meta">
-                  {kind === "memories" ? (
-                    <>
-                      <span className="memory-auto-badge"><Sparkles aria-hidden="true" />自动按需</span>
-                      <span className="content-card__trigger">任务相关时会自动读取</span>
-                    </>
-                  ) : (
-                    <>
-                      <StatusBadge value={state} />
-                      {item.triggers?.[0] ? <span className="content-card__trigger">可以这样告诉 Agent：“<SourceText>{item.triggers[0]}</SourceText>”</span> : null}
-                    </>
-                  )}
-                </div>
-                <Button variant="ghost" className={`card-action ${kind === "memories" ? "card-action--memory" : ""}`} onClick={() => onCopy(action.text, action.buttonLabel)}>
-                  <ClipboardCopy aria-hidden="true" />
-                  {action.buttonLabel}
-                </Button>
-              </motion.article>
-            );
-          })}
-        </section>
+        kind === "memories" ? (
+          <>
+            {habitItems.length ? renderAssetCards(habitItems, { title: "我的习惯", description: "直接像平常一样说要做什么；相关任务命中后，已启用习惯会自动沿用，试用习惯只在确认范围内使用。需要复核或已经停止的记录不会自动使用。", tone: "habit" }) : null}
+            {regularItems.length ? renderAssetCards(regularItems, habitItems.length ? { title: "其他长期记忆", description: "保存稳定事实、背景和长期要求；只在当前任务相关时读取。", tone: "regular" } : undefined) : null}
+          </>
+        ) : renderAssetCards(regularItems)
       ) : (
         <EmptyState
           icon={category.icon}
@@ -524,6 +577,22 @@ export function LibraryView({
           ) : undefined}
         />
       )}
+
+      {kind === "memories" && !query ? (
+        <Reveal>
+          <details className="library-help-disclosure render-deferred">
+            <summary>
+              <span><Sparkles aria-hidden="true" /><strong>点击展开：习惯怎样形成，记忆怎样参与任务</strong></span>
+              <small>了解主动学习、自然语言召回和手动备用入口</small>
+              <ChevronRight aria-hidden="true" />
+            </summary>
+            <div className="library-help-disclosure__body">
+              <HabitLearningGuide count={memories.filter((item) => item.subtype === "habit").length} />
+              <MemoryAccessGuide />
+            </div>
+          </details>
+        </Reveal>
+      ) : null}
     </div>
   );
 }
@@ -614,7 +683,7 @@ export function GrowthView({
             const done = kind === "todos" && item.status === "done";
             return (
               <motion.article
-                key={item.id ?? item.title}
+                key={`${item.id || "missing-growth-item"}-${index}`}
                 className={`growth-row render-deferred ${done ? "is-done" : ""}`}
                 data-reveal-card
                 initial={reduced ? false : REVEAL_INITIAL}
@@ -736,7 +805,7 @@ function choiceInstruction(mode: MigrationGuideMode, choice: MigrationGuideChoic
     return "我已在看板选择“只查看当前清单”。请用普通语言列出你已经知道、已经登记、正式引用和仍需复核的资料；不要新增范围，不要让我重新提供你已经知道的路径，也不要开始打包。";
   }
   if (choice === "supplement") {
-    return "我已在看板选择“补充以前的资料”。请先列出你已经知道的内容，再一步一步帮助我补充接入 Agent Carry 前已有、由其他软件产生或被我手动移动的资料；每次只问一个必要问题，写入前给我一份普通话预览。";
+    return "我已在看板选择“补充以前的资料”。请先列出你已经知道的内容，再一步一步帮助我补充接入 Agent Carry 前已有、由其他软件产生或被我手动移动的资料；每次只问一个必要问题，写入前用我当前交流语言给我一份清楚预览。";
   }
   return "我已在看板选择“我不确定，请帮我检查”。请根据我的职业、最近任务和已经登记的内容，列出可能遗漏的资料类别；不要扫描整台电脑，一次只问一个真正会改变登记范围的问题，最后再让我决定是否补充。";
 }
@@ -848,7 +917,7 @@ function MigrationGuideDialog({
   const description = step === 1
     ? (isPrivateImport
       ? "导入时需要的是旧电脑生成的整个输出文件夹，不是其中一个 ZIP，也不是 GitHub 下载包。看板先把区别说清楚。"
-      : "你不需要自己维护文件路径。看板先把范围说清楚，真正的本地清单由当前 Agent 在执行时读取并用普通话列给你。")
+      : "你不需要自己维护文件路径。看板先把范围说清楚，真正的本地清单由当前 Agent 在执行时读取并用你当前交流语言列给你。")
     : step === 2
       ? "请选择最符合当前情况的一项。拿不准也没关系，第三项会让 Agent 帮你判断。"
       : "下面只是只读核对，不需要再点卡片。信息正确就点击窗口底部醒目的按钮；需要修改则返回上一步。";
@@ -968,7 +1037,7 @@ function MigrationGuideDialog({
                       <strong>{isPrivateImport ? "这里说的不是 GitHub 下载包" : "为什么看板不直接显示具体文件名和路径？"}</strong>
                       <span>{isPrivateImport
                         ? "本地隐私输出文件夹由旧电脑单独生成，不经过 GitHub。把完整文件夹交给新电脑上的 Agent，它才有条件校验和恢复。"
-                        : "这是为了避免把隐私目录投影到页面。完整指令交给当前 Agent 后，它会从本地正式记录读取，并先把清单用普通话告诉你。"}</span>
+                        : "这是为了避免把隐私目录投影到页面。完整指令交给当前 Agent 后，它会从本地正式记录读取，并先用你当前交流语言说明清单。"}</span>
                     </p>
                   </footer>
                 </section>
@@ -1338,7 +1407,7 @@ export function SystemView({ onRefresh, onCopy, refreshIn, refreshFailed = false
         <div>
           <SectionEyebrow icon={Cpu}>当前状态</SectionEyebrow>
           <h1>这里可以查看助手现在的状态</h1>
-          <p>你可以看到当前模型、三个等级分别适合什么任务、看板数据是否正常，以及助手怎样按需读取内容。技术信息放在页面底部。</p>
+          <p>你可以看到当前模型、学习方式、三个等级分别适合什么任务、看板数据是否正常，以及助手怎样按需读取内容。技术信息放在页面底部。</p>
         </div>
         <Button variant="outline" className="refresh-button" onClick={onRefresh}>
           <RefreshCw aria-hidden="true" />
@@ -1358,6 +1427,9 @@ export function SystemView({ onRefresh, onCopy, refreshIn, refreshFailed = false
         </article>
         <article className="health-card">
           <span><Sparkles aria-hidden="true" /></span><div><small>本地扩展</small><strong>{skills.count ?? assets.skills} 项</strong><p>{skills.status ?? "按真实任务需要再加载"}</p></div>
+        </article>
+        <article className="health-card">
+          <span><Lightbulb aria-hidden="true" /></span><div><small>学习方式</small><strong>{profile.learningPolicyLabel}</strong><p>{profile.learningPolicy === "risk-tiered" ? "第一次发现仍会先问你；风险只决定候选先验证、先复核，变成正式资产前仍要你明确确认。" : profile.learningPolicy === "manual-only" ? "发现值得留下的内容时会先问你；候选观察、复核和正式采用都等你确认。" : "创建助手时选择；无论哪种方式，第一次发现和正式采用都会问你。"}</p></div>
         </article>
       </section>
 

@@ -66,10 +66,12 @@
 - `instance/profile/approved-profile.md`：用户已经确认的方向、范围、边界、协作方式、环境假设和第一项真实任务说明；`instance/profile/README.md` 是可升级目录说明，禁止写入用户正文；
 - `instance/maps/domain-map.toml`：只登记方向内的**初始任务族路线**，用于找到第一项真实任务需要的实例说明；
 - `instance/signals/control.toml`、`instance/maps/signal-map.toml`：写入一致的实例 ID，并从干净空态开始；
+- `instance/evolution/index.toml`：写入一致的实例 ID 和 `state = "empty"`，保持空时间、0 候选、0 活动条目与正式预算；同时在清单记录候选索引 Schema 版本。不得扫描候选正文或继承模板／其他实例条目；
 - 三张 `instance/governance/` 正式治理卡及 `instance/maps/time-trigger-map.toml`：以真实实例化时间计算首轮日程；
 - `instance/hosts/registry.toml` 和 `instance/hosts/profiles/` 中当前宿主的一份最小档案；以 `core/templates/integration/blank-host-profile.toml` 为结构真源，无法确认的模型、版本或能力必须写成未知，不能省略整个档案，也不能猜测；
 - `instance/skills/requirements.toml`：只把模板身份改为当前实例 ID，并依据已确认的初始任务与当前宿主档案完成一次极小需求判断；不得扫描全部 Skill、自动安装 Skill 或复制 Skill 正文。没有已确认的额外 Skill 需求时，写 `status = "current"` 并保持空条目；信息不足时写 `status = "deferred"`，以后命中真实需求再按需判断；
 - `dashboard/dist/snapshot.js`：只从上述正式真源投影，经检查后原子替换；模板使用 `identity_ref = "template"`，正式实例按 Snapshot Schema 从 `instance_id` 生成不含语义的稳定匿名引用。不得把实例名、领域、用户信息、路径或秘密写入入口引用。
+- `dashboard/public/snapshot.js`：必须与 `dashboard/dist/snapshot.js` 同源生成并逐字节一致；候选索引仍是空态时不能在看板学习建议中伪造条目。
 
 初始任务族路线不是正式资产。建议使用 `asset_kind = "task-family"`、`state = "on-demand"`，并让 `target` 指向已经存在的实例说明文件。它可以保存用户怎样提出第一项任务，以及这一任务结束后怎样转入结果验证和资产生命周期；不能冒充能力、SOP、记忆或经验。
 
@@ -115,7 +117,7 @@
 
 1. 读取 `core/protocols/RESULT_VALIDATION.md`，判断最终任务是 `validated`、`limited` 还是 `failed`；用户说“正确”是重要证据，但仍要核对本任务可直接验证的结果和边界。
 2. 命中长期价值时读取 `core/protocols/ASSET_LIFECYCLE.md` 和 `core/schemas/asset-frontmatter.schema.md`；只比较当前任务族和少量相关候选，不扫描全部资产。
-3. **结果正确不自动授权新资产**：如果用户只确认结果正确，可以累计到已经获得授权的现有资产；尚无资产时只按学习政策形成候选或安静结束。
+3. **结果正确不自动授权新资产**：如果用户只确认结果正确，可以累计到已经获得授权的现有资产；尚无资产时先在自然停点使用用户当前交流语言询问。用户选择“先观察”才建立最小持久候选；选择“不保存”或没有回应时，候选、正式资产、信号和提醒等语义写入均为零。跨聊天恢复所需的短期无语义操作回执按资产生命周期定向清理，不能进入启动或迁移；实例学习政策不能替代这次首次询问。
 4. **“以后继续使用／保存这套方法”是直接内容授权**：如果本次已经验证成功，可创建对应的正式资产，写 `approval_state = "explicit"`、`activation_basis = "explicit-user"`，并按真实证据从 `maturity = "practiced"`、一次独立成功和一次成功使用开始；不能写成 `reliable`。
 5. 如果现有能力或 SOP 在本次真实任务中成功，更新同一资产的有界证据和成熟度；同一任务的重试、回复改写和转发只计一次。失败或有限完成不能增加成功次数。
 6. 为新资产新增一条 `asset_kind` 与正文 `kind` 一致、`target` 直接指向正文的正式路线；不能只在原任务族上追加 `related_asset_ids`，也不能把 `task-family` 原地改名冒充正式资产。原任务族只有仍有独立导航价值时才保留。

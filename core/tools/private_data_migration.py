@@ -52,19 +52,32 @@ FORBIDDEN_PATH_PARTS = {
 }
 TEXT_EXTENSIONS = {".json", ".md", ".srt", ".txt", ".toml", ".vtt", ".yaml", ".yml"}
 
+ENCRYPTED_PRIVATE_KEY_MARKER = "".join(("-----BEGIN ENCRYPTED ", "PRIVATE KEY-----"))
+
 SECRET_PATTERNS = [
     ("private-key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
+    ("encrypted-private-key", re.compile(re.escape(ENCRYPTED_PRIVATE_KEY_MARKER))),
     ("github-token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b")),
     ("openai-style-token", re.compile(r"\bsk-[A-Za-z0-9]{20,}\b")),
     ("aws-access-key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    ("aws-secret-access-key", re.compile(r"(?i)\baws[_-]?secret[_-]?access[_-]?key\b\s*[:=]\s*[\"']?[A-Za-z0-9+/=]{24,}")),
     ("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b")),
-    ("authorization-header", re.compile(r"(?im)^\s*authorization\s*:\s*bearer\s+\S{12,}\s*$")),
-    ("cookie-header", re.compile(r"(?im)^\s*(?:cookie|set-cookie)\s*:\s*\S.{8,}$")),
+    ("authorization-header", re.compile(r"(?im)(?:^|[\r\n,{])\s*[\"']?(?:proxy-)?authorization[\"']?\s*[:=]\s*[\"']?bearer\s+[A-Za-z0-9._~+\/-]{12,}")),
+    ("basic-authorization-header", re.compile(r"(?im)(?:^|[\r\n,{])\s*[\"']?(?:proxy-)?authorization[\"']?\s*[:=]\s*[\"']?basic\s+[A-Za-z0-9+/]{4,}={0,2}")),
+    ("cookie-header", re.compile(r"(?im)(?:^|[\r\n,{])\s*[\"']?(?:cookie|set-cookie)[\"']?\s*[:=]\s*[\"']?[^\r\n\"']{8,}")),
+    ("slack-token", re.compile(r"\bxox(?:a|b|p|r|s)-[A-Za-z0-9-]{20,}\b")),
+    ("gitlab-token", re.compile(r"\bglpat-[A-Za-z0-9_-]{20,}\b")),
+    ("huggingface-token", re.compile(r"\bhf_[A-Za-z0-9]{20,}\b")),
+    ("npm-token", re.compile(r"\bnpm_[A-Za-z0-9]{20,}\b")),
+    ("stripe-live-token", re.compile(r"\b(?:sk|rk)_live_[A-Za-z0-9]{16,}\b")),
+    ("stripe-test-token", re.compile(r"\b(?:sk|rk)_test_[A-Za-z0-9]{16,}\b")),
+    ("credential-url", re.compile(r"(?i)\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis|amqps?|https?)://[^\s/:@]*:[^\s/]{4,}@[A-Za-z0-9.-]+(?::\d+)?(?:[/?#\s]|$)")),
+    ("client-secret", re.compile(r"(?i)\bclient[_-]?secret\b\s*[:=]\s*[\"']?[^\s\"'`;]{8,}")),
     (
         "secret-assignment",
         re.compile(
-            r"(?im)\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|password|passwd|secret)\b"
-            r"\s*[:=]\s*[\"']?[A-Za-z0-9/+_.=-]{12,}"
+            r"(?im)\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|password|passwd|session[_-]?(?:id|token)|secret|private[_-]?key|recovery[_-]?code)\b"
+            r"\s*[:=]\s*[\"']?[A-Za-z0-9/+_.=-]{8,}"
         ),
     ),
 ]

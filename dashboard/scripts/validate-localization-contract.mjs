@@ -15,7 +15,7 @@ function requireFragments(text, label, fragments) {
   }
 }
 
-const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, dashboard, shared, jsxRuntime, views, localization, territoryPolicy] = await Promise.all([
+const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, dashboard, shared, jsxRuntime, jsxDevRuntime, views, viteConfig, tsconfig, localization, territoryPolicy] = await Promise.all([
   read('README.md'),
   read('README.en.md'),
   read('INSTALL.en.md'),
@@ -27,14 +27,18 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
   read('dashboard/src/Dashboard.tsx'),
   read('dashboard/src/components/dashboard/Shared.tsx'),
   read('dashboard/src/lib/localized-jsx/jsx-runtime.ts'),
+  read('dashboard/src/lib/localized-jsx/jsx-dev-runtime.ts'),
   read('dashboard/src/components/dashboard/Views.tsx'),
+  read('dashboard/vite.config.ts'),
+  read('dashboard/tsconfig.app.json'),
   read('docs/localization.md'),
   read('core/protocols/TERRITORY_TERMINOLOGY.md'),
 ])
 
-requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.2.1`'])
+requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.3.0`'])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
+  'Current version: `1.3.0`',
   'AI changes quickly. Agents come and go.',
   'Try the dashboard',
   'INSTALL.en.md',
@@ -60,10 +64,35 @@ requireFragments(i18n, 'Dashboard locale runtime', [
   'localizeAgentRequest',
   'BEGIN CANONICAL AGENT CARRY REQUEST',
   'Secrets such as API keys',
+  'ASSET_NOUN_EN',
+  'ASSET_OPERATION_EN',
+  '任务命中后按需(读取|执行|调用|参考)',
+  '看板缺少足以确认这条(记忆|流程|能力|经验)可用的状态或授权信息',
+])
+requireFragments(catalog, 'Library status localization', [
+  '"可按需使用": "Ready for on-demand use"',
+  '"限定试用": "Limited trial"',
+  '"复核完成前暂停使用": "Paused until review is complete"',
+  '"查看已停止状态": "Check stopped status"',
+  '"你始终可以改正或停止它": "You can always correct it or stop using it"',
 ])
 requireFragments(dashboard, 'Dashboard language control', ['useDashboardLocale', 'locale-switch', 'localizeAgentRequest'])
 requireFragments(shared, 'Source-text boundary', ['export function SourceText', 'data-agent-carry-source-text', 'agentCarrySourceText'])
 requireFragments(jsxRuntime, 'Localized JSX runtime', ['agentCarrySourceText', 'sourceText ? props : localizeProps(props)'])
+requireFragments(jsxDevRuntime, 'Localized JSX development runtime', [
+  'react/jsx-dev-runtime',
+  'reactJsxDEV',
+  'isStaticChildren',
+  'localizeJsxProps',
+])
+requireFragments(viteConfig, 'Localized JSX development cache boundary', [
+  'react()',
+  "exclude: ['agent-carry-jsx', 'agent-carry-jsx/jsx-runtime', 'agent-carry-jsx/jsx-dev-runtime']",
+])
+requireFragments(tsconfig, 'Localized JSX compiler source', [
+  '"jsxImportSource": "agent-carry-jsx"',
+  '"agent-carry-jsx/*": ["./src/lib/localized-jsx/*"]',
+])
 requireFragments(views, 'Source-text projections', [
   '<SourceText>{profile.displayName}</SourceText>',
   '<SourceText as="h2">{pending[0].title}</SourceText>',

@@ -18,6 +18,7 @@ unclassified_policy = "review-before-upgrade-or-migration"
 
 [entry]
 route_ids = []
+task_family_targets = []
 
 [upgrade]
 template_policy = "preserve-extension-and-migrate-by-manifest"
