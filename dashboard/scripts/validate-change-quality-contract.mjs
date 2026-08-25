@@ -523,6 +523,22 @@ requireFragments("core/upgrade/release-manifest-1.2.1.toml", [
   '"local-dashboard-composite-evidence-does-not-require-address-bar-access-alone"',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.3.1.toml", [
+  'release = "1.3.1"',
+  'from_versions = ["1.2.1", "1.3.0"]',
+  'allow_overrides_deny_for_exact_paths = [".assistant-local/.gitkeep"',
+  'exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"',
+  'id = "release-authority-and-guidance-1.3.1"',
+  'status = "published-release"',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
+requireFragments("core/protocols/USER_GUIDANCE.md", [
+  "用户已经说“以后都这样”时，不再用四个选项重复询问",
+  "再只问一句“按这个范围留下，可以吗？”",
+  "得到这一次真实选择后，才执行授权范围内的写入",
+]);
+
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",

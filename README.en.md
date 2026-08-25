@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.3.0`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.3.1`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -192,6 +192,16 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.3.1</strong></summary>
+
+- Fixes the stale machine-readable boundary that still called the published 1.3.0 tree a local unreleased candidate. An upgrade now closes against the fixed `v1.3.1` tag, its Release object, the manifest, and the complete extracted tree without rewriting 1.3.0 history.
+- Entire `.assistant-local` and `.assistant-private` trees remain denied. Only the nine exact regular zero-byte `.gitkeep` files named by the manifest may preserve the empty public structure; content, links, or any extra path still stop the upgrade.
+- If you already said “remember this” or “do this from now on,” the host does not repeat the four-choice menu. It still shows the exact content and scope once and asks one focused keep question; model-supplied JSON never becomes silent authorization.
+- A 1.2.1 instance can migrate directly through the complete 1.3 contract to 1.3.1. A 1.3.0 instance receives only the patch and does not rerun legacy authorization or maturity migrations. Both routes use an isolated copy and require a zero-change second pass.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.3.0</strong></summary>

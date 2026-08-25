@@ -140,7 +140,7 @@ projects_to = ["learning-signal-runtime", "snapshot-runtime", "dashboard-snapsho
 [[components]]
 id = "learning-signal-runtime"
 owner = "dashboard-runtime"
-paths = ["dashboard/scripts/cross-session-signal-transaction.mjs", "dashboard/scripts/cross-session-signal-cli.mjs", "dashboard/scripts/learning-capture-transaction.mjs", "dashboard/scripts/validate-cross-session-signal-transaction.mjs", "dashboard/scripts/validate-learning-capture-transaction.mjs", "dashboard/package.json"]
+paths = ["dashboard/scripts/cross-session-signal-transaction.mjs", "dashboard/scripts/cross-session-signal-cli.mjs", "dashboard/scripts/learning-capture-transaction.mjs", "dashboard/scripts/validate-cross-session-signal-transaction.mjs", "dashboard/scripts/validate-learning-capture-transaction.mjs", "dashboard/scripts/validate-proactive-learning-guidance.mjs", "dashboard/package.json"]
 depends_on = ["cross-session-signals", "asset-retrieval-runtime", "snapshot-runtime", "result-validation"]
 projects_to = ["instance-signal-projection", "dashboard-snapshot-projection", "upgrade-system", "architecture-documentation"]
 
@@ -239,7 +239,7 @@ projects_to = ["upgrade-system", "architecture-documentation"]
 [[components]]
 id = "upgrade-system"
 owner = "template-core"
-paths = ["core/guides/upgrade-guide.md", "core/upgrade/**", "core/schemas/release-manifest.schema.md"]
+paths = ["core/guides/upgrade-guide.md", "core/upgrade/**", "core/schemas/release-manifest.schema.md", "dashboard/scripts/validate-release-authority.mjs"]
 depends_on = ["identity-lifecycle", "context-routing", "asset-memory", "instance-governance", "instance-professional-extensions", "instance-validation-evidence", "cross-session-signals", "instance-signal-projection", "asset-retrieval-runtime", "learning-signal-runtime", "startup-capsule-runtime", "instance-startup-capsule", "snapshot-runtime", "dashboard-snapshot-projection", "external-safety", "host-integration", "dashboard-actions", "installation-experience", "privacy-migration", "project-licensing", "open-source-community", "result-validation"]
 projects_to = ["architecture-documentation"]
 

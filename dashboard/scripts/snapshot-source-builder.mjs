@@ -13,6 +13,7 @@ import { measureModelVisibleStartupContext } from "./query-startup-capsule.mjs";
 
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const unsafeText = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u;
+const structuredPrivateRefSource = /^instance\/(?:memory|capabilities|sops|experiences|evolution|todo|deferred)\/.+\.md$/u;
 const supportFields = {
   todo: new Set(["id", "kind", "status", "visible", "title", "summary", "triggers", "scope", "excludes", "source_refs", "private_refs", "minimum_level", "approved_by_user", "updated_at"]),
   governance: new Set(["id", "kind", "status", "title", "summary", "triggers", "frequency_days", "background", "minimum_level", "approved_by_user", "schedule_state", "schedule_anchor_at", "last_completed_at", "next_due_at", "snoozed_until", "trigger_revision"]),
@@ -27,6 +28,38 @@ function clean(value, max, allowEmpty = false) {
 }
 function compareOrdinal(left, right) { return left < right ? -1 : left > right ? 1 : 0; }
 function decode(buffer, label) { try { return utf8Decoder.decode(buffer); } catch { fail(`${label} is not UTF-8`); } }
+
+function portablePrivatePathSegment(part) {
+  const base = part.replace(/\..*$/u, "").toLowerCase();
+  return part && part !== "." && part !== ".." && part.normalize("NFC") === part && !unsafeText.test(part)
+    && !/[. ]$/u.test(part) && !/[<>"|*]/u.test(part)
+    && !["con", "prn", "aux", "nul", "clock$"].includes(base) && !/^(?:com|lpt)[1-9]$/u.test(base);
+}
+
+function validStructuredPrivateReference(ref) {
+  if (!clean(ref, 240)) return false;
+  let relativeRef;
+  if (ref.startsWith("private://")) {
+    const match = /^private:\/\/([a-z0-9][a-z0-9._:-]{0,159})\/(.+)$/u.exec(ref);
+    if (!match) return false;
+    relativeRef = match[2];
+  } else if (ref.startsWith(".assistant-private/assets/")) {
+    relativeRef = ref.slice(".assistant-private/assets/".length);
+  } else return false;
+  return relativeRef.length > 0 && !relativeRef.includes("\\") && !relativeRef.includes(":")
+    && !relativeRef.includes("?") && !relativeRef.includes("#") && relativeRef.split("/").every(portablePrivatePathSegment);
+}
+
+function containsForbiddenSnapshotSourceLocation(ref, text) {
+  if (!structuredPrivateRefSource.test(ref)) return containsForbiddenLocationReference(text);
+  const normalized = text.replaceAll("\r\n", "\n");
+  let parsed;
+  try { parsed = parseMarkdownFrontmatterHead(normalized, ref); } catch { return true; }
+  const privateRefs = parsed.values.private_refs ?? [];
+  if (!Array.isArray(privateRefs) || privateRefs.length > 32 || privateRefs.some((item) => !validStructuredPrivateReference(item))) return true;
+  return containsForbiddenStructuredLocation(parsed.values)
+    || containsForbiddenLocationReference(normalized.slice(parsed.bodyOffset));
+}
 
 function stableRead(path, maxBytes, label) {
   const realBefore = realpathSync(path);
@@ -75,7 +108,7 @@ export function computeSnapshotSourceDigest(repository) {
     totalBytes += bytes.length;
     if (totalBytes > 512 * 1024 * 1024) fail("instance source bytes exceed the 512 MiB snapshot-maintenance bound");
     const text = decode(bytes, file.ref);
-    if (locateHighConfidenceSecretCandidates(text).blocked || containsForbiddenLocationReference(text)) fail(`source ${file.ref} contains a secret candidate or non-portable absolute location`);
+    if (locateHighConfidenceSecretCandidates(text).blocked || containsForbiddenSnapshotSourceLocation(file.ref, text)) fail(`source ${file.ref} contains a secret candidate or non-portable absolute location`);
     lines.push(`${file.ref}\t${hash(bytes)}\n`);
   }
   return Object.freeze({ digest: `sha256:${hash(Buffer.from(lines.join(""), "utf8"))}`, fileCount: files.length, totalBytes });

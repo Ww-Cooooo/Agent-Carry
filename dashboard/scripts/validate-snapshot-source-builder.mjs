@@ -149,7 +149,7 @@ expected_next_use = ""
 related_asset_ids = []
 body_sections = []
 source_refs = []
-private_refs = []
+private_refs = ["private://private.collection.grade-workflow/context.md"]
 supersedes = []
 minimum_level = 2
 confirmation = "none"
@@ -212,9 +212,15 @@ confirmation = "none"
   const expectedIdentity = `ac-${createHash("sha256").update("ac-snapshot-fixture", "utf8").digest("hex").slice(0, 12)}`;
   assert(first.updated && first.identityRef === expectedIdentity && snapshot.meta.identity_ref === expectedIdentity, "instance identity was not derived from instance_id");
   assert(snapshot.assets.sops === 1 && snapshot.sops[0]?.id === "sop.grade-summary" && snapshot.sops[0]?.maturity === "unvalidated", "formal source was not projected from the trusted map/body pair");
+  assert(!first.source.includes("private://") && !first.source.includes("private.collection.grade-workflow"), "a validated private locator leaked into the snapshot projection");
   assert(snapshot.meta.source_digest === computeSnapshotSourceDigest(root).digest, "source digest did not match an independent deterministic rebuild");
   const repeated = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:00:00+08:00") });
   assert(!repeated.updated && repeated.source === first.source, "unchanged formal truth refreshed generated_at or bytes");
+
+  write("instance/sops/unsafe-private-ref.md", "+++\nprivate_refs = [\"C:/Users/example/private.txt\"]\n+++\n# fixture\n");
+  let unsafePrivateRefBlocked = false; try { computeSnapshotSourceDigest(root); } catch { unsafePrivateRefBlocked = true; }
+  assert(unsafePrivateRefBlocked, "an absolute location hidden in private_refs bypassed source safety");
+  rmSync(resolve(root, "instance/sops/unsafe-private-ref.md"), { force: true });
 
   const forged = JSON.parse(JSON.stringify(snapshot)); forged.meta.source_digest = `sha256:${"a".repeat(64)}`;
   const forgedSource = first.source.replace(JSON.stringify(snapshot, null, 2), JSON.stringify(forged, null, 2));
