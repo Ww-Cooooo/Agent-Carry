@@ -35,10 +35,10 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
   read('core/protocols/TERRITORY_TERMINOLOGY.md'),
 ])
 
-requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.3.1`'])
+requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.0`'])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `1.3.1`',
+  'Current version: `1.4.0`',
   'AI changes quickly. Agents come and go.',
   'Try the dashboard',
   'INSTALL.en.md',

@@ -1,8 +1,8 @@
 schema_version = 1
 product_id = "agent-carry"
 product_name = "Agent Carry"
-product_version = "1.3.1"
-core_version = "1.3.1"
+product_version = "1.4.0"
+core_version = "1.4.0"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
@@ -85,6 +85,16 @@ manifest_pattern = "workspace/*/extension.toml"
 load_policy = "only-after-a-domain-route-hit-explicit-extension-maintenance-migration-upgrade-or-repair; never-enumerate-workspace-at-startup"
 unregistered_workspace_policy = "stop-and-preview-never-recursively-claim-or-delete"
 
+[instance_components]
+schema = "core/schemas/instance-component.schema.md"
+registry = "instance/components/registry.toml"
+manifest_pattern = "instance/components/*/component.toml"
+protocol = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"
+load_policy = "only-before-and-after-a-durable-instance-change-first-adoption-upgrade-migration-or-repair; never-read-or-enumerate-at-ordinary-startup-or-normal-use"
+native_assets_reuse_existing_owners = true
+compatibility_registration_adds_user_confirmation = false
+unregistered_component_policy = "preserve-and-stop-with-preview"
+
 [integration]
 protocol_version = "1.0"
 mandatory_transport = "natural-language"
@@ -114,9 +124,11 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-1.3.1.toml"
+release_manifest = "core/upgrade/release-manifest-1.4.0.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"
+instance_compatibility_protocol = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"
+instance_compatibility_load_policy = "only-before-and-after-a-durable-instance-change-first-adoption-upgrade-migration-or-repair; never-for-read-only-ordinary-startup-or-normal-use"
 territory_terminology = "core/protocols/TERRITORY_TERMINOLOGY.md"
 territory_terminology_load_policy = "only-when-agent-carry-authored-content-or-publication-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping; never-rewrite-user-or-source-text"

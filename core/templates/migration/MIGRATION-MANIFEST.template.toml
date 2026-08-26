@@ -12,6 +12,7 @@ included_categories = [
   "template-core",
   "instance-identity-and-locked-direction",
   "git-safe-portable-assets",
+  "registered-instance-components-portable-content",
   "stable-maps-and-offline-dashboard",
   "all-registered-and-referenced-private-assets-in-separate-parts",
 ]

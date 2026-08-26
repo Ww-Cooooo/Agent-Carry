@@ -68,6 +68,8 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 
 主体包内部清单可以增加 `extensions` 数组；没有专业工作区时省略或为空，保持 Schema 2 兼容。每项只记录通过 `core/schemas/extension-manifest.schema.md` 校验的扩展 ID、清单 Schema 版本、扩展清单自身相对路径／摘要和实际纳入的 `portable_paths`。这些路径必须全部位于对应 `workspace/<extension-id>/` 且与主体 `entries` 一一对应。`derived_paths`、设备本地根、缓存、构建依赖和秘密不得进入主体包；`private_collection_refs` 只用于与私密分卷的集合 ID 对账，不把私密正文或当前设备绑定复制进主体包。存在工作区但缺少合法扩展清单、便携路径重叠、越界或无法分类时，完整迁移失败关闭，不静默认领或遗漏。
 
+主体包内部清单还可以增加 `components` 数组；空注册表时省略或为空。每项只记录通过 `core/schemas/instance-component.schema.md` 校验的组件 ID、类型、状态、组件 Schema／版本、清单相对路径／摘要，以及实际纳入的 `portable_paths`；注册表、组件清单和这些便携路径都必须与主体 `entries` 一一对应。`derived_paths` 在目标设备重建，`device_local_paths` 只作为“目标设备需要重新核验或重新配置”的边界记录，不复制正文或旧电脑绝对路径，`private_collection_refs` 只与私密分卷对账。未登记目录、重叠所有权、清单损坏或 `adoption_state` 不是 `current` 时，完整迁移原样保留源实例并失败关闭，不静默遗漏或自动认领。
+
 ## 4. 本地隐私分卷
 
 每个私密 ZIP 只允许：

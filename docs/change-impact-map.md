@@ -14,6 +14,8 @@
 - `dashboard-ui` 不再拥有 `dashboard/scripts/**` 或两份 `snapshot.js`。修改自然语言检索、候选事务、启动胶囊或快照生成器时分别命中 `asset-retrieval-runtime`、`learning-signal-runtime`、`startup-capsule-runtime` 或 `snapshot-runtime`；两份真实快照由 `dashboard-snapshot-projection` 拥有，再按投影关系检查界面、升级和公开发布。
 - 私密迁移语义变化还要同步私密目录 Schema、迁移套件 Schema、模板、`private_refs`、触发注册表、看板动作、升级保留、README 与私密到公开发布检查；实际目录、绑定和正文都不能进入公开候选。
 - 专业工作区变化先命中 `professional-extension-contract`：同步扩展清单 Schema、`workspace/**` 所有权、主体／隐私迁移边界、升级冲突、派生快照与公开发布分类。没有扩展的实例必须保持零变化；未登记工作区不能被递归认领。
+- 实例安装、更新、删除软件／Skill／模型／功能，或学习、进化形成正式持久资产时，同时命中 `instance-evolution-compatibility`。原生资产和专业扩展复用现有所有者；只有真正独立的模块或适配器进入小型组件注册表。既有实例先在隔离候选中一次性纳管，再升级；普通使用不扫描组件，也不增加一轮用户确认。
+- 独立组件变化要同步 `instance/components/registry.toml`、目标 `component.toml`、便携／派生／本机边界、接口闭包和版本化迁移。可选不兼容组件保留并停用，必需不兼容组件保留并停止切换；本机软件绑定只复核，不进入公开候选或换机主体。
 - 人机选择语义变化以 `core/protocols/USER_GUIDANCE.md` 为正式所有者；同步极小启动基线、交流方式定义、宿主接入提示词、相关任务协议、看板动作、升级说明和公开 README。详细协议仍须按需加载，不能把每个示例塞进启动上下文。
 - 看板布局、卡片数量、动效、滚动或 Three.js 生命周期变化时，同步 `docs/dashboard-design.md`、正式离线 `dashboard/dist/`、升级验证项和 Pages 合成投影；真实浏览器同时检查屏外延迟绘制、卡片是否以 `.app-main` 为观察根并在进入屏幕时逐张呈现、单一滚动所有者、预留高度稳定、滚动期间三维让帧、减少动态、横向溢出、控制台与外部请求。
 - 用户可见语言入口、英文 README／安装说明、看板受控词库或语言选择逻辑变化时，同步更新 `docs/localization.md`、`README.en.md`、`INSTALL.en.md`、`START-HERE.en.txt`、`dashboard.en.html`、Pages 英文演示、组件地图、升级清单和公开发布允许集合。内部协议保持中文单一真源，不能复制出两套可能漂移的安全或迁移规则。

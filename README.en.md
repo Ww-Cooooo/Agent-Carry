@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.3.1`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.4.0`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -192,6 +192,17 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.0</strong></summary>
+
+- One upgrade-compatibility agreement covers later software, Skill, model, adapter, independent-feature, and formal-learning changes. It reuses the authorization for the current durable action instead of asking a second compatibility-only question.
+- Memories, capabilities, SOPs, experiences, Skill maps, and professional workspaces keep their existing owners. Only truly independent modules or adapters enter a small component registry, so modularity does not duplicate assets or fragment the system.
+- An existing instance is adopted once inside an isolated candidate before the master upgrade continues. Nothing waits until an ability is active and then suddenly moves, reinstalls, or deletes it.
+- Compatible components are preserved. An optional incompatible component is preserved and disabled; a required incompatibility preserves the old instance and stops the switch. Device-local software and models stay on that computer and are reverified rather than copied into the public template or complete migration body.
+- Ordinary startup and ordinary tasks never read the component registry or run a full-product regression. Version 1.4.0 can authorize an instance replacement only when the fixed `v1.4.0` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade; it never authorizes a future commit, push, tag, Release, or Pages action.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.3.1</strong></summary>

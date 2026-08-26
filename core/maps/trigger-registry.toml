@@ -195,6 +195,18 @@ cleanup = "discard-temporary-impact-list-after-verification"
 failure = "retain-recovery-state-and-report-missing-links"
 
 [[rules]]
+id = "instance-evolution-compatibility-gate"
+class_id = "explicit-event"
+checkpoint = "before-and-after-agent-carry-causes-any-durable-instance-install-update-delete-learning-evolution-configuration-component-or-asset-change-and-before-first-adoption-upgrade-migration-or-repair"
+formal_owner = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"
+dynamic_state_owner = "instance/components/registry.toml-and-target-component-manifest-only-when-a-non-native-component-exists; interrupted-actions-use-the-existing-transaction-recovery-state"
+route = "core/maps/assistant-maintenance.toml"
+startup_policy = "keep-only-the-small-durable-instance-change-event-family-never-read-the-registry-manifests-workspace-local-bindings-or-full-protocol-at-ordinary-startup-or-normal-use"
+gate = "reuse-current-action-authorization-classify-every-write-path-by-existing-owner-register-only-independent-components-forbid-direct-template-core-writes-verify-interface-and-upgrade-closure-after-write"
+cleanup = "discard-task-local-change-envelope-after-validation-never-project-completed-compatibility-checks"
+failure = "preserve-original-bytes-and-current-instance-stop-the-change-or-upgrade-and-report-the-exact-unowned-path-interface-or-stale-source"
+
+[[rules]]
 id = "territory-terminology-gate"
 class_id = "action-gate"
 checkpoint = "before-agent-carry-authored-chinese-or-english-content-add-translation-generation-or-publication-that-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping"

@@ -16,7 +16,7 @@ instance_may_modify = true
 
 [[layers]]
 id = "instance-directory-guides"
-owns = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md"]
+owns = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md", "instance/components/README.md"]
 upgrade_policy = "replace-exact-guides-from-target-template-before-restoring-user-assets"
 instance_may_modify = false
 live_reference_precondition = "if-an-instance-manifest-or-map-references-an-exact-guide-as-user-content-copy-and-hash-verify-that-content-to-a-user-owned-path-update-the-reference-and-only-then-replace-the-guide"
@@ -55,6 +55,18 @@ ordinary_startup = "never-enumerate"
 complete_migration = "include-only-manifest-portable-paths; private-collection-refs-use-private-parts; device-local-root-excluded"
 
 [[layers]]
+id = "instance-components"
+owns = ["instance/components/**"]
+excludes = ["instance/components/README.md"]
+upgrade_policy = "preserve-registered-component-by-manifest; create-or-migrate-registry-in-isolated-adoption; unregistered-component-stops-for-conflict-preview"
+instance_may_modify = true
+registry = "instance/components/registry.toml"
+manifest_pattern = "instance/components/*/component.toml"
+ordinary_startup = "never-read-or-enumerate"
+complete_migration = "include-registry-manifests-and-portable-paths; rebuild-derived-paths; exclude-device-local-paths; private-collection-refs-use-private-parts"
+device_local_attachment = "a-declared-device-local-subpath-remains-in-the-local-private-physical-layer-but-its-logical-write-owner-is-the-one-referencing-component-manifest"
+
+[[layers]]
 id = "instance-derived"
 owns = ["instance/startup-capsule.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/evolution/index.toml"]
 upgrade_policy = "rebuild-from-instance-assets"
@@ -65,6 +77,7 @@ id = "local-private"
 owns = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**"]
 upgrade_policy = "never-publish-never-overwrite-by-template-preserve-private-catalog-bindings-and-bodies"
 instance_may_modify = true
+declared_component_subpath_policy = "this-layer-enforces-local-private-storage-boundaries; a-valid-component-manifest-wins-as-the-unique-logical-write-owner-for-its-declared-non-overlapping-device-local-subpaths"
 
 [[layers]]
 id = "derived-ui"

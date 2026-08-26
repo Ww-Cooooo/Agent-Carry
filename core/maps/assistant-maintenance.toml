@@ -29,6 +29,15 @@ minimum_level = 3
 confirmation = "before-upgrade"
 
 [[routes]]
+id = "instance-evolution-compatibility"
+summary = "实例安装、学习、进化或增加组件形成正式持久变化时，自动核对所有权、接口和升级闭包；既有实例首次升级前一次性纳管，普通使用不加载且不增加一轮确认。"
+triggers = ["实例持久变更", "安装软件", "更新软件", "删除软件", "安装模型", "更新模型", "删除模型", "安装Skill", "更新Skill", "删除Skill", "安装插件", "更新插件", "删除插件", "安装适配器", "更新适配器", "删除适配器", "新增独立功能", "更新独立功能", "删除独立功能", "实例组件", "组件纳管", "自我学习形成资产", "自我进化形成资产", "旧实例纳管", "实例升级兼容"]
+target = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"
+state = "on-demand-before-and-after-durable-instance-change"
+minimum_level = 1
+confirmation = "reuse-current-action-authorization-no-extra-compatibility-confirmation"
+
+[[routes]]
 id = "professional-extension-contract"
 summary = "为真实专业工作区登记稳定所有权、可携带与派生边界；没有专业工作区的实例不创建，也不在启动时扫描。"
 triggers = ["创建专业扩展", "登记专业工作区", "工作区所有权", "复杂实例升级", "工作区迁移", "本地网页写入"]

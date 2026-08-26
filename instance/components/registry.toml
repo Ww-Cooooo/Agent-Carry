@@ -1,0 +1,13 @@
+schema_version = 1
+record_type = "agent-carry-instance-component-registry"
+instance_id = "template"
+adoption_state = "template"
+revision = 0
+component_count = 0
+
+# 空白模板不预装实例组件。
+# [[components]]
+# id = "component.example"
+# kind = "instance-module"
+# manifest_ref = "instance/components/component.example/component.toml"
+# state = "active"

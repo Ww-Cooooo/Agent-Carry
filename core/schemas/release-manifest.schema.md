@@ -17,6 +17,8 @@
 - `remove`：已废弃模板路径。
 - `extension_changes`：扩展接口兼容性。
 - `workspace/**` 不能只靠宽泛 Glob 判断。已登记 `workspace/<extension-id>/extension.toml` 时，清单必须声明目标支持的扩展清单 Schema、按清单保留／重建／排除／连接私密集合的行为，以及普通启动不枚举工作区；未登记工作区必须进入冲突而不是被静默认领、删除或打包。
+- `instance_component_changes`：目标母版提供的稳定接口集合、支持的实例组件 Schema、适用迁移 ID，以及可选／必需组件不兼容时的保留行为。`instance/components/registry.toml` 必须在 `migrate` 中先完成身份和首次纳管迁移，随后 `instance/components/**` 才能按清单保留；未登记组件目录原样保留并进入冲突，不能自动认领。
+- 实例组件清单只允许拥有自己的 `instance/components/<id>/**` 和声明的 `.assistant-local/**` 本机边界；发布清单不能借组件迁移执行未知脚本、复制旧电脑绝对路径、把设备本地内容放进公开包或完整迁移主体。
 - `dashboard_changes`：动作与快照变化。
 - `verification`：少量风险对应检查。升级类清单至少覆盖动作级回滚、合并后真实快照双份重建、第二次执行无差异、稳定看板入口和平台完整树身份；Windows 权限策略要区分自然继承、显式／受保护 DACL、SACL 与所有者，不能把复制失败或工具退出码单独当成成功。
 - Asset Schema 1.3 或更高版本的清单必须说明：风险分级只控制候选观察、验证和复核顺序；正式资产仍需用户明确确认或可核验的既有明确批准；旧 `policy-authorized`、孤立的批准布尔值和模型判断不能直接迁成正式授权。

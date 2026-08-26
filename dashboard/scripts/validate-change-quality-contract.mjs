@@ -41,8 +41,10 @@ function routeBlock(relativePath, routeId) {
 requireFragments("AGENTS.md", [
   "准备对 Agent Carry 的正式内容执行新增、修改、删除、重命名、移动、迁移、升级或发布时",
   "core/protocols/COMPONENT_CHANGE.md",
-  "实例正式资产同时走资产生命周期",
-  "只读检查、普通任务和既有资产的正常使用不加载这份完整协议",
+  "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md",
+  "原生正式资产仍走资产生命周期",
+  "不增加一轮用户确认",
+  "只读检查、普通任务和既有内容的正常使用不加载这些完整协议",
 ]);
 
 requireFragments("BOOTSTRAP.md", [
@@ -53,9 +55,14 @@ requireFragments("BOOTSTRAP.md", [
 
 requireFragments("assistant.toml", [
   'durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"',
+  'instance_compatibility_protocol = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"',
   "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent",
   "never-for-read-only-or-ordinary-use",
   'startup_reads = ["instance/signals/control.toml", "instance/maps/signal-map.toml"]',
+  "[instance_components]",
+  'registry = "instance/components/registry.toml"',
+  "never-read-or-enumerate-at-ordinary-startup-or-normal-use",
+  "compatibility_registration_adds_user_confirmation = false",
 ]);
 
 requireFragments("AGENTS.md", [
@@ -137,6 +144,17 @@ for (const fragment of [
   if (!componentChangeRoute.includes(fragment)) fail(`component-change route is missing: ${fragment}`);
 }
 
+const instanceCompatibilityRoute = routeBlock("core/maps/assistant-maintenance.toml", "instance-evolution-compatibility");
+for (const fragment of [
+  'target = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"',
+  'state = "on-demand-before-and-after-durable-instance-change"',
+  'confirmation = "reuse-current-action-authorization-no-extra-compatibility-confirmation"',
+  "旧实例纳管",
+  "实例升级兼容",
+]) {
+  if (!instanceCompatibilityRoute.includes(fragment)) fail(`instance-evolution-compatibility route is missing: ${fragment}`);
+}
+
 requireOrdered("core/protocols/COMPONENT_CHANGE.md", [
   "问题必须从根因上修好",
   "用户数据和使用可靠性必须得到证明",
@@ -155,6 +173,37 @@ requireFragments("core/protocols/COMPONENT_CHANGE.md", [
   "未分类的新产品文件不能被发布候选静默省略",
   "第二次执行应不再产生差异",
   "普通启动预算和渐进路由保持不变",
+  "实例组件与本机依赖",
+  "旧实例一次性纳管路线",
+]);
+
+requireFragments("core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", [
+  "只解决一个问题",
+  "它不是软件商店、通用包管理器、权限审批平台、后台更新器或全量回归框架",
+  "兼容登记不增加一次新的用户确认",
+  "原生实例内容",
+  "专业工作区",
+  "独立实例组件",
+  "一次性完成活跃资源纳管",
+  "不能在正常使用某项能力时突然搬迁、重装或切换",
+  "不触发全产品回归",
+  "公开空白模板",
+]);
+
+requireFragments("core/schemas/instance-component.schema.md", [
+  "实例组件兼容 Schema 1.0",
+  "普通启动不得读取注册表",
+  "stop-and-preview",
+  "disable-and-preserve",
+  "stop-and-preserve",
+  "second_run",
+]);
+
+requireFragments("core/maps/component-map.toml", [
+  'id = "instance-evolution-compatibility"',
+  'id = "instance-components"',
+  'formal_scopes = ["template-component", "instance-identity", "instance-formal-asset", "instance-formal-state", "instance-component", "derived-projection-contract", "release-candidate"]',
+  "verify-instance-component-ownership-and-interface-closure-if-affected",
 ]);
 
 requireFragments("core/protocols/ASSET_LIFECYCLE.md", [
@@ -217,6 +266,11 @@ requireFragments("core/maps/root-map.toml", [
   "用户指出错误",
   "从错误中学习",
   "以后不要再犯",
+  "安装Skill",
+  "安装插件",
+  "自我学习形成资产",
+  "旧实例纳管",
+  "实例升级兼容",
 ]);
 
 const evolutionReviewRoute = routeBlock("core/maps/evolution-model.toml", "evolution-review");
@@ -235,6 +289,10 @@ requireFragments("core/upgrade/UPGRADE-CONTRACT.md", [
   "已经固定身份",
   "node_modules",
   "第二次对同一候选执行迁移不得继续产生差异",
+  "组件注册表",
+  "一次性完整纳管",
+  "停用并保留",
+  "停止并保留",
 ]);
 
 requireFragments("core/upgrade/release-manifest-1.1.3.toml", [
@@ -279,6 +337,10 @@ requireFragments("core/maps/trigger-registry.toml", [
   'id = "memory-engine-health"',
   "domain-map-reaches-32768-bytes-or-96-routes",
   "would-exceed-49152-bytes-or-128-routes",
+  'id = "instance-evolution-compatibility-gate"',
+  'formal_owner = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"',
+  "never-read-the-registry-manifests-workspace-local-bindings-or-full-protocol-at-ordinary-startup-or-normal-use",
+  "reuse-current-action-authorization",
 ]);
 
 requireFragments("dashboard/src/components/dashboard/AssetGuides.tsx", [
@@ -533,6 +595,52 @@ requireFragments("core/upgrade/release-manifest-1.3.1.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.0.toml", [
+  'release = "1.4.0"',
+  'from_versions = ["1.3.1"]',
+  '[instance_component_changes]',
+  'target_interfaces = ["agent-carry.instance-component@1"]',
+  'id = "instance-component-adoption-1.4"',
+  'id = "instance-component-interface-1.0"',
+  'optional_incompatible_action = "disable-and-preserve"',
+  'required_incompatible_action = "stop-and-preserve"',
+  'status = "published-release"',
+  'release_ref = "v1.4.0"',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
+requireFragments("core/schemas/README.md", [
+  "instance-component.schema.md",
+  "原生资产与专业扩展继续复用各自已有的正式所有者",
+  "blank-instance-component.toml",
+]);
+
+requireFragments("docs/change-impact-map.md", [
+  "instance-evolution-compatibility",
+  "既有实例先在隔离候选中一次性纳管",
+  "本机软件绑定只复核",
+]);
+
+requireFragments("core/schemas/migration-kit.schema.md", [
+  "`components` 数组",
+  "实际纳入的 `portable_paths`",
+  "`device_local_paths` 只作为“目标设备需要重新核验或重新配置”的边界记录",
+  "`adoption_state` 不是 `current`",
+]);
+
+requireFragments("core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md", [
+  "实例独立组件按 `instance/components/registry.toml` 定向分类",
+  "旧电脑绝对路径不迁移",
+  "注册表尚未完成纳管",
+]);
+
+requireFragments("core/templates/migration/START-RESTORE.md", [
+  "已登记独立组件的便携内容",
+  "不会被主体包冒充为已安装",
+  "组件清单摘要和实际便携路径",
+]);
+
 requireFragments("core/protocols/USER_GUIDANCE.md", [
   "用户已经说“以后都这样”时，不再用四个选项重复询问",
   "再只问一句“按这个范围留下，可以吗？”",
@@ -542,6 +650,9 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
+  "当前版本：`1.4.0`",
+  "统一的升级兼容协定",
+  "复用当前动作已经获得的授权，不额外再问一次",
 ]);
 
-console.log("Formal change-quality contract validated: hit/non-hit routing, Level 3 ownership, root-cause priority, novice-safe guidance, visually distinct explanation/choice/review steps, continuous private export/import guidance, progressive offscreen rendering, visible card entry rooted to the main scroll container, one scroll owner, adaptive Three.js cadence, known-file handoff, cross-host propagation, instance-asset reachability, template distribution sync, migration safety, startup budget, and idempotence.");
+console.log("Formal change-quality contract validated: hit/non-hit routing, Level 3 ownership, root-cause priority, novice-safe guidance, instance evolution compatibility without a second confirmation, one-time isolated adoption, visually distinct explanation/choice/review steps, continuous private export/import guidance, progressive offscreen rendering, visible card entry rooted to the main scroll container, one scroll owner, adaptive Three.js cadence, known-file handoff, cross-host propagation, instance-asset reachability, template distribution sync, migration safety, startup budget, and idempotence.");

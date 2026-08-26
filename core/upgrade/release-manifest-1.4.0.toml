@@ -1,0 +1,93 @@
+schema_version = 2
+release = "1.4.0"
+core = "1.4.0"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.3"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+extension_manifest_schema = "1.0"
+instance_component_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"
+from_versions = ["1.3.1"]
+notes = "Published 1.4.0 instance-evolution compatibility contract. It adds one on-demand agreement for Agent Carry-caused durable instance changes and future master upgrades. Existing native assets and professional extensions keep their current owners; only independent modules and adapters use the small instance component registry. Older instances are adopted once inside an isolated upgrade candidate, never while an ability is active. This fixed release can authorize an instance replacement only when the official v1.4.0 tag, Release object, manifest and extracted tree agree and the user authorizes that exact upgrade; it never authorizes future repository or publication actions."
+asset_changes = "Asset Schema remains 1.3. Memory, capability, SOP, experience, Skill-map and evolution assets continue through their existing lifecycle, authorization, route and evidence contracts. The compatibility gate checks ownership and upgrade closure without adding a second user confirmation or duplicating asset bodies in the component registry."
+dashboard_changes = "Dashboard Snapshot Schema remains 1.1. The blank component registry is not projected into ordinary startup or the dashboard. Public and dist snapshots are still rebuilt from merged instance truth after an authorized upgrade."
+extension_changes = "Extension API and Extension Manifest Schema remain 1.0. Registered professional workspaces keep using extension.toml and are not duplicated in the generic component registry; unregistered workspace content remains preserved as a conflict."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md", "instance/components/README.md"]
+migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/components/registry.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**", "instance/evolution/index.toml", "instance/validations/index.toml"]
+preserve = ["workspace/**", "instance/components/**", "instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", "instance/validations/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "Only the exact README files in replace_instance_guides are target-template guides. Sibling user files, component bodies, validation records and migrated profiles remain instance-owned."
+validation_overlap_note = "instance/validations/index.toml is migrated before the broad instance/validations/** preserve rule. Existing real evidence records are preserved; the index may be rebuilt only from those records and verified asset references."
+evolution_overlap_note = "instance/evolution/index.toml is migrated before the broad instance/evolution/** preserve rule. Existing candidate source files remain byte-preserved; only the identity-bound bounded index is rebuilt from verified existing candidate sources."
+component_overlap_note = "instance/components/registry.toml is adopted or migrated before the broad instance/components/** preserve rule. The exact instance/components/README.md is a template guide; every registered component body remains instance-owned and unregistered content is preserved as a conflict."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+allow_overrides_deny_for_exact_paths = [".assistant-local/.gitkeep", ".assistant-local/dashboard/.gitkeep", ".assistant-local/indexes/.gitkeep", ".assistant-local/skills/.gitkeep", ".assistant-local/task-handoffs/.gitkeep", ".assistant-local/upgrade-inbox/.gitkeep", ".assistant-private/.gitkeep", ".assistant-private/assets/.gitkeep", ".assistant-private/inbox/.gitkeep"]
+exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"
+broad_globs_are_copy_commands = false
+
+[instance_component_changes]
+schema = "1.0"
+registry = "instance/components/registry.toml"
+target_interfaces = ["agent-carry.instance-component@1"]
+migration_ids = ["instance-component-adoption-1.4", "instance-component-interface-1.0"]
+native_asset_policy = "reuse-existing-formal-owners-never-create-duplicate-component-manifests"
+professional_extension_policy = "reuse-extension-toml-never-duplicate-in-generic-registry"
+unregistered_policy = "preserve-and-stop-with-preview"
+optional_incompatible_action = "disable-and-preserve"
+required_incompatible_action = "stop-and-preserve"
+device_local_policy = "preserve-in-place-on-same-device-never-copy-to-public-or-complete-migration-reverify-before-use"
+ordinary_startup = "never-read-registry-enumerate-components-or-load-component-bodies"
+authorization = "reuse-the-current-durable-action-authorization-never-add-a-compatibility-only-user-confirmation"
+
+[[migration_rules]]
+id = "instance-component-adoption-1.4"
+from_versions = ["1.3.1"]
+when_all = ["source instance reports product 1.3.1", "the official fixed v1.4.0 tag Release object manifest and extracted tree agree and the user authorized that exact upgrade", "upgrade runs in a new isolated candidate against a verified clean 1.3.1 baseline"]
+source = "the complete existing instance tree, its declared local and private references, and the verified clean 1.3.1 template baseline"
+destination = "the isolated candidate with an identity-bound instance/components/registry.toml and manifests only for independent components"
+operation_order = ["freeze the source complete-tree identity and rollback point before any candidate write", "create an identity-bound registry with adoption_state=required without touching the source instance", "classify differences inside the instance root and only explicitly declared device-local dependency roots as native instance content, professional extension, independent component, device-local binding, private reference, derived output, direct template-core modification or unknown", "keep native memories capabilities SOPs experiences Skills maps signals governance and validations under their existing owners without generic component manifests", "keep registered professional workspaces under extension.toml without generic component entries", "for each independent module or adapter preserve portable bytes in place and write one bounded component manifest plus one sorted registry entry", "register an existing device-local path in place when safe and store any external absolute path only inside its declared local binding file", "convert direct template-core modifications only to an existing extension point, independent component, adapter or explicit versioned migration inside the candidate", "preserve every unknown or unsafe item byte-for-byte and mark adoption conflict instead of guessing", "set adoption_state=current only after every active upgrade-relevant item has one non-overlapping owner and all required interfaces close", "reparse registry and manifests, compare preserved paths and run only affected capability checks", "continue the target upgrade only after adoption closes"]
+forbidden = ["scanning the whole computer", "executing an existing script or installer during discovery", "moving reinstalling deleting or activating resources while an ability is in normal use", "copying device-local content into the portable tree", "inventing component ownership", "overwriting direct core modifications with the blank template", "treating compatibility registration as another user confirmation"]
+unknown_or_ambiguous = "preserve the original bytes, keep adoption_state=conflict, retain the old instance and stop formal switching"
+idempotence = "same-source-second-run-produces-the-same-plan-and-no-new-registry-or-content-difference"
+
+[[migration_rules]]
+id = "instance-component-interface-1.0"
+from_versions = ["1.3.1"]
+when_all = ["component adoption is current", "one or more registered independent components exist"]
+source = "the strict component registry, referenced component manifests, declared portable paths and device-local metadata"
+destination = "the isolated 1.4.0 candidate with every active component resolved against the target interface set"
+operation_order = ["bind the plan to registry manifest portable derived and device-local source fingerprints", "resolve active component requires against target interfaces and interfaces provided by other active components", "preserve compatible components and reverify device-local bindings without copying or deleting them", "run only a component migration whose stable ID is explicitly listed by this target manifest then reparse and recheck", "disable and preserve an optional incompatible component", "stop and preserve the entire old instance when a required component remains incompatible", "invalidate and rebuild the plan after any source drift", "verify the second plan over unchanged inputs is identical"]
+forbidden = ["running undeclared migration text", "guessing an unknown interface", "deleting an incompatible component", "copying an old-device absolute path to a new device", "claiming that interface compatibility proves real software health"]
+idempotence = "second-run-makes-no-change"
+
+[verification]
+checks = ["manifest-parses", "version-1.4.0-and-instance-component-schema-1.0-aligned", "only-1.3.1-is-a-direct-source-and-older-versions-chain-through-the-published-1.3.1-contract", "published-1.3.1-manifest-remains-byte-immutable", "published-1.4.0-authority-requires-fixed-tag-release-object-matching-tree-and-user-authorization", "blank-template-registry-has-template-identity-zero-components-and-no-preinstalled-domain", "ordinary-startup-does-not-read-the-component-registry-enumerate-components-or-load-component-bodies", "native-assets-and-professional-extensions-keep-their-existing-owners", "durable-instance-change-gate-reuses-current-authorization-without-a-second-confirmation", "registered-component-portable-derived-local-and-private-boundaries-parse-strictly", "unregistered-overlapping-unknown-linked-or-damaged-component-content-is-preserved-and-fails-closed", "source-fingerprint-drift-invalidates-the-old-plan", "compatible-components-are-preserved", "optional-incompatible-components-are-disabled-and-preserved", "required-incompatible-components-stop-switching-and-are-preserved", "device-local-bindings-are-not-copied-to-public-or-complete-migration-and-are-reverified-before-use", "direct-template-core-customization-is-converted-in-the-isolated-candidate-or-preserved-as-a-conflict", "one-time-adoption-does-not-move-reinstall-delete-or-activate-existing-resources", "targeted-component-self-test-passes-with-fault-injection-and-deterministic-second-plan", "startup-capsule-is-rebuilt-after-version-migration-and-its-source-digest-closes", "merged-instance-truth-rebuilds-public-and-dist-snapshots-byte-identically", "public-distribution-includes-the-protocol-schema-empty-registry-empty-component-template-runtime-and-validator-but-no-real-components-bindings-private-or-maintainer-assets", "complete-tree-platform-identity-and-preserved-path-bytes-close-before-switch", "rollback-restores-original-complete-tree", "second-run-is-idempotent"]
+risk_policy = "one-compatibility-agreement-with-targeted-internal-validation; no-background-scanner-package-manager-extra-approval-or-full-product-regression-for-ordinary-instance-changes"
+
+[release_boundary]
+status = "published-release"
+release_ref = "v1.4.0"
+publication_authorized = true
+repository_operation_authorized = true
+instance_replacement_authorized = true
+future_publication_or_repository_operation_authorized = false
+authority_requires = ["official-fixed-tag-v1.4.0", "official-release-object-v1.4.0", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]
+authority_scope = "this-fixed-release-may-be-used-for-instance-replacement; never-authorizes-future-repository-release-or-publication-actions"
+maintainer_private_paths = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**", "workspace/**"]
