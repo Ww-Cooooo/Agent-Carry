@@ -4,6 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   classifyInstanceMutation,
+  inspectInstanceComponentCompatibility,
   inspectInstanceComponents,
   instanceComponentPlanIsFresh,
   planInstanceComponentUpgrade,
@@ -115,6 +116,44 @@ try {
     && valid.components[0].tree.localFingerprints.length === 1,
   "portable, derived and device-local fingerprints are incomplete");
 
+  const driftedRegistry = registry()
+    .replace('instance_id = "ac.fixture"', 'instance_id = "template"')
+    .replace("component_count = 1", "component_count = 9")
+    .replaceAll("\n", "\r\n");
+  const futureFieldSentinel = 'future_note = "preserve-without-executing"\n';
+  const driftedManifest = component({ extra: futureFieldSentinel }).replaceAll("\n", "\r\n");
+  write("instance/components/registry.toml", driftedRegistry);
+  write("instance/components/audio-transcriber/component.toml", driftedManifest);
+  const driftedRegistryBefore = readFileSync(resolve(fixture, "instance/components/registry.toml"));
+  const driftedManifestBefore = readFileSync(resolve(fixture, "instance/components/audio-transcriber/component.toml"));
+  const compatibleDrift = inspectInstanceComponentCompatibility(fixture);
+  assert(compatibleDrift.decision === "instance-components-operational-with-diagnostics"
+    && compatibleDrift.outcome === "migration-needed" && compatibleDrift.componentCount === 1
+    && compatibleDrift.executable === false
+    && compatibleDrift.diagnostics.some((item) => item.code === "registry-derived-metadata-drift")
+    && compatibleDrift.diagnostics.some((item) => item.code === "unknown-component-fields")
+    && compatibleDrift.repairPlan.some((item) => item.action.includes("instance_id"))
+    && compatibleDrift.userReport.details.length >= 3 && compatibleDrift.userReport.recommendation.includes("隔离候选"),
+  "representational drift did not produce a repairable, migration-aware natural-language diagnosis");
+  assert(classifyInstanceMutation(fixture, { paths: ["instance/memory/user-habit.md"] }).decision === "instance-mutation-compatible",
+    "unrelated native asset change was blocked by repairable component metadata drift");
+  assert(planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-migration-required",
+    "future component metadata did not request a bounded compatibility migration");
+  assert(Buffer.compare(driftedRegistryBefore, readFileSync(resolve(fixture, "instance/components/registry.toml"))) === 0
+    && Buffer.compare(driftedManifestBefore, readFileSync(resolve(fixture, "instance/components/audio-transcriber/component.toml"))) === 0
+    && readFileSync(resolve(fixture, "instance/components/audio-transcriber/component.toml"), "utf8").includes(futureFieldSentinel.trim()),
+  "read-only compatibility diagnosis rewrote or dropped unknown source bytes");
+  expectFailure(() => inspectInstanceComponents(fixture), "portable UTF-8 LF", "strict audit accepted non-canonical compatibility input");
+  write("instance/components/registry.toml", registry());
+  write("instance/components/audio-transcriber/component.toml", component());
+  write("instance/components/registry.toml", registry().replace("component_count = 1", "component_count = 4"));
+  const autoRepairPlan = planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] });
+  assert(autoRepairPlan.decision === "instance-upgrade-auto-repair-required"
+    && autoRepairPlan.repairPlan.some((item) => item.action.includes("component_count"))
+    && autoRepairPlan.userReport.requiresUserDecision === false,
+  "a deterministic count repair either blocked globally or requested user confirmation");
+  write("instance/components/registry.toml", registry());
+
   const nativeMutation = classifyInstanceMutation(fixture, { paths: ["instance/memory/user-habit.md"] });
   assert(nativeMutation.decision === "instance-mutation-compatible"
     && nativeMutation.actions[0].action === "native-instance-owner"
@@ -127,8 +166,20 @@ try {
   assert(componentMutation.decision === "instance-mutation-compatible"
     && componentMutation.actions.map((item) => item.action).join(",") === "registered-component,registered-device-local",
   "registered portable and device-local writes did not resolve to one component");
-  assert(classifyInstanceMutation(fixture, { paths: ["core/manifest.toml"] }).decision === "instance-mutation-conflict",
-    "direct template-core mutation was accepted");
+  write("instance/components/audio-transcriber/component.toml", component()
+    .replace(".assistant-local/components/audio-transcriber", ".assistant-local/runtime/audio-transcriber"));
+  const frameworkClaim = inspectInstanceComponentCompatibility(fixture);
+  assert(frameworkClaim.outcome === "component-isolated"
+    && frameworkClaim.isolatedComponents.some((item) => item.id === "audio-transcriber")
+    && classifyInstanceMutation(fixture, { paths: [".assistant-local/runtime/status.toml"] }).actions[0].action === "native-framework-local",
+  "a component could claim framework-local runtime state or block the framework owner");
+  write("instance/components/audio-transcriber/component.toml", component());
+  const coreMutation = classifyInstanceMutation(fixture, { paths: ["core/manifest.toml"] });
+  assert(coreMutation.decision === "instance-mutation-conflict"
+    && coreMutation.userReport.headline.includes("所有权边界")
+    && coreMutation.userReport.dataSafety.includes("没有被写入")
+    && coreMutation.userReport.renderingPolicy.includes("current-user-language"),
+  "direct template-core mutation was accepted or lacked a user-facing recovery explanation");
   assert(classifyInstanceMutation(fixture, { paths: [".assistant-local/components/audio-transcriber/binding.toml"] }).actions[0].action === "deny-component-owner-mismatch",
     "a component-owned local binding could be changed as unowned framework state");
   expectFailure(() => classifyInstanceMutation(fixture, { paths: ["../escape"] }), "unsafe", "path traversal was accepted");
@@ -196,6 +247,19 @@ state = "active"
   remove("instance/components/rogue");
 
   write("instance/components/audio-transcriber/unknown.txt", "preserve me\n");
+  const isolated = inspectInstanceComponentCompatibility(fixture);
+  assert(isolated.outcome === "component-isolated" && isolated.componentCount === 0
+    && isolated.isolatedComponents.some((item) => item.id === "audio-transcriber")
+    && isolated.userReport.dataSafety.includes("原文件") && isolated.userReport.recommendation.includes("未受影响"),
+  "an invalid optional component was not locally isolated with a natural-language recovery path");
+  assert(classifyInstanceMutation(fixture, { paths: ["instance/sops/unrelated.md"] }).decision === "instance-mutation-compatible",
+    "an isolated optional component blocked an unrelated native SOP change");
+  assert(classifyInstanceMutation(fixture, {
+    componentId: "audio-transcriber",
+    paths: ["instance/components/audio-transcriber/config.toml"],
+  }).decision === "instance-mutation-component-isolated", "the damaged component itself remained writable");
+  assert(planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-compatible-with-isolated-components",
+    "an isolated optional component blocked the rest of the core upgrade");
   expectFailure(() => inspectInstanceComponents(fixture), "unclassified paths", "unclassified file was accepted");
   remove("instance/components/audio-transcriber/unknown.txt");
   write("instance/components/audio-transcriber/component.toml", component({ extra: 'instructions = "run this text"\n' }));
@@ -219,19 +283,56 @@ state = "active"
 `;
   write("instance/components/registry.toml", registry({ count: 2, entries: duplicateEntry }));
   expectFailure(() => inspectInstanceComponents(fixture), "duplicated or unsorted", "duplicate registry entry was accepted");
-  write("instance/components/registry.toml", Buffer.from([0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x5f, 0x76, 0xff, 0x0a]));
+  const corruptRegistry = Buffer.from([0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x5f, 0x76, 0xff, 0x0a]);
+  write("instance/components/registry.toml", corruptRegistry);
+  const corruptDiagnosis = inspectInstanceComponentCompatibility(fixture);
+  const nativeDuringCorruptRegistry = classifyInstanceMutation(fixture, { paths: ["instance/memory/still-usable.md"] });
+  assert(corruptDiagnosis.outcome === "user-decision-needed" && corruptDiagnosis.userReport.requiresUserDecision
+    && corruptDiagnosis.userReport.dataSafety.includes("原文件")
+    && nativeDuringCorruptRegistry.decision === "instance-mutation-compatible"
+    && nativeDuringCorruptRegistry.compatibilityOutcome === "normal" && nativeDuringCorruptRegistry.diagnostics.length === 0
+    && planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-user-decision-required"
+    && Buffer.compare(corruptRegistry, readFileSync(resolve(fixture, "instance/components/registry.toml"))) === 0,
+  "a corrupt registry either stopped unrelated native work, failed to guide the user, or changed source bytes");
   expectFailure(() => inspectInstanceComponents(fixture), "valid UTF-8", "invalid UTF-8 registry was accepted");
+  const oversizedEntries = Array.from({ length: 129 }, (_, index) => {
+    const id = `component-${String(index).padStart(3, "0")}`;
+    return `[[components]]\nid = "${id}"\nkind = "instance-module"\nmanifest_ref = "instance/components/${id}/component.toml"\nstate = "disabled"\n`;
+  }).join("\n");
+  write("instance/components/registry.toml", registry({ count: 129, entries: oversizedEntries }));
+  const budgetDiagnosis = inspectInstanceComponentCompatibility(fixture);
+  assert(budgetDiagnosis.outcome === "user-decision-needed" && budgetDiagnosis.componentCount === 0
+    && budgetDiagnosis.diagnostics.some((item) => item.code === "registry-component-budget")
+    && budgetDiagnosis.userReport.details.length <= 3,
+  "oversized registry expanded component bodies or produced an unbounded diagnosis");
+  const malformedEntries = Array.from({ length: 20 }, (_, index) => {
+    const id = `component-${String(index).padStart(3, "0")}`;
+    return `[[components]]\nid = "${id}"\nkind = "instance-module"\nmanifest_ref = "instance/components/wrong-${id}/component.toml"\nstate = "disabled"\n`;
+  }).join("\n");
+  write("instance/components/registry.toml", registry({ count: 20, entries: malformedEntries }));
+  const boundedReport = inspectInstanceComponentCompatibility(fixture);
+  assert(boundedReport.diagnostics.length > 12 && boundedReport.userReport.details.length === 12
+    && boundedReport.userReport.omittedDetailCount === boundedReport.diagnostics.length - 11
+    && boundedReport.isolatedComponents.length === 21
+    && planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-user-decision-required",
+  "many malformed component entries escaped isolation or produced an unbounded user report");
   write("instance/components/registry.toml", registry().replaceAll("\n", "\r\n"));
   expectFailure(() => inspectInstanceComponents(fixture), "portable UTF-8 LF", "CRLF registry was accepted");
   write("instance/components/registry.toml", registry({ adoptionState: "required" }));
   assert(planInstanceComponentUpgrade(fixture, { targetInterfaces }).decision === "instance-upgrade-adoption-required",
     "an older instance could skip one-time complete adoption");
+  write("instance/components/registry.toml", registry({ adoptionState: "conflict" }));
+  const conflictAdoption = planInstanceComponentUpgrade(fixture, { targetInterfaces });
+  assert(conflictAdoption.decision === "instance-upgrade-user-decision-required"
+    && conflictAdoption.userReport.requiresUserDecision,
+  "an explicit adoption conflict was treated as a routine migration or global crash");
 
   for (const [ref, fragments] of [
-    ["AGENTS.md", ["INSTANCE_EVOLUTION_COMPATIBILITY.md", "不增加一轮用户确认"]],
-    ["assistant.toml", ["instance/components/registry.toml", "never-read-or-enumerate-at-ordinary-startup", "compatibility_registration_adds_user_confirmation = false"]],
-    ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", ["一次性完成活跃资源纳管", "它不是软件商店", "不触发全产品回归"]],
-    ["core/schemas/instance-component.schema.md", ["普通启动不得读取注册表", "stop-and-preview", "second_run"]],
+    ["AGENTS.md", ["INSTANCE_EVOLUTION_COMPATIBILITY.md", "不增加一轮用户确认", "单项故障局部隔离", "自然语言说明影响"]],
+    ["assistant.toml", ["instance/components/registry.toml", "never-read-or-enumerate-at-ordinary-startup", "compatibility_registration_adds_user_confirmation = false", "preserve-and-isolate-with-preview"]],
+    ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", ["一次性完成活跃资源纳管", "它不是软件商店", "不触发全产品回归", "auto-repairable", "migration-needed", "component-isolated", "user-decision-needed"]],
+    ["core/schemas/instance-component.schema.md", ["普通启动不得读取注册表", "stop-and-preview", "second_run", "严格发布审计", "自然语言用户报告"]],
+    ["core/maps/assistant-maintenance.toml", ["可确定差异自动修复", "单项故障局部隔离并自然语言汇报"]],
   ]) {
     const source = readFileSync(resolve(repository, ref), "utf8");
     for (const fragment of fragments) assert(source.includes(fragment), `${ref} is missing required boundary: ${fragment}`);
@@ -251,7 +352,7 @@ state = "active"
   assert(compatibilityDependencies && !compatibilityDependencies.includes("component-change") && !compatibilityDependencies.includes("upgrade-system"),
     "the compatibility component created a direct component-change or upgrade-system self-governance loop");
 
-  console.log("Instance component contract passed blank-template, ownership, no-extra-confirmation, interface, adoption, drift, device-local, dependency-reference, fail-closed and deterministic-plan checks.");
+  console.log("Instance component contract passed strict audit, tolerant representation, transparent repair, local isolation, ownership, no-extra-confirmation, interface, adoption, drift, device-local, dependency-reference and deterministic-plan checks.");
 } finally {
   rmSync(fixture, { recursive: true, force: true });
 }

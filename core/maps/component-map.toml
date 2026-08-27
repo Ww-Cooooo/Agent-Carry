@@ -148,14 +148,14 @@ projects_to = ["dashboard-ui", "upgrade-system"]
 [[components]]
 id = "asset-retrieval-runtime"
 owner = "dashboard-runtime"
-paths = ["dashboard/scripts/asset-route-contract.mjs", "dashboard/scripts/bounded-retrieval.mjs", "dashboard/scripts/candidate-index-contract.mjs", "dashboard/scripts/learning-promotion-contract.mjs", "dashboard/scripts/learning-promotion-transaction.mjs", "dashboard/scripts/learning-promotion-cli.mjs", "dashboard/scripts/query-assets.mjs", "dashboard/scripts/safe-output-boundary.mjs", "dashboard/scripts/secret-content-boundary.mjs", "dashboard/scripts/validate-learning-promotion-contract.mjs", "dashboard/scripts/validate-learning-promotion-transaction.mjs", "dashboard/scripts/validate-learning-recall-contract.mjs", "dashboard/scripts/validate-learning-recall-fixture.mjs", "dashboard/scripts/validate-query-assets-contract.mjs", "dashboard/scripts/validate-secret-content-boundary.mjs"]
+paths = ["dashboard/scripts/asset-route-contract.mjs", "dashboard/scripts/bounded-retrieval.mjs", "dashboard/scripts/candidate-index-contract.mjs", "dashboard/scripts/learning-promotion-contract.mjs", "dashboard/scripts/query-assets.mjs", "dashboard/scripts/safe-output-boundary.mjs", "dashboard/scripts/secret-content-boundary.mjs", "dashboard/scripts/validate-learning-promotion-contract.mjs", "dashboard/scripts/validate-learning-recall-contract.mjs", "dashboard/scripts/validate-learning-recall-fixture.mjs", "dashboard/scripts/validate-query-assets-contract.mjs", "dashboard/scripts/validate-secret-content-boundary.mjs"]
 depends_on = ["asset-memory", "instance-validation-evidence", "context-routing", "external-safety", "model-orchestration", "result-validation"]
 projects_to = ["learning-signal-runtime", "snapshot-runtime", "dashboard-snapshot-contract", "dashboard-ui", "upgrade-system", "architecture-documentation"]
 
 [[components]]
 id = "learning-signal-runtime"
 owner = "dashboard-runtime"
-paths = ["dashboard/scripts/cross-session-signal-transaction.mjs", "dashboard/scripts/cross-session-signal-cli.mjs", "dashboard/scripts/learning-capture-transaction.mjs", "dashboard/scripts/validate-cross-session-signal-transaction.mjs", "dashboard/scripts/validate-learning-capture-transaction.mjs", "dashboard/scripts/validate-proactive-learning-guidance.mjs", "dashboard/package.json"]
+paths = ["dashboard/scripts/cross-session-signal-transaction.mjs", "dashboard/scripts/cross-session-signal-cli.mjs", "dashboard/scripts/learning-capture-transaction.mjs", "dashboard/scripts/learning-capture-cli.mjs", "dashboard/scripts/learning-promotion-transaction.mjs", "dashboard/scripts/learning-promotion-cli.mjs", "dashboard/scripts/operational-user-report.mjs", "dashboard/scripts/validate-cross-session-signal-transaction.mjs", "dashboard/scripts/validate-learning-capture-transaction.mjs", "dashboard/scripts/validate-learning-promotion-transaction.mjs", "dashboard/scripts/validate-operational-user-report.mjs", "dashboard/scripts/validate-proactive-learning-guidance.mjs", "dashboard/package.json"]
 depends_on = ["cross-session-signals", "asset-retrieval-runtime", "snapshot-runtime", "result-validation"]
 projects_to = ["instance-signal-projection", "dashboard-snapshot-projection", "upgrade-system", "architecture-documentation"]
 
@@ -191,7 +191,7 @@ projects_to = ["dashboard-ui", "upgrade-system", "architecture-documentation"]
 id = "dashboard-build-tooling"
 owner = "dashboard-runtime"
 paths = ["dashboard/scripts/generate-dashboard-actions.mjs", "dashboard/scripts/generate-third-party-notices.mjs", "dashboard/scripts/make-offline.mjs", "dashboard/scripts/validate-action-mirror.mjs", "dashboard/scripts/validate-change-quality-contract.mjs", "dashboard/scripts/validate-first-run-contract.mjs", "dashboard/scripts/validate-offline-assets.mjs", "dashboard/scripts/validate-open-source-compliance.mjs", "dashboard/scripts/validate-startup-budget.mjs"]
-depends_on = ["dashboard-actions", "dashboard-ui", "project-licensing"]
+depends_on = ["dashboard-actions", "dashboard-ui", "project-licensing", "identity-lifecycle", "instance-validation-evidence", "instance-components", "instance-governance", "host-integration", "cross-session-signals", "startup-capsule-runtime", "snapshot-runtime", "dashboard-snapshot-projection"]
 projects_to = ["installation-experience", "upgrade-system", "architecture-documentation"]
 
 [[components]]

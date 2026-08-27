@@ -13,6 +13,7 @@
 - `direction.domain_id`、`label`、`scope_statement`
 - `direction.out_of_scope_policy`：固定为 `create-new-instance`
 - `profile.user_preferences_ref`、`domain_map_ref`、`signal_control_ref`、`signal_map_ref`、`time_trigger_map_ref`、`host_registry_ref`。空模板可以暂时让 `user_preferences_ref` 指向目录说明；正式实例必须改为真实用户档案（默认 `instance/profile/approved-profile.md`），不得继续引用升级时会被替换的 `instance/profile/README.md`。
+- `validation.evidence_index_ref`：固定为 `instance/validations/index.toml`。索引是实例拥有的低敏结果证据真源，不进入普通启动；模板和新实例即使记录数为 0，也必须存在并与清单使用同一 `instance_id`。
 - `versions.product`、`extension_api`、`asset_schema`、`dashboard_snapshot_schema`、`cross_session_signal_schema`、`host_integration_schema`。1.2.0 起还记录 `private_asset_catalog_schema` 与 `migration_kit_schema`；1.2.1 起可记录 `extension_manifest_schema`；支持有界进化候选索引的版本记录 `evolution_candidate_index_schema = "1.0"`；使用正式资产确认门注册表的版本记录 `asset_confirmation_gate_schema = "1.0"`；使用低敏结果证据闭包的版本记录 `result_validation_evidence_schema = "1.0"`；使用严格模型外启动胶囊的版本记录 `startup_capsule_schema = "1.0"`。旧实例缺失这些 1.3 字段时只表示需要一次显式元数据迁移，不得猜测未知更高版本；只在实例化、学习事件或正式升级中初始化并回读，不为补字段扫描正文，也不能把原始 manifest 展示文字直接加入普通启动上下文。
 
 可选的 `learning` 小节保存实例级学习政策：
@@ -53,6 +54,7 @@
 - 通用实例不是未实例化模板；它是方向为 `general` 的正式实例。
 - `signal_control_ref` 指向实例拥有的跨会话正式状态控制记录；`signal_map_ref` 与 `time_trigger_map_ref` 指向可重建投影。它们的 `instance_id` 必须与本清单一致。
 - `host_registry_ref` 指向实例拥有的极小宿主接入索引。注册表不属于普通启动上下文，只在接入、恢复、变化、刷新或相关能力使用时按需读取；其中 `instance_id` 必须与本清单一致。
+- `validation.evidence_index_ref` 只能指向固定结果验证索引。首次实例化必须把该索引与 manifest、启动胶囊和双快照放入同一可恢复事务：只把索引身份初始化为新实例，保持 `state=empty`、0 修订、空时间、正式预算、0 记录且没有 `[[validations]]`。尚未执行的首项任务不能成为验证记录；任一失败恢复整组前像。
 - 修改 `learning.policy` 本身需要用户明确决定。切换为 `manual-only` 只改变候选验证、复核和提问节奏，不静默授权、撤销或改写正式资产。1.2 旧实例中的 `policy-authorized` 资产必须按 1.3 升级规则定向复核，不能因为当前政策值被自动视为 `explicit`。该小节只保存一个极小策略选择，不复制风险定义、成熟度阈值或生命周期正文；详细规则命中学习事件后才加载。
 - 用户可以把 `privacy.current_execution_model` 改成更严格模式，但任何模式都不能放宽 `credentials` 和 `git_storage`。隐私小节只保存极小选择值；完整接收方、安全、导入导出和提示词攻击规则按事件加载，不扩写启动胶囊。
 - 私密资产目录和当前设备绑定都位于受 Git 排除的 `.assistant-private/`。模板升级保留现有目录、绑定和正文；目标设备不会原样复用旧绝对路径。

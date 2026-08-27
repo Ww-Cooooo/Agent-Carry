@@ -3,6 +3,11 @@
  * never turns this UI layer into a general-purpose translator for user assets.
  */
 export const ENGLISH_TEXT: Record<string, string> = {
+  "部分内容": "some content",
+  "部分内容已安全隔离": "Some content was safely isolated",
+  "看板保留了可用内容，并标出了需要修复的部分": "The dashboard kept usable content and marked what needs repair",
+  "让 Agent 只检查受影响类别并给出修复建议；修复前不需要停止其他无关工作。": "Ask the Agent to inspect only the affected area and recommend a repair. Unrelated work can continue in the meantime.",
+  "让 Agent 只检查受影响类别并给出修复建议；其他无关工作可以继续。": "Ask the Agent to inspect only the affected area and recommend a repair. Other unrelated work can continue.",
   "学习方式": "Learning mode",
   "先询问，再按风险安排候选": "Ask first, then prioritize candidates by risk",
   "候选每一步都由你确认": "You confirm each candidate step",

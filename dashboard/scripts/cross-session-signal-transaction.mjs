@@ -5,8 +5,8 @@ import {
   unlinkSync, writeFileSync,
 } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { parseArrayTableDocument, parseMarkdownFrontmatterHead, stableAssetId } from "./asset-route-contract.mjs";
-import { validateCandidateRevisionTransition } from "./candidate-index-contract.mjs";
+import { parseArrayTableDocument, parseMarkdownFrontmatterHead, parseSectionedToml, stableAssetId, validateInstanceManifestStructure } from "./asset-route-contract.mjs";
+import { validateCandidateIndex as validateCandidateIndexClosure, validateCandidateRevisionTransition } from "./candidate-index-contract.mjs";
 import { containsForbiddenLocationReference, containsForbiddenStructuredLocation } from "./safe-output-boundary.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { buildSnapshotCandidate, computeSnapshotSourceDigest } from "./snapshot-source-builder.mjs";
@@ -90,6 +90,30 @@ const candidateEntryProjection = Object.freeze({
   observation_state: "observation_state", observation_basis: "observation_basis", independent_event_count: "independent_event_count",
   last_evidence_at: "last_evidence_at", source_revision: "source_revision",
 });
+const candidateIndexRootOrder = Object.freeze([
+  "schema_version", "index_id", "instance_id", "state", "source_revision", "generated_at", "budget_bytes", "overflow",
+  "candidate_count", "indexed_count", "active_count",
+]);
+const candidateIndexEntryOrder = Object.freeze([
+  "id", "title", "summary", "topic_key", "subject_key", "triggers", "aliases", "scope", "conditions", "excludes",
+  "target_kind", "target_subtype", "candidate_relation", "status", "observation_state", "observation_basis", "risk_tier",
+  "independent_event_count", "last_evidence_at", "source_ref", "source_revision",
+]);
+const signalMapRootOrder = Object.freeze([
+  "schema_version", "map_id", "instance_id", "state", "source_revision", "generated_at", "budget_bytes", "overflow",
+  "active_count", "scheduled_count", "next_wakeup_at", "next_wakeup_ref",
+]);
+const signalProjectionOrder = Object.freeze([
+  "id", "signal_type", "status", "reason", "progress", "next_event", "domain", "route_id", "source_ref",
+  "source_signal_revision", "provenance", "trust_state", "minimum_level", "confirmation",
+]);
+const timeMapRootOrder = Object.freeze([
+  "schema_version", "map_id", "instance_id", "state", "source_revision", "generated_at", "scheduled_count", "next_wakeup_at",
+]);
+const timeTriggerOrder = Object.freeze([
+  "id", "kind", "status", "title", "next_check_at", "effective_check_at", "domain", "route_id", "source_ref",
+  "source_trigger_revision", "minimum_level", "confirmation",
+]);
 const candidateMutableEvidenceFields = new Set([
   "independent_event_count", "successful_event_count", "failed_event_count", "distinct_context_count",
   "representative_event_ids", "last_evidence_at", "source_revision", "updated_at",
@@ -152,6 +176,7 @@ const trustedEventReceipts = new WeakMap();
 const consumedEventReceipts = new WeakSet();
 const consumedEventEvidenceRefs = new Map();
 const trustedTransactionPayloads = new WeakMap();
+const operationalDerivedStateReports = new WeakMap();
 
 export const CROSS_SESSION_SIGNAL_FAIL_CLOSED_ASSUMPTIONS = Object.freeze([
   "A pending control record does not contain the complete write set or byte digests; recovery therefore requires the original digest-bound plan.",
@@ -313,6 +338,26 @@ function proposedSnapshot(ref, value, maxBytes) {
   return Object.freeze({ ref, buffer, text: decode(buffer, `${ref} proposal`), byteLength: buffer.length, digest: sha256(buffer) });
 }
 function rootOnly(source, label) { return parseArrayTableDocument(source, "__no_array_table__", label).root; }
+function canonicalTomlValue(value, label) {
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (Number.isSafeInteger(value)) return String(value);
+  if (Array.isArray(value) && value.length <= 64 && value.every((item) => typeof item === "string")) return JSON.stringify(value);
+  fail(`${label} contains an unsupported canonical TOML value`);
+}
+function serializeCanonicalRoot(values, order, label) {
+  const lines = [];
+  for (const field of order) {
+    if (!Object.hasOwn(values, field)) continue;
+    lines.push(`${field} = ${canonicalTomlValue(values[field], `${label}.${field}`)}`);
+  }
+  return lines.join("\n");
+}
+function serializeCanonicalArrayTable(root, rootOrder, table, entries, entryOrder, label) {
+  const chunks = [serializeCanonicalRoot(root, rootOrder, label)];
+  for (const entry of entries) chunks.push(`[[${table}]]\n${serializeCanonicalRoot(entry, entryOrder, `${label}.${table}`)}`);
+  return `${chunks.join("\n\n")}\n`;
+}
 function manifestRoot(source) {
   const lines = [];
   for (const raw of source.replaceAll("\r\n", "\n").split("\n")) {
@@ -566,6 +611,336 @@ function verifyProjectionClosure(control, signalMap, timeMap) {
   if (control.update_state !== "clean" || signalMap.source_revision !== control.projection_revision
     || timeMap.source_revision !== control.projection_revision || signalMap.scheduled_count !== timeMap.scheduled_count
     || signalMap.next_wakeup_at !== timeMap.next_wakeup_at) fail("control, signal projection, and time projection do not form one clean revision closure");
+}
+
+function derivedStateUserReport(state, repairedTargetCount = 0) {
+  if (state === "repaired") return Object.freeze({
+    impact: `只重建并回读了 ${repairedTargetCount} 份候选/信号派生投影。`,
+    data_state: "候选正文、信号正文、正式资产和用户数据均未改动。",
+    recoverability: "修复使用原文件前像；任一回读失败都会恢复整组旧状态。",
+    still_usable: "原来的学习动作已继续，普通任务和其他能力不受影响。",
+    next_step: "无需额外操作；继续当前任务即可。",
+    user_summary: `发现候选或信号派生索引漂移，已在本机自动修复 ${repairedTargetCount} 份投影并验证通过；正文和用户数据没有改动，原任务已继续。`,
+  });
+  if (state === "source-truth-invalid") return Object.freeze({
+    impact: "实例身份或核心清单未通过严格校验，不能把它当作普通派生漂移处理。",
+    data_state: "本次没有写入、删除或猜改任何文件。",
+    recoverability: "先修复正式 manifest/core 真源后，派生投影可以再按真源重建。",
+    still_usable: "磁盘数据仍保留，但当前实例启动和持久变更不能宣称安全可用。",
+    next_step: "让 Agent 只检查正式 manifest/core 和启动状态，不要删除资产或放宽校验。",
+    user_summary: "正式实例身份或核心清单没有通过校验，本次没有改动任何数据。请先让 Agent 检查 manifest/core，再继续持久变更。",
+  });
+  return Object.freeze({
+    impact: "新的学习候选、晋升和跨会话信号积累暂时暂停；故障没有扩散到整个助手。",
+    data_state: "现有候选、信号、正式资产和用户数据保持原样，没有删除或猜测改写。",
+    recoverability: "相关派生状态仍可在查明正文或未知字段冲突后定向修复。",
+    still_usable: "普通对话、已有安全资产读取和其他无关任务仍可继续。",
+    next_step: "让 Agent 只检查候选索引、信号地图和时间地图的闭包；不要重建或覆盖无关资产。",
+    user_summary: "候选或信号派生状态无法从现有真源唯一重建，因此只暂停相关学习/信号积累；现有数据未改动，普通任务仍可继续。",
+  });
+}
+
+export function bindOperationalDerivedStateReport(value, repairResult) {
+  if (value && typeof value === "object" && repairResult?.userReport) {
+    operationalDerivedStateReports.set(value, repairResult.userReport);
+  }
+  return value;
+}
+
+export function getOperationalDerivedStateReport(value) {
+  return value && typeof value === "object" ? operationalDerivedStateReports.get(value) ?? null : null;
+}
+
+function existingOperationalRecoveryRoute() {
+  return Object.freeze({ proceed: true, repair: Object.freeze({
+    decision: "operational-derived-state-existing-recovery-route", attempted: false,
+    repairedTargetCount: 0, executable: false,
+  }) });
+}
+
+export function operationalDerivedStateGate(repositoryReal, operation, {
+  currentCandidateId = "", currentCandidateSourceRef = "", currentSignalId = "", currentSignalSourceRef = "",
+} = {}) {
+  try {
+    const manifestRead = stableRead(repositoryReal, MANIFEST_REF, 2560);
+    const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
+    if (manifest.root.state !== "instance") throw new Error("instantiated instance required");
+    let currentCandidate = null;
+    if (currentCandidateSourceRef !== "") {
+      try {
+        const candidateRead = stableRead(repositoryReal, currentCandidateSourceRef, CANDIDATE_SOURCE_MAX_BYTES);
+        const candidateParsed = parseCandidateSource(candidateRead, "current operational candidate");
+        currentCandidate = validateCandidateSource(candidateParsed.values);
+        if (currentCandidate.id !== currentCandidateId || !["candidate", "review"].includes(currentCandidate.status)
+          || locateHighConfidenceSecretCandidates(candidateParsed.body).blocked
+          || containsForbiddenLocationReference(candidateParsed.body)) return existingOperationalRecoveryRoute();
+      } catch { return existingOperationalRecoveryRoute(); }
+    }
+    if (currentSignalSourceRef !== "") {
+      try {
+        if (!currentCandidate) return existingOperationalRecoveryRoute();
+        validateSignalSource(parseSignalDocument(stableRead(repositoryReal, currentSignalSourceRef,
+          SIGNAL_SOURCE_MAX_BYTES).text, "current operational learning signal"), {
+          candidateId: currentCandidateId, candidateRevision: currentCandidate.source_revision,
+          signalId: currentSignalId, signalRef: currentSignalSourceRef, allowLegacySourceAliases: true,
+        });
+      } catch { return existingOperationalRecoveryRoute(); }
+    }
+    const controlRead = stableRead(repositoryReal, CONTROL_REF, CONTROL_MAX_BYTES);
+    const control = validateControl(rootOnly(controlRead.text, "signal control"), manifest.root.instance_id);
+    if (control.update_state !== "clean") {
+      return existingOperationalRecoveryRoute();
+    }
+    const signalRead = stableRead(repositoryReal, SIGNAL_MAP_REF, SIGNAL_MAP_BUDGET_BYTES);
+    const signalRoot = parseArrayTableDocument(signalRead.text, "signals", "signal projection gate").root;
+    if (signalRoot.overflow === true || ["overflow", "rebuild-required"].includes(signalRoot.state)) {
+      return existingOperationalRecoveryRoute();
+    }
+    const candidateRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, CANDIDATE_INDEX_BUDGET_BYTES);
+    const candidateDocument = parseArrayTableDocument(candidateRead.text, "candidates", "candidate index gate");
+    const candidateRoot = candidateDocument.root;
+    const legacyEmptyIndex = candidateRoot.instance_id === manifest.root.instance_id
+      && candidateRoot.state === "empty" && candidateRoot.source_revision === 0 && candidateRoot.generated_at === ""
+      && candidateRoot.overflow === false && candidateRoot.candidate_count === 0 && candidateRoot.indexed_count === 0
+      && candidateRoot.active_count === 0 && candidateDocument.entries.length === 0;
+    if (legacyEmptyIndex) {
+      return Object.freeze({ proceed: true, repair: Object.freeze({
+        decision: "operational-derived-state-first-write-will-initialize-empty-index", attempted: false,
+        repairedTargetCount: 0, executable: false,
+      }) });
+    }
+  } catch { /* The strict repair classifier below distinguishes core truth from derived drift. */ }
+  const repair = repairOperationalDerivedStateOnce(repositoryReal);
+  if (["operational-derived-state-current", "operational-derived-state-repaired"].includes(repair.decision)) {
+    return Object.freeze({ proceed: true, repair });
+  }
+  const hardStop = repair.decision === "operational-derived-state-hard-stop";
+  return Object.freeze({
+    proceed: false,
+    result: deepFreeze({
+      decision: hardStop ? `${operation}-hard-stop-denied` : `${operation}-related-capability-paused`,
+      reason: hardStop ? "instance-source-truth-invalid" : "derived-state-not-uniquely-repairable",
+      executable: false,
+      ordinaryTasksContinue: repair.ordinaryTasksContinue === true,
+      pausedCapabilities: repair.pausedCapabilities ?? Object.freeze([]),
+      userReport: repair.userReport,
+    }),
+  });
+}
+
+function readStrictDerivedIdentity(repositoryReal) {
+  const manifestRead = stableRead(repositoryReal, MANIFEST_REF, 2560);
+  const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
+  if (manifest.root.state !== "instance") fail("derived operational repair requires an instantiated manifest");
+  const controlRead = stableRead(repositoryReal, CONTROL_REF, CONTROL_MAX_BYTES);
+  const control = validateControl(rootOnly(controlRead.text, "signal control"), manifest.root.instance_id);
+  if (control.update_state !== "clean") fail("derived operational repair cannot rewrite a pending or recovery-required signal transaction");
+  return Object.freeze({ instanceId: manifest.root.instance_id, control, manifestRead, controlRead });
+}
+
+function candidateSourcesForRepair(repositoryReal, entries) {
+  const sources = new Map(); const indexedRefs = new Set();
+  for (const entry of entries) {
+    if (!validateCandidateRevisionTransition(entry, entry) || indexedRefs.has(String(entry.source_ref ?? "").toLowerCase())) {
+      fail("candidate entries are not valid unique projections");
+    }
+    const read = stableRead(repositoryReal, entry.source_ref, CANDIDATE_SOURCE_MAX_BYTES);
+    const parsed = parseCandidateSource(read, entry.id); const source = validateCandidateSource(parsed.values);
+    if (!["candidate", "review"].includes(source.status) || !candidateSourceMatchesEntry(source, entry)
+      || locateHighConfidenceSecretCandidates(parsed.body).blocked || containsForbiddenLocationReference(parsed.body)) {
+      fail("candidate entry and source cannot form one safe repair truth");
+    }
+    sources.set(entry.source_ref, source); indexedRefs.add(entry.source_ref.toLowerCase());
+  }
+
+  const evolutionRoot = resolveCheckedPath(repositoryReal, "instance/evolution");
+  const queue = [evolutionRoot]; const unresolvedRefs = new Set(); let visited = 0; let files = 0;
+  while (queue.length) {
+    const directory = queue.shift();
+    if (++visited > 512) fail("candidate repair source scan exceeds its directory bound");
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = resolve(directory, entry.name); const info = lstatSync(path);
+      if (info.isSymbolicLink()) fail("candidate repair source scan crosses a link or reparse point");
+      if (entry.isDirectory()) { if (entry.name.toLowerCase() !== "archive") queue.push(path); continue; }
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".md") || entry.name.toLowerCase() === "readme.md") continue;
+      if (++files > 256) fail("candidate repair source scan exceeds its file bound");
+      const ref = relative(repositoryReal, realpathSync(path)).split(sep).join("/").normalize("NFC");
+      const read = stableRead(repositoryReal, ref, CANDIDATE_SOURCE_MAX_BYTES);
+      const parsed = parseCandidateSource(read, ref);
+      if (!["candidate", "review"].includes(parsed.values?.status)) continue;
+      const source = validateCandidateSource(parsed.values);
+      if (locateHighConfidenceSecretCandidates(parsed.body).blocked || containsForbiddenLocationReference(parsed.body)) {
+        fail("candidate repair source scan found unsafe body content");
+      }
+      if (["candidate", "review"].includes(source.status)) unresolvedRefs.add(ref.toLowerCase());
+    }
+  }
+  if (unresolvedRefs.size !== indexedRefs.size || [...unresolvedRefs].some((ref) => !indexedRefs.has(ref))) {
+    fail("candidate index cannot be uniquely rebuilt from the unresolved source set");
+  }
+  return sources;
+}
+
+function readAndValidateDerivedClosure(repositoryReal) {
+  const identity = readStrictDerivedIdentity(repositoryReal);
+  const candidateRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, CANDIDATE_INDEX_BUDGET_BYTES);
+  const candidateParsed = parseArrayTableDocument(candidateRead.text, "candidates", "candidate index");
+  const candidateIndex = { ...candidateParsed.root, candidates: candidateParsed.entries };
+  const candidateSources = candidateSourcesForRepair(repositoryReal, candidateParsed.entries);
+  if (!validateCandidateIndexClosure(candidateIndex, candidateSources,
+    { expectedInstanceId: identity.instanceId, actualFileBytes: candidateRead.byteLength })) fail("candidate index closure is invalid");
+
+  const timeRead = stableRead(repositoryReal, TIME_MAP_REF, TIME_MAP_MAX_BYTES);
+  const timeMap = validateTimeMap(parseArrayTableDocument(timeRead.text, "triggers", "time projection"),
+    identity.instanceId, timeRead.byteLength);
+  const signalRead = stableRead(repositoryReal, SIGNAL_MAP_REF, SIGNAL_MAP_BUDGET_BYTES);
+  const signalMap = validateSignalMap(parseArrayTableDocument(signalRead.text, "signals", "startup signal projection"),
+    identity.instanceId, signalRead.byteLength);
+  verifyProjectionClosure(identity.control, signalMap, timeMap);
+
+  const candidatesById = new Map(candidateParsed.entries.map((entry) => [entry.id, entry]));
+  for (const entry of signalMap.signals) {
+    const sourceRead = stableRead(repositoryReal, entry.source_ref, SIGNAL_SOURCE_MAX_BYTES);
+    const parsed = parseSignalDocument(sourceRead.text, entry.id);
+    const candidateId = parsed.root.asset_refs?.[0]; const candidate = candidatesById.get(candidateId);
+    if (!candidate || candidate.source_revision !== parsed.root.candidate_source_revision) fail("signal projection references a missing or stale candidate");
+    const source = validateSignalSource(parsed, { candidateId, candidateRevision: candidate.source_revision,
+      signalId: entry.id, signalRef: entry.source_ref });
+    verifySignalProjection(signalMap, source, entry.source_ref);
+  }
+  return Object.freeze({ identity, candidateRead, timeRead, signalRead, candidateIndex, candidateSources, timeMap, signalMap });
+}
+
+function buildDerivedRepairCandidates(repositoryReal) {
+  const identity = readStrictDerivedIdentity(repositoryReal);
+  const candidateRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, CANDIDATE_INDEX_BUDGET_BYTES);
+  const candidateParsed = parseArrayTableDocument(candidateRead.text, "candidates", "candidate index repair source");
+  if (!exactKeys(candidateParsed.root, candidateIndexRootFields) || candidateParsed.root.overflow !== false
+    || !safeInteger(candidateParsed.root.source_revision)
+    || !strictZonedDate(candidateParsed.root.generated_at)) fail("candidate index has non-repairable root metadata");
+  const candidateSources = candidateSourcesForRepair(repositoryReal, candidateParsed.entries);
+  const candidateRoot = {
+    schema_version: 1, index_id: "evolution-candidates", instance_id: identity.instanceId,
+    state: candidateParsed.entries.length === 0 ? "empty" : "current",
+    source_revision: candidateParsed.root.source_revision, generated_at: candidateParsed.root.generated_at,
+    budget_bytes: CANDIDATE_INDEX_BUDGET_BYTES, overflow: false,
+    candidate_count: candidateParsed.entries.length, indexed_count: candidateParsed.entries.length,
+    active_count: candidateParsed.entries.filter(candidateEntryActive).length,
+  };
+  const candidateProposal = proposedSnapshot(CANDIDATE_INDEX_REF,
+    serializeCanonicalArrayTable(candidateRoot, candidateIndexRootOrder, "candidates", candidateParsed.entries,
+      candidateIndexEntryOrder, "candidate index"), CANDIDATE_INDEX_BUDGET_BYTES);
+  const proposedCandidateParsed = parseArrayTableDocument(candidateProposal.text, "candidates", "candidate index repair proposal");
+  if (!validateCandidateIndexClosure({ ...proposedCandidateParsed.root, candidates: proposedCandidateParsed.entries }, candidateSources,
+    { expectedInstanceId: identity.instanceId, actualFileBytes: candidateProposal.byteLength })) fail("candidate repair proposal did not close against candidate sources");
+
+  const timeRead = stableRead(repositoryReal, TIME_MAP_REF, TIME_MAP_MAX_BYTES);
+  const timeParsed = parseArrayTableDocument(timeRead.text, "triggers", "time projection repair source");
+  if (!exactKeys(timeParsed.root, timeMapRootFields) || !clean(timeParsed.root.generated_at, 64)
+    || (timeParsed.root.generated_at !== "" && !strictZonedDate(timeParsed.root.generated_at))) fail("time projection has non-repairable root metadata");
+  const timeRoot = {
+    schema_version: 1, map_id: "time-triggers", instance_id: identity.instanceId,
+    state: timeParsed.entries.length === 0 ? "empty" : "current", source_revision: identity.control.projection_revision,
+    generated_at: timeParsed.root.generated_at, scheduled_count: timeParsed.entries.length,
+    next_wakeup_at: deterministicEarliest(timeParsed.entries),
+  };
+  const timeProposal = proposedSnapshot(TIME_MAP_REF,
+    serializeCanonicalArrayTable(timeRoot, timeMapRootOrder, "triggers", timeParsed.entries, timeTriggerOrder, "time projection"),
+    TIME_MAP_MAX_BYTES);
+  const timeMap = validateTimeMap(parseArrayTableDocument(timeProposal.text, "triggers", "time projection repair proposal"),
+    identity.instanceId, timeProposal.byteLength);
+
+  const signalRead = stableRead(repositoryReal, SIGNAL_MAP_REF, SIGNAL_MAP_BUDGET_BYTES);
+  const signalParsed = parseArrayTableDocument(signalRead.text, "signals", "signal projection repair source");
+  if (!exactKeys(signalParsed.root, signalMapRootFields) || signalParsed.root.overflow !== false
+    || !["empty", "current", "rebuild-required"].includes(signalParsed.root.state)
+    || !clean(signalParsed.root.generated_at, 64)
+    || (signalParsed.root.generated_at !== "" && !strictZonedDate(signalParsed.root.generated_at))) {
+    fail("signal projection has non-repairable root metadata");
+  }
+  const signalRoot = {
+    schema_version: 1, map_id: "cross-session-signals", instance_id: identity.instanceId,
+    state: signalParsed.entries.length === 0 && timeMap.scheduled_count === 0 ? "empty" : "current",
+    source_revision: identity.control.projection_revision, generated_at: signalParsed.root.generated_at,
+    budget_bytes: SIGNAL_MAP_BUDGET_BYTES, overflow: false, active_count: signalParsed.entries.length,
+    scheduled_count: timeMap.scheduled_count, next_wakeup_at: timeMap.next_wakeup_at, next_wakeup_ref: TIME_MAP_REF,
+  };
+  const legacySignalProposal = proposedSnapshot(SIGNAL_MAP_REF,
+    serializeCanonicalArrayTable(signalRoot, signalMapRootOrder, "signals", signalParsed.entries,
+      signalProjectionOrder, "signal projection"), SIGNAL_MAP_BUDGET_BYTES);
+  const normalizedSignalMap = validateSignalMap(parseArrayTableDocument(legacySignalProposal.text, "signals", "signal projection repair proposal"),
+    identity.instanceId, legacySignalProposal.byteLength, { allowLegacySourceAliases: true });
+  const signalProposal = proposedSnapshot(SIGNAL_MAP_REF,
+    serializeCanonicalArrayTable(signalRoot, signalMapRootOrder, "signals", normalizedSignalMap.signals,
+      signalProjectionOrder, "signal projection"), SIGNAL_MAP_BUDGET_BYTES);
+  const signalMap = validateSignalMap(parseArrayTableDocument(signalProposal.text, "signals", "canonical signal projection repair proposal"),
+    identity.instanceId, signalProposal.byteLength);
+  verifyProjectionClosure(identity.control, signalMap, timeMap);
+  return Object.freeze({ identity, candidates: Object.freeze([candidateProposal, timeProposal, signalProposal]) });
+}
+
+function installDerivedRepairCandidates(repositoryReal, proposal, { testFaultAfterInstall = 0 } = {}) {
+  const suffix = randomBytes(8).toString("hex"); const records = [];
+  for (const candidate of proposal.candidates) {
+    const current = stableRead(repositoryReal, candidate.ref, artifactLimit(candidate.ref));
+    if (current.digest === candidate.digest) continue;
+    const stageRef = `${candidate.ref}.repair-stage-${suffix}`; const backupRef = `${candidate.ref}.repair-backup-${suffix}`;
+    const stage = resolveCheckedPath(repositoryReal, stageRef, { allowMissing: true });
+    const backup = resolveCheckedPath(repositoryReal, backupRef, { allowMissing: true });
+    writeFileSync(stage, candidate.buffer, { flag: "wx" });
+    const staged = stableRead(repositoryReal, stageRef, artifactLimit(candidate.ref));
+    if (staged.digest !== candidate.digest || staged.byteLength !== candidate.byteLength) fail("derived repair stage did not round-trip");
+    records.push({ candidate, current, stage, backup, target: resolveCheckedPath(repositoryReal, candidate.ref), installed: false, oldMoved: false });
+  }
+  if (records.length === 0) fail("derived state is invalid but has no deterministic metadata-only replacement");
+  let installedCount = 0;
+  try {
+    for (const record of records) {
+      renameSync(record.target, record.backup); record.oldMoved = true;
+      renameSync(record.stage, record.target); record.installed = true; installedCount += 1;
+      const readback = stableRead(repositoryReal, record.candidate.ref, artifactLimit(record.candidate.ref));
+      if (readback.digest !== record.candidate.digest) fail("derived repair target failed strict readback");
+      if (testFaultAfterInstall > 0 && installedCount === testFaultAfterInstall) fail("injected derived repair interruption");
+    }
+    readAndValidateDerivedClosure(repositoryReal);
+    for (const record of records) if (existsSync(record.backup)) unlinkSync(record.backup);
+    return records.length;
+  } catch (error) {
+    for (const record of [...records].reverse()) {
+      if (existsSync(record.stage)) unlinkSync(record.stage);
+      if (record.installed && existsSync(record.target)) unlinkSync(record.target);
+      if (record.oldMoved && existsSync(record.backup)) renameSync(record.backup, record.target);
+    }
+    for (const record of records) {
+      const restored = stableRead(repositoryReal, record.candidate.ref, artifactLimit(record.candidate.ref));
+      if (restored.digest !== record.current.digest) fail("derived repair rollback could not restore an exact preimage");
+    }
+    throw error;
+  }
+}
+
+export function repairOperationalDerivedStateOnce(repository, { testFaultAfterInstall = 0 } = {}) {
+  let repositoryReal;
+  try { repositoryReal = realpathSync(repository); readStrictDerivedIdentity(repositoryReal); }
+  catch {
+    return deepFreeze({ decision: "operational-derived-state-hard-stop", attempted: false, repairedTargetCount: 0,
+      executable: false, userReport: derivedStateUserReport("source-truth-invalid") });
+  }
+  try {
+    readAndValidateDerivedClosure(repositoryReal);
+    return deepFreeze({ decision: "operational-derived-state-current", attempted: false, repairedTargetCount: 0, executable: false });
+  } catch { /* One evidence-based repair attempt follows. */ }
+  try {
+    const proposal = buildDerivedRepairCandidates(repositoryReal);
+    const repairedTargetCount = installDerivedRepairCandidates(repositoryReal, proposal, { testFaultAfterInstall });
+    return deepFreeze({ decision: "operational-derived-state-repaired", attempted: true, attemptCount: 1,
+      repairedTargetCount, executable: false, userReport: derivedStateUserReport("repaired", repairedTargetCount) });
+  } catch {
+    return deepFreeze({ decision: "operational-derived-state-related-capability-paused", attempted: true, attemptCount: 1,
+      repairedTargetCount: 0, executable: false, ordinaryTasksContinue: true,
+      pausedCapabilities: Object.freeze(["learning-capture", "learning-promotion", "cross-session-signals"]),
+      userReport: derivedStateUserReport("paused") });
+  }
 }
 function normalizeEvent(event) {
   if (!exactKeys(event, evidenceFields) || !stableAssetId.test(event.event_id ?? "") || !eventSourceKinds.has(event.event_source)
@@ -870,9 +1245,11 @@ function buildMergedDashboardArtifacts(repositoryReal, {
 }) {
   let projectionRoot;
   const projectionParent = dirname(repositoryReal);
+  const requiredSourceRefs = [CONTROL_REF, candidateRead.ref, CANDIDATE_INDEX_REF, proposedSignalRead.ref, TIME_MAP_REF, SIGNAL_MAP_REF];
+  const operationalDigestOptions = { mode: "operational", requiredSourceRefs };
   try {
     cleanupStaleSnapshotProjectionRoots(repositoryReal);
-    const baseTruth = computeSnapshotSourceDigest(repositoryReal);
+    const baseTruth = computeSnapshotSourceDigest(repositoryReal, operationalDigestOptions);
     projectionRoot = mkdtempSync(join(projectionParent, snapshotProjectionPrefix(repositoryReal)));
     const marker = { schema_version: 1, record_type: "cross-session-snapshot-projection",
       repository_binding: snapshotProjectionBinding(repositoryReal), directory_name: projectionRoot.slice(projectionParent.length + 1),
@@ -885,7 +1262,7 @@ function buildMergedDashboardArtifacts(repositoryReal, {
     for (const ref of [PUBLIC_SNAPSHOT_REF, DIST_SNAPSHOT_REF]) {
       mirrorPhysicalTree(resolve(repositoryReal, ...ref.split("/")), resolve(projectionRoot, ...ref.split("/")), budget);
     }
-    const projectionBase = computeSnapshotSourceDigest(projectionRoot);
+    const projectionBase = computeSnapshotSourceDigest(projectionRoot, operationalDigestOptions);
     if (projectionBase.digest !== baseTruth.digest || projectionBase.fileCount !== baseTruth.fileCount
       || projectionBase.totalBytes !== baseTruth.totalBytes) fail("isolated dashboard truth projection did not preserve the frozen source tree");
 
@@ -900,13 +1277,15 @@ function buildMergedDashboardArtifacts(repositoryReal, {
     ];
     for (const [ref, bytes] of sourceSteps) {
       replaceProjectionFile(projectionRoot, ref, bytes);
-      truthDigests.push(computeSnapshotSourceDigest(projectionRoot).digest);
+      truthDigests.push(computeSnapshotSourceDigest(projectionRoot, operationalDigestOptions).digest);
     }
     replaceProjectionFile(projectionRoot, CONTROL_REF, cleanControlRead.buffer);
-    const finalTruth = computeSnapshotSourceDigest(projectionRoot).digest;
+    const finalTruth = computeSnapshotSourceDigest(projectionRoot, operationalDigestOptions).digest;
     const snapshot = buildSnapshotCandidate(projectionRoot, {
       existingSource: publicSnapshotRead.text,
       now: new Date(transactionAt),
+      mode: "operational",
+      requiredSourceRefs,
     });
     if (typeof snapshot.source !== "string" || snapshot.sourceDigest !== finalTruth
       || Buffer.byteLength(snapshot.source, "utf8") > DASHBOARD_SNAPSHOT_MAX_BYTES) {
@@ -1106,6 +1485,11 @@ export function buildCrossSessionSignalTransactionPlan(repository, request = {})
     || !normalizedRelativeRef(candidateSourceRef, { prefix: "instance/evolution/", extension: ".md" })
     || !normalizedRelativeRef(signalSourceRef, { prefix: "instance/signals/", extension: ".toml" }) || signalSourceRef === CONTROL_REF
     || !strictZonedDate(transactionAt)) return deny("request-envelope-invalid");
+  const operationalGate = operationalDerivedStateGate(repositoryReal, "cross-session-signal", {
+    currentCandidateId: candidateId, currentCandidateSourceRef: candidateSourceRef,
+    currentSignalId: signalId, currentSignalSourceRef: signalSourceRef,
+  });
+  if (!operationalGate.proceed) return operationalGate.result;
   try {
     const manifestRead = stableRead(repositoryReal, MANIFEST_REF, 2560);
     const manifest = manifestRoot(manifestRead.text);
@@ -1277,7 +1661,7 @@ export function buildCrossSessionSignalTransactionPlan(repository, request = {})
       ]),
     }));
     consumedEventReceipts.add(eventReceipt);
-    return plan;
+    return bindOperationalDerivedStateReport(plan, operationalGate.repair);
   } catch (error) {
     return deny("proposal-or-source-closure-invalid", { detail: error.message });
   }
@@ -1549,7 +1933,8 @@ function classifyPlanState(repositoryReal, plan) {
     const checkpoint = checkpoints.findIndex(matches);
     if (checkpoint < 0) return { state: "drift", checkpoint: -1, reason: "non-prefix-or-external-target-drift", repair: swap.repair };
     if (!swap.repair || !["restore-backup"].includes(swap.repair.kind)) {
-      const truth = computeSnapshotSourceDigest(repositoryReal).digest;
+      const truth = computeSnapshotSourceDigest(repositoryReal, { mode: "operational",
+        requiredSourceRefs: plan.steps.map((step) => step.target) }).digest;
       if (truth !== plan.truthDigests[checkpoint]) return { state: "drift", checkpoint, reason: "merged-truth-source-drift", repair: swap.repair };
     }
     if (swap.repair) return { state: "prefix", checkpoint, reason: "atomic-swap-repair-required", repair: swap.repair };
@@ -1689,7 +2074,8 @@ function verifyFinalDashboard(repositoryReal, plan) {
   if (publicRead.digest !== distRead.digest || publicRead.digest !== new Map(plan.finalDigests.map((item) => [item.target, item.digest])).get(PUBLIC_SNAPSHOT_REF)) {
     fail("dashboard snapshot pair is not byte-identical at the sealed final digest");
   }
-  const rebuilt = buildSnapshotCandidate(repositoryReal, { existingSource: publicRead.text, now: new Date(plan.transactionAt) });
+  const rebuilt = buildSnapshotCandidate(repositoryReal, { existingSource: publicRead.text, now: new Date(plan.transactionAt),
+    mode: "operational", requiredSourceRefs: plan.steps.map((step) => step.target) });
   if (rebuilt.updated || rebuilt.source !== publicRead.text || rebuilt.sourceDigest !== plan.truthDigests.at(-1)) {
     fail("dashboard snapshot pair is not the exact merged-truth rebuild");
   }
@@ -1716,10 +2102,11 @@ export function resumePersistentCrossSessionSignalTransaction(repository, { oper
     }
     let writeCount = 0;
     for (const step of loaded.plan.steps.slice(state.checkpoint)) {
-      const beforeTruth = computeSnapshotSourceDigest(repositoryReal).digest;
+      const digestOptions = { mode: "operational", requiredSourceRefs: loaded.plan.steps.map((item) => item.target) };
+      const beforeTruth = computeSnapshotSourceDigest(repositoryReal, digestOptions).digest;
       if (beforeTruth !== loaded.plan.truthDigests[step.ordinal - 1]) fail(`merged truth drifted before step ${step.ordinal}`);
       atomicPlanStep(repositoryReal, loaded.plan, step, loaded.stepBytes.get(step.ordinal)); writeCount += 1;
-      const afterTruth = computeSnapshotSourceDigest(repositoryReal).digest;
+      const afterTruth = computeSnapshotSourceDigest(repositoryReal, digestOptions).digest;
       if (afterTruth !== loaded.plan.truthDigests[step.ordinal]) fail(`merged truth drifted after step ${step.ordinal}`);
       awaitMaybe(hooks.afterStep, { ordinal: step.ordinal, phase: step.phase, checkpoint: step.ordinal });
     }

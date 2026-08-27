@@ -1,8 +1,8 @@
 schema_version = 1
 product_id = "agent-carry"
 product_name = "Agent Carry"
-product_version = "1.4.0"
-core_version = "1.4.0"
+product_version = "1.4.1"
+core_version = "1.4.1"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
@@ -34,8 +34,8 @@ known_information = "reuse-observed-facts-never-ask-the-user-to-reprovide-known-
 response_shape = "outcome-and-plain-language-context-first-then-user-relevant-next-step"
 decision_prompt = "explain-context-then-2-to-4-options-with-consequences-recommendation-and-an-unsure-path"
 durable_file_output = "after-creating-moving-or-delivering-user-visible-files-reuse-known-locations-and-resolve-long-term-carry-intent"
-natural_recall = "accept-ordinary-imprecise-language-match-only-small-route-metadata-and-offer-the-most-likely-prior-method-without-requiring-asset-names-or-paths"
-proactive_learning = "at-natural-task-checkpoints-notice-reusable-habits-corrections-and-methods-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"
+natural_recall = "accept-ordinary-imprecise-language-and-bounded-current-work-signals-match-only-small-route-metadata-never-let-work-signals-override-current-user-correction-and-report-each-actually-used-asset-in-a-standalone-brief-card-with-human-title-current-trigger-and-practical-effect-without-internals"
+proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"
 guidance_modes = "change-detail-and-pace-not-decision-completeness"
 protocol = "core/protocols/USER_GUIDANCE.md"
 load_policy = "full-body-only-for-multistep-technical-risky-durable-or-user-uncertain-decisions"
@@ -93,7 +93,7 @@ protocol = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"
 load_policy = "only-before-and-after-a-durable-instance-change-first-adoption-upgrade-migration-or-repair; never-read-or-enumerate-at-ordinary-startup-or-normal-use"
 native_assets_reuse_existing_owners = true
 compatibility_registration_adds_user_confirmation = false
-unregistered_component_policy = "preserve-and-stop-with-preview"
+unregistered_component_policy = "preserve-and-isolate-with-preview; require-classification-before-related-formal-switch"
 
 [integration]
 protocol_version = "1.0"
@@ -124,7 +124,7 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-1.4.0.toml"
+release_manifest = "core/upgrade/release-manifest-1.4.1.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"

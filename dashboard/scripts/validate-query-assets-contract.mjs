@@ -55,6 +55,17 @@ assert(query.status === 0 && query.output.decision === "query-complete" && query
 assert(query.output.evolutionCandidates.decision === "not-opened", "ordinary task recall opened the learning-candidate index");
 assert(query.output.visibleCandidateCount <= 3, "combined shortlist exceeded the global cap");
 assert(!hasLocation(query.output), "query output exposed a physical location");
+assert(query.output.recallUse?.state === "no-long-term-asset-used" && query.output.recallUse?.userReportRequired === false,
+  "ordinary query did not return an explicit no-memory-use projection");
+assert(query.output.recallUse?.assetKind === null
+  && query.output.recallUse?.userReportContract === "standalone-brief-no-long-term-asset-used-or-recall-degraded",
+"ordinary no-use projection exposed a fake asset or omitted the brief-report contract");
+
+const proactive = run({ operation: "query", workSignals: ["当前准备继续一个已登记的工作流程"], purpose: "task-recall", learningSignal: "none" });
+assert(proactive.status === 0 && proactive.output.decision === "query-complete" && proactive.output.formal.workSignalCount === 1,
+  "a work-context-only recall request was rejected or not counted");
+assert(proactive.output.recallUse?.state === "no-long-term-asset-used" && !hasLocation(proactive.output),
+  "a no-match work-context query did not degrade to an explicit safe no-use result");
 
 const multiline = run({ operation: "query", queryText: "请帮我整理：\n- 上次的成绩\n- 再核对一下", intentHints: [] });
 assert(multiline.status === 0 && multiline.output.decision === "query-complete", "ordinary multiline user language was rejected");
@@ -68,6 +79,7 @@ assert(learning.output.evolutionCandidates.decision === "trusted-host-confirmati
 for (const [name, request] of [
   ["unknown field", { operation: "query", queryText: "继续", root: "D:/other" }],
   ["bidi query", { operation: "query", queryText: "继续\u202Etxt" }],
+  ["too many work signals", { operation: "query", queryText: "", workSignals: Array.from({ length: 7 }, (_, index) => `signal ${index}`) }],
   ["bare formal ID", { operation: "read-formal", id: "sop.example", currentLevel: 3, currentLevelBasis: "user-specified" }],
   ["bare candidate ID", { operation: "read-candidate", id: "candidate.example", currentLevel: 3, currentLevelBasis: "host-capability-confirmed" }],
   ["unshortlisted query read", { operation: "query-read", queryText: "继续", selectedId: "memory.not-in-shortlist" }],

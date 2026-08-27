@@ -12,6 +12,7 @@ import {
   resumePersistentPromotionTransaction,
   rollbackPersistentPromotionTransaction,
 } from "./learning-promotion-transaction.mjs";
+import { operationalUserReport, withOperationalUserReport } from "./operational-user-report.mjs";
 
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -54,8 +55,10 @@ function summarize(result) {
     "authorizationBasis", "contentIncluded", "checkpoint", "writeCount", "restoredTargetCount", "resumable",
     "closedState", "recoveryEvidencePreserved", "inspectedCount", "removedPreparedCount", "preservedCount",
   ];
-  return Object.fromEntries(allowed.filter((field) => Object.hasOwn(result ?? {}, field))
+  const summary = Object.fromEntries(allowed.filter((field) => Object.hasOwn(result ?? {}, field))
     .map((field) => [field, field === "reason" ? boundedReason(result[field]) : result[field]]));
+  const userReport = operationalUserReport(result, { operation: "learning-promotion" });
+  return userReport ? { ...summary, userReport } : summary;
 }
 
 function run() {
@@ -91,7 +94,8 @@ try {
   const result = summarize(run()); process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   if (String(result.decision ?? "").endsWith("-denied") || String(result.decision ?? "").includes("recovery-required")) process.exitCode = 2;
 } catch (error) {
-  process.stderr.write(`${JSON.stringify({ decision: "learning-promotion-cli-denied", reason: boundedReason(error.message),
-    executable: false, contentIncluded: false })}\n`);
+  const result = withOperationalUserReport({ decision: "learning-promotion-cli-denied", reason: boundedReason(error.message),
+    executable: false, contentIncluded: false }, { operation: "learning-promotion" });
+  process.stderr.write(`${JSON.stringify(result)}\n`);
   process.exitCode = 2;
 }

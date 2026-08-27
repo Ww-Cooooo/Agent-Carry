@@ -5,7 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import * as assetContract from "./asset-route-contract.mjs";
 import { auditCandidateSourceClosure, inspectCandidateForReview, inspectCandidateSource, loadCandidateIndex } from "./candidate-index-contract.mjs";
 
-const { auditFormalSourceClosure, confirmHostModelLevel, createHostModelLevelChallenge, inspectAssetForReview, inspectAssetMetadata, inspectAssetRoute, inspectTaskFamilyRoute, loadTrustedDomainEnvelope } = assetContract;
+const { auditFormalSourceClosure, confirmHostModelLevel, createHostModelLevelChallenge, inspectAssetForReview, inspectAssetMetadata, inspectAssetRoute,
+  inspectShortlistedFormalAsset, inspectTaskFamilyRoute, loadTrustedDomainEnvelope, queryFormalAssetShortlist } = assetContract;
 const assert = (condition, message) => { if (!condition) throw new Error(`Learning/recall disk fixture failed: ${message}`); };
 const root = mkdtempSync(join(tmpdir(), "agent-carry-learning-fixture-"));
 const q = (value) => JSON.stringify(value);
@@ -252,11 +253,28 @@ try {
   loaded = installMap([missingApproval]);
   assert(inspectAssetRoute(root, loaded.envelope, missingApproval.id, { levelEvidence: level3 }).decision === "deny-frontmatter-contract", "missing approved_by_user loaded a formal body");
 
-  const habit = route({ id: "memory.habit.concise-updates", asset_kind: "memory", subtype: "habit", title: "偏好简短进度", target: "instance/memory/habit-concise.md", triggers: ["进度简短一点"], aliases: ["少说步骤"], topic_key: "communication", subject_key: "progress-updates" });
+  const habit = route({ id: "memory.habit.concise-updates", asset_kind: "memory", subtype: "habit", title: "偏好简短进度", target: "instance/memory/habit-concise.md",
+    triggers: ["进度简短一点"], aliases: ["少说步骤"], topic_key: "communication", subject_key: "progress-updates",
+    scope: ["工作进度更新"], conditions: ["当前任务需要进度更新"], excludes: [] });
   write(habit.target, assetDocument(habit));
   loaded = installMap([habit]);
   const habitMetadata = inspectAssetMetadata(root, loaded.envelope, habit.id);
   assert(habitMetadata.decision === "metadata-verified" && habitMetadata.selectionMode === "automatic-confirmed-habit-if-scope-clear" && !Object.hasOwn(habitMetadata, "body"), "confirmed habit metadata did not stay body-free or use the narrow automatic mode");
+  const proactiveHabit = queryFormalAssetShortlist(root, { queryText: "", workSignals: [
+    "进度简短一点", "communication", "progress-updates", "工作进度更新", "当前任务需要进度更新",
+  ] });
+  assert(proactiveHabit.decision === "shortlist-ready" && proactiveHabit.candidates.length === 1
+    && proactiveHabit.candidates[0].retrievalEvidence.workSignalMatch
+    && proactiveHabit.candidates[0].retrievalEvidence.automaticEvidenceSource === "work-context",
+  "a verified current-work signal did not produce one bounded proactive habit selection");
+  const proactiveHabitBody = inspectShortlistedFormalAsset(root, proactiveHabit, habit.id);
+  assert(proactiveHabitBody.decision === "load-bounded-body" && proactiveHabitBody.body.includes("只对当前任务需要的内容进行处理")
+    && proactiveHabitBody.recallUse?.state === "asset-body-loaded"
+    && proactiveHabitBody.recallUse?.assetKind === "memory"
+    && proactiveHabitBody.recallUse?.triggerSources.includes("work-context")
+    && proactiveHabitBody.recallUse?.userReportRequired === true
+    && proactiveHabitBody.recallUse?.userReportContract === "standalone-brief-card-name-actual-asset-kind-and-title-explain-current-trigger-and-practical-effect-without-internals",
+    "a proactive habit selection did not read the exact verified body");
   const policyHabit = route({ ...habit, id: "memory.habit.policy", title: "未获明确授权的习惯", target: "instance/memory/habit-policy.md" });
   write(policyHabit.target, assetDocument(policyHabit, "不应加载", { approval_state: "policy-authorized", activation_basis: "low-risk-evidence-policy", approved_by_user: false }));
   loaded = installMap([policyHabit]);

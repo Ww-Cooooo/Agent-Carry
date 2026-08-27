@@ -131,6 +131,37 @@ candidate_count = 0
 indexed_count = 0
 active_count = 0
 `);
+  write("instance/components/audio-transcriber/component.toml", `schema_version = 1
+record_type = "agent-carry-instance-component"
+component_id = "audio-transcriber"
+instance_id = "ac-snapshot-fixture"
+kind = "local-tool-adapter"
+status = "active"
+title = "离线转写适配器"
+summary = "验证结构化本机绑定和私密引用不会泄漏到快照。"
+component_version = "1.0.0"
+root = "instance/components/audio-transcriber"
+load_policy = "on-demand-only"
+
+[ownership]
+portable_paths = ["component.toml"]
+derived_paths = []
+device_local_paths = [".assistant-local/tools/offline-transcriber"]
+private_collection_refs = ["private://component/audio-transcriber"]
+unclassified_policy = "stop-and-preview"
+
+[interfaces]
+provides = ["capability.audio-transcription@1"]
+requires = ["agent-carry.instance-component@1"]
+
+[upgrade]
+criticality = "optional"
+activation = "next-session"
+compatible_action = "preserve"
+incompatible_action = "disable-and-preserve"
+migration_ids = []
+second_run = "no-change"
+`);
   write("instance/sops/grade-summary.md", `+++
 id = "sop.grade-summary"
 kind = "sop"
@@ -213,14 +244,99 @@ confirmation = "none"
   assert(first.updated && first.identityRef === expectedIdentity && snapshot.meta.identity_ref === expectedIdentity, "instance identity was not derived from instance_id");
   assert(snapshot.assets.sops === 1 && snapshot.sops[0]?.id === "sop.grade-summary" && snapshot.sops[0]?.maturity === "unvalidated", "formal source was not projected from the trusted map/body pair");
   assert(!first.source.includes("private://") && !first.source.includes("private.collection.grade-workflow"), "a validated private locator leaked into the snapshot projection");
+  assert(!first.source.includes("audio-transcriber") && !first.source.includes(".assistant-local"), "component-local or private locator metadata leaked into the snapshot projection");
   assert(snapshot.meta.source_digest === computeSnapshotSourceDigest(root).digest, "source digest did not match an independent deterministic rebuild");
   const repeated = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:00:00+08:00") });
   assert(!repeated.updated && repeated.source === first.source, "unchanged formal truth refreshed generated_at or bytes");
+
+  const brokenTodoRef = "instance/todo/broken-unrelated.md";
+  const brokenTodoSource = `+++
+id = "todo.broken-unrelated"
+kind = "todo"
+status = "pending"
+visible = true
+title = "暂时无效但必须原样保留"
+summary = "这个条目用于验证局部隔离。"
+unexpected_field = "must-survive-byte-for-byte"
++++
+# fixture
+`;
+  write(brokenTodoRef, brokenTodoSource);
+  const brokenTodoBytes = readFileSync(resolve(root, brokenTodoRef));
+  let strictBrokenTodoBlocked = false;
+  try { buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:10:00+08:00") }); }
+  catch { strictBrokenTodoBlocked = true; }
+  assert(strictBrokenTodoBlocked, "strict snapshot mode accepted an invalid unrelated TODO");
+  const operational = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:10:00+08:00"), mode: "operational" });
+  const operationalSnapshot = parseSnapshotEnvelope(operational.source, "operational degraded fixture");
+  validateSnapshotSemantics(operationalSnapshot, "operational degraded fixture");
+  assert(operational.updated && operational.mode === "operational" && operational.diagnostics.length === 1
+    && operational.diagnostics[0].area === "todo" && operationalSnapshot.health?.state === "degraded"
+    && operationalSnapshot.health?.isolated_item_count === 1 && operationalSnapshot.health?.source_data_preserved === true
+    && operationalSnapshot.todo.length === 0 && operationalSnapshot.assets.todo === 0,
+  "operational snapshot did not isolate exactly one unrelated invalid TODO with a bounded health warning");
+  assert(operational.sourceDigest === computeSnapshotSourceDigest(root).digest,
+    "operational isolation removed the preserved source bytes from the deterministic digest");
+  assert(readFileSync(resolve(root, brokenTodoRef)).equals(brokenTodoBytes),
+    "operational isolation changed the invalid TODO source bytes");
+  let currentTargetBlocked = false;
+  try {
+    buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:10:00+08:00"), mode: "operational",
+      requiredSourceRefs: [brokenTodoRef] });
+  } catch { currentTargetBlocked = true; }
+  assert(currentTargetBlocked && readFileSync(resolve(root, brokenTodoRef)).equals(brokenTodoBytes),
+    "an invalid current target was isolated instead of being denied with zero source writes");
+  rmSync(resolve(root, brokenTodoRef), { force: true });
+
+  const formalRef = "instance/sops/grade-summary.md";
+  const formalBytes = readFileSync(resolve(root, formalRef));
+  write(formalRef, readFileSync(resolve(root, formalRef), "utf8").replace("updated_at = \"\"", "unexpected_field = \"preserve-formal\"\nupdated_at = \"\""));
+  const corruptedFormalBytes = readFileSync(resolve(root, formalRef));
+  const candidateRef = "instance/evolution/unindexed-broken.md";
+  write(candidateRef, "not candidate frontmatter; preserve exactly\n");
+  const candidateBytes = readFileSync(resolve(root, candidateRef));
+  let strictFormalCandidateBlocked = false;
+  try { buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:20:00+08:00") }); }
+  catch { strictFormalCandidateBlocked = true; }
+  assert(strictFormalCandidateBlocked, "strict snapshot mode accepted invalid formal/candidate sources");
+  const boundedAssets = buildSnapshotCandidate(root, { existingSource: first.source,
+    now: new Date("2026-08-24T05:20:00+08:00"), mode: "operational" });
+  assert(boundedAssets.snapshot.health?.isolated_item_count === 2
+    && boundedAssets.diagnostics.some((item) => item.area === "sops")
+    && boundedAssets.diagnostics.some((item) => item.area === "evolution")
+    && boundedAssets.snapshot.sops.length === 0 && boundedAssets.snapshot.evolution.length === 0
+    && readFileSync(resolve(root, formalRef)).equals(corruptedFormalBytes)
+    && readFileSync(resolve(root, candidateRef)).equals(candidateBytes),
+  "operational snapshot did not isolate unrelated formal/candidate sources without changing bytes");
+  let requiredFormalBlocked = false; let requiredCandidateBlocked = false;
+  try { buildSnapshotCandidate(root, { mode: "operational", requiredSourceRefs: [formalRef] }); }
+  catch { requiredFormalBlocked = true; }
+  try { buildSnapshotCandidate(root, { mode: "operational", requiredSourceRefs: [candidateRef] }); }
+  catch { requiredCandidateBlocked = true; }
+  assert(requiredFormalBlocked && requiredCandidateBlocked && readFileSync(resolve(root, candidateRef)).equals(candidateBytes),
+    "an invalid required formal/candidate target was silently isolated");
+  writeFileSync(resolve(root, formalRef), formalBytes);
+  rmSync(resolve(root, candidateRef), { force: true });
 
   write("instance/sops/unsafe-private-ref.md", "+++\nprivate_refs = [\"C:/Users/example/private.txt\"]\n+++\n# fixture\n");
   let unsafePrivateRefBlocked = false; try { computeSnapshotSourceDigest(root); } catch { unsafePrivateRefBlocked = true; }
   assert(unsafePrivateRefBlocked, "an absolute location hidden in private_refs bypassed source safety");
   rmSync(resolve(root, "instance/sops/unsafe-private-ref.md"), { force: true });
+
+  const validComponentManifest = readFileSync(resolve(root, "instance/components/audio-transcriber/component.toml"), "utf8");
+  write("instance/components/audio-transcriber/component.toml", validComponentManifest.replace(
+    'private_collection_refs = ["private://component/audio-transcriber"]',
+    'private_collection_refs = ["C:/Users/example/private.txt"]',
+  ));
+  let unsafeComponentPrivateRefBlocked = false; try { computeSnapshotSourceDigest(root); } catch { unsafeComponentPrivateRefBlocked = true; }
+  assert(unsafeComponentPrivateRefBlocked, "an absolute component private_collection_ref bypassed source safety");
+  write("instance/components/audio-transcriber/component.toml", validComponentManifest.replace(
+    'device_local_paths = [".assistant-local/tools/offline-transcriber"]',
+    'device_local_paths = ["C:/Users/example/tool"]',
+  ));
+  let unsafeComponentLocalPathBlocked = false; try { computeSnapshotSourceDigest(root); } catch { unsafeComponentLocalPathBlocked = true; }
+  assert(unsafeComponentLocalPathBlocked, "an absolute component device_local_path bypassed source safety");
+  write("instance/components/audio-transcriber/component.toml", validComponentManifest);
 
   const forged = JSON.parse(JSON.stringify(snapshot)); forged.meta.source_digest = `sha256:${"a".repeat(64)}`;
   const forgedSource = first.source.replace(JSON.stringify(snapshot, null, 2), JSON.stringify(forged, null, 2));
@@ -243,7 +359,7 @@ confirmation = "none"
   assert(locationBlocked, "an absolute local location hidden in the instance source set was accepted");
   rmSync(resolve(root, "instance/profile/local-note.md"), { force: true });
 
-  console.log("Snapshot source builder passed source-digest truth, instance identity, formal projection, unchanged idempotence, forged-digest rejection, and whole-instance safety checks.");
+  console.log("Snapshot source builder passed strict source truth, operational unrelated-item isolation, current-target denial, bounded health, idempotence, forged-digest rejection, and whole-instance safety checks.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

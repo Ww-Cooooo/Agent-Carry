@@ -139,25 +139,33 @@
 - `instance/profile/approved-profile.md`：保存本次确认的实际实例档案和第一项真实任务；`instance/profile/README.md` 只保留模板目录说明，不写入用户正文
 - `instance/maps/domain-map.toml`：根身份使用确定性值；`map_id="instance-domain"`、`instance_id` 等于新实例清单，通用实例写 `direction="general"`，领域实例写经过确认的 `direction.domain_id`，两类正式实例都写 `status="active"`。不得把显示名称、中文标签或模型临时概括写入 direction
 - `instance/signals/control.toml`、`instance/maps/signal-map.toml` 与 `instance/maps/time-trigger-map.toml` 中的实例 ID
-- `instance/evolution/index.toml`：写入同一实例 ID、`state = "empty"`、`source_revision = 0`、空时间、0 计数和正式预算；不得枚举候选正文，也不得继承模板或其他实例的候选
+- `instance/evolution/index.toml`：写入同一实例 ID、`state = "empty"`、`source_revision = 0`，`generated_at` 使用本次真实实例化时间，保持 0 计数和正式预算；不得枚举候选正文，也不得继承模板或其他实例的候选
+- `instance/validations/index.toml`：只把 `instance_id` 初始化为同一新实例 ID；保持 `state = "empty"`、`source_revision = 0`、`generated_at = ""`、`budget_bytes = 262144`、`overflow = false`、`record_count = 0`，不得创建任何 `[[validations]]`，也不得把尚未执行的首项任务伪造成验证证据
+- `instance/components/registry.toml`：全新模板只完成零组件身份初始化；先有界确认 `instance/components/` 只有物理普通文件 `README.md` 和 `registry.toml`，没有其他文件、目录、链接或重解析点，再写入同一实例 ID、`adoption_state = "current"`、`revision = 1`、`component_count = 0`。不扫描整台电脑、不执行安装，也不为原生资产、Skill 小地图或专业工作区重复创建组件条目
 - `instance/hosts/registry.toml` 中的实例 ID；按 `core/templates/integration/blank-host-profile.toml` 和通用宿主接入协议建立当前宿主的首个最小档案，但不盘点全部宿主记忆；无法确认的模型、版本或能力如实写未知
 - `instance/skills/requirements.toml` 中的实例 ID、生成时间和极小需求判断状态；只依据已确认的初始任务与当前宿主档案判断是否存在明确的额外 Skill 需求，不扫描全部 Skill、不自动安装、不复制 Skill 正文。没有明确额外需求时写 `status = "current"` 并保持空条目，信息不足时写 `status = "deferred"`
 - 必要的空资产目录，以及只指向真实实例说明的初始任务族路线
 - 三张长期治理卡的首轮排期和非启动时间索引
 - 从正式真源生成并校验过的看板快照，其中正式实例按 Snapshot Schema 写入由 `instance_id` 确定性生成的匿名 `identity_ref`；完成后从根入口回读浏览器标题和身份胶囊，不能只看页面内容猜测打开的是哪一份实例
 
-“确认创建”只授权上述实例身份事务，不授权预先制造记忆、能力、SOP、经验、学习建议或普通待办。尚未做过真实任务时，看板的资产计数通常全部为 0；计划、候选和任务族不能伪装成已经保存的资产。
+“确认创建”只授权上述实例身份事务，不授权预先制造记忆、能力、SOP、经验、学习建议或普通待办。刚完成实例化且尚未做真实任务时，记忆、能力、SOP、经验、学习候选、普通待办和 Skill 计数全部为 0，三张长期治理卡单独计为 `governance = 3`；计划、候选和任务族不能伪装成已经保存的资产。
 
 在 `instance/manifest.toml` 的 `profile.guidance_mode` 写入用户确认的交流方式，并把 `profile.user_preferences_ref` 从模板说明改为 `instance/profile/approved-profile.md`。先写实际档案、回读成功，再更新引用；不得让正式实例继续引用会被模板升级替换的 `instance/profile/README.md`。学习政策、隐私处理模式与交流方式都只保存极小选择值；严格加载器在模型上下文外把允许的小字段投影到启动胶囊，不复制完整规则。风险定义、次数口径、晋升规则和完整安全协议在任务命中学习、额外外发、Git 或安全信号后才读取相应正文。实例没有更严格的隐私覆盖时，沿用模板默认值，不反复询问普通任务是否可由当前模型处理必要隐私。
 
-`instance/manifest.toml`、`instance/profile/approved-profile.md`、方向地图、信号／候选索引、指导方式与学习政策、`instance/startup-capsule.toml` 和派生快照属于同一次可恢复实例化事务。必须先写入并严格回读 manifest，再重建胶囊并核对 `source_manifest_digest`、实例 ID、版本、方向、语言和引用；任一写入、摘要或回读失败时整组回滚，不能留下“清单已实例化、胶囊仍是模板”或“胶囊已更新、档案引用未生效”的半套状态。以后修改指导方式、学习政策、语言、实例版本、档案引用或方向字段，也必须在同一事务中重建胶囊并在失败时恢复变更前的清单与胶囊。
+`instance/manifest.toml`、`instance/profile/approved-profile.md`、方向地图、信号控制与两张信号索引、候选索引、结果验证索引、组件注册表、宿主注册表与首个档案、Skill 小地图、三张治理卡、`instance/startup-capsule.toml` 和双份派生快照属于同一次可恢复实例化事务。写入前冻结完整相对路径集合、每个文件的存在状态和原始字节摘要；先在同一文件系统的隔离候选中生成全部内容并完成解析、身份、引用、摘要和语义检查，再整组提交。必须先写入并严格回读 manifest，再重建胶囊并核对 `source_manifest_digest`、实例 ID、版本、方向、语言和引用；任一写入、摘要或回读失败时恢复整组前像，不能留下“清单已实例化、胶囊仍是模板”“胶囊已更新、验证索引仍是 template”“组件注册表仍是模板”或“档案引用未生效”的半套状态。以后修改指导方式、学习政策、语言、实例版本、档案引用或方向字段，也必须在同一事务中重建胶囊并在失败时恢复变更前的清单与胶囊。
 
-候选索引属于可重建派生物，但实例化事务必须给它写入新实例身份并保持干净空态，同时在 `versions.evolution_candidate_index_schema` 记录 `1.0`。空态必须回读 `candidate_count=0`、`indexed_count=0`、`active_count=0`、`budget_bytes=32768`、`overflow=false` 且没有 `[[candidates]]`；清单、索引与信号控制记录的实例 ID 必须在同一事务回读一致。任何一项仍为 `template`、沿用旧实例 ID、计数不一致或含候选条目时，实例化失败并回滚。相同空态第二次执行必须逐字节不变。
+候选索引属于可重建派生物，但实例化事务必须给它写入新实例身份并保持干净空态，同时在 `versions.evolution_candidate_index_schema` 记录 `1.0`。空态必须回读 `generated_at` 为本次真实实例化时间、`candidate_count=0`、`indexed_count=0`、`active_count=0`、`budget_bytes=32768`、`overflow=false` 且没有 `[[candidates]]`；清单、索引与信号控制记录的实例 ID 必须在同一事务回读一致。任何一项仍为 `template`、沿用旧实例 ID、使用空时间、计数不一致或含候选条目时，实例化失败并回滚。相同空态第二次执行必须逐字节不变。
+
+结果验证索引是实例拥有的正式低敏真源，不是可以因“目前没有资产”而省略的可选快照输入。实例化只初始化身份，不制造证据：必须回读 `instance_id` 与 manifest 一致、`state=empty`、`source_revision=0`、`generated_at=""`、`budget_bytes=262144`、`overflow=false`、`record_count=0` 且没有 `[[validations]]`。创建预览、方向锁定、胶囊有效或快照生成成功都不是第一项真实任务的结果验证。任何字段仍是模板、出现记录或计数不一致时整组回滚；相同输入第二次执行必须逐字节不变。
+
+组件注册表也属于实例身份闭包。全新模板没有旧实例未知内容，不运行旧实例的一次性纳管流程；只在隔离候选中有界确认组件区恰好包含物理普通文件 `README.md` 与 `registry.toml`，没有其他文件、目录、链接或重解析点，再写入同一实例 ID 与 `adoption_state=current`。模板注册表的 revision 为 0；身份与纳管状态首次成为正式内容后递增为 1，保持 0 条目。若注册表只存在实例 ID、计数、状态、顺序或规范文本漂移，且目录事实仍严格证明为零组件，则先冻结原字节，在同一隔离事务按严格 manifest 与零目录事实确定性重建、回读并自然语言报告，然后继续实例化；不额外要求用户确认内部修复。若实际目录已出现未知组件内容、链接、无法证明为空的损坏清单或非零条目，就不再是干净首次实例化输入：保留原字节，只隔离创建事务并给出修复入口，不能用空注册表覆盖、猜测所有权或让 Agent 其他能力一起停止。
 
 新实例的普通动态信号从干净空态开始。对模板自带且状态为 `active` 的长期治理卡，在实例化事务中以实际实例化时间作为 `schedule_anchor_at`，计算第一轮 `next_due_at = anchor + frequency_days`，再重建非启动时间索引；启动胶囊仍只写最早时间和总数，不写三张治理卡。用户明确暂停某项治理时不把它计入有效日程。公开模板中的维护者实际日期不得直接继承到新实例。
 
 把 `direction.locked` 设为 `true`。以后可以在同一方向内新增任务、能力和 SOP，但不得把领域实例改成其他领域，也不得把通用实例改成领域实例；需要另一方向时从模板创建新实例。`profile.guidance_mode` 不属于方向锁，可以根据用户明确要求在 `step-by-step`、`balanced` 与 `direct` 之间修改。修改时只更新该字段和派生快照，不能借机重做实例化、改变方向或改写既有资产。
 
-完成报告前按“C. 实例化写入门”回读清单、启动胶囊及其清单摘要、`approved-profile.md`、档案引用、任务族路线、三张治理卡、时间索引、当前宿主档案、Skill 小地图和快照；有一项缺失或互相矛盾就不能报告创建完成。正式实例如果仍把 `instance/profile/README.md` 作为用户档案引用，写入门直接失败。Skill 小地图必须已经换成当前实例 ID，但空条目只表示初始任务没有已确认的额外 Skill 需求，不得声称扫描过用户全部环境。完成报告除实例名称、锁定方向、入口、偏好、初始任务族、信号、治理排期、宿主档案和快照状态外，还要用普通语言重述用户确认的第一项真实任务，并说明“现在可以立即开始”或“尚未开始，等待用户以后提出”。不得把尚未执行的第一项任务报告成已完成，也不得因为用户暂缓就自动写成待办。
+完成报告前按“C. 实例化写入门”回读清单、启动胶囊及其清单摘要、`approved-profile.md`、档案引用、任务族路线、三张治理卡、时间索引、候选空索引、结果验证空索引、零组件注册表、当前宿主档案、Skill 小地图和双份快照；有一项缺失或互相矛盾就不能报告创建完成。正式实例如果仍把 `instance/profile/README.md` 作为用户档案引用，写入门直接失败。结果验证索引必须是当前实例的 0 记录空态，不能把第一项任务写成 `[[validations]]`；组件注册表必须是当前实例的 0 组件 `current` 空态。Skill 小地图必须已经换成当前实例 ID，但空条目只表示初始任务没有已确认的额外 Skill 需求，不得声称扫描过用户全部环境。public/dist 快照必须逐字节一致，正式资产、候选、待办和 Skill 计数为 0，三张长期治理卡单独为 3。完成报告除实例名称、锁定方向、入口、偏好、初始任务族、信号、治理排期、宿主档案和快照状态外，还要用普通语言重述用户确认的第一项真实任务，并说明“现在可以立即开始”或“尚未开始，等待用户以后提出”。不得把尚未执行的第一项任务报告成已完成，也不得因为用户暂缓就自动写成待办。
+
+相同完整预览第二次执行时，先回读现有正式实例。全部身份、空索引、治理锚点、宿主档案、胶囊摘要和快照来源已经与确定性候选一致时返回零变化，不刷新时间、不重复创建档案或路线。若在胶囊生成后、快照提交前或任何其他中点失败，恢复包括原本缺失文件在内的完整模板前像，重新严格校验模板胶囊与两份模板快照后停止；不能把半实例留给下一轮猜测修补。
 
 第一项真实任务完成后，如果用户说“结果正确”“以后继续使用”“保存这套方法”或作出纠正，必须命中 `domain-work` 的结果验证与资产生命周期路线，并重新读取 `core/guides/first-use-execution-gates.md` 的“D. 第一项真实任务结束门”。只在真实结果、授权和成熟度都成立后形成或更新资产；正式资产变化后再重建快照。

@@ -63,10 +63,13 @@
 实例化事务只允许创建或更新下面这些内容：
 
 - `instance/manifest.toml`：实例 ID、`state`、创建来源和时间、已锁定方向、交流方式及既有策略选择；
+- `instance/startup-capsule.toml`：只从本次写入后严格回读的 manifest 在模型上下文外确定性生成，并核对 `source_manifest_digest` 与实例身份；不得手写、复制旧模板胶囊或加入自由文字；
 - `instance/profile/approved-profile.md`：用户已经确认的方向、范围、边界、协作方式、环境假设和第一项真实任务说明；`instance/profile/README.md` 是可升级目录说明，禁止写入用户正文；
 - `instance/maps/domain-map.toml`：只登记方向内的**初始任务族路线**，用于找到第一项真实任务需要的实例说明；
 - `instance/signals/control.toml`、`instance/maps/signal-map.toml`：写入一致的实例 ID，并从干净空态开始；
-- `instance/evolution/index.toml`：写入一致的实例 ID 和 `state = "empty"`，保持空时间、0 候选、0 活动条目与正式预算；同时在清单记录候选索引 Schema 版本。不得扫描候选正文或继承模板／其他实例条目；
+- `instance/evolution/index.toml`：写入一致的实例 ID 和 `state = "empty"`，`generated_at` 使用本次真实实例化时间，保持 `source_revision = 0`、0 候选、0 活动条目与正式预算；同时在清单记录候选索引 Schema 版本。不得扫描候选正文或继承模板／其他实例条目；
+- `instance/validations/index.toml`：只把 `instance_id` 初始化为本次新实例 ID；必须保持 `state = "empty"`、`source_revision = 0`、`generated_at = ""`、`budget_bytes = 262144`、`overflow = false`、`record_count = 0`，且不得创建任何 `[[validations]]`。尚未执行的第一项任务不能被伪造成验证记录；
+- `instance/components/registry.toml`：全新模板没有旧实例内容需要纳管；先有界确认 `instance/components/` 只有物理普通文件 `README.md` 和 `registry.toml`，没有其他文件、目录、链接或重解析点，再把 `instance_id` 初始化为本次新实例 ID，写 `adoption_state = "current"`、`revision = 1`、`component_count = 0`。不得为了填表创建组件、扫描整台电脑或执行任何安装内容；
 - 三张 `instance/governance/` 正式治理卡及 `instance/maps/time-trigger-map.toml`：以真实实例化时间计算首轮日程；
 - `instance/hosts/registry.toml` 和 `instance/hosts/profiles/` 中当前宿主的一份最小档案；以 `core/templates/integration/blank-host-profile.toml` 为结构真源，无法确认的模型、版本或能力必须写成未知，不能省略整个档案，也不能猜测；
 - `instance/skills/requirements.toml`：只把模板身份改为当前实例 ID，并依据已确认的初始任务与当前宿主档案完成一次极小需求判断；不得扫描全部 Skill、自动安装 Skill 或复制 Skill 正文。没有已确认的额外 Skill 需求时，写 `status = "current"` 并保持空条目；信息不足时写 `status = "deferred"`，以后命中真实需求再按需判断；
@@ -91,16 +94,24 @@
 
 向用户报告创建完成前，重新读取最终文件并确认：
 
-1. 清单、档案、地图、信号、宿主注册表和快照使用同一实例 ID；方向已锁定，交流方式仍可修改；`profile.user_preferences_ref` 指向真实存在的 `instance/profile/approved-profile.md`，没有继续引用目录说明；
-2. 初始任务族的 `target` 真实存在，且没有预先生成任何记忆、能力、SOP、经验、学习建议或普通待办；
-3. 三张状态为 `active` 的治理卡都有带时区的 `schedule_anchor_at` 和 `next_due_at`，非启动时间索引的 `scheduled_count` 与最早时间一致；
-4. 宿主注册表正好能定位当前宿主的一份最小档案；未知字段如实保留未知；
-5. Skill 小地图使用同一实例 ID，状态不再是 `scan-after-instantiation`；空地图表示当前初始任务没有已确认的额外 Skill 需求，不表示扫描过用户的全部环境；
-6. 快照中的 `assets` 计数等于正式资产文件数，所有资产卡片都能指回真实且类型一致的正文；刚完成实例化且尚未做真实任务时，资产计数通常全部为 0；
-7. 看板显示的实例名称、使命、方向、交流方式、治理数量和下一次时间与正式真源一致；
-8. 用户的第一项真实任务只被报告为“现在可以开始”或“等待以后提出”，没有被声称已经完成。
+1. manifest、实际档案、方向地图、信号控制与两张信号索引、进化候选索引、结果验证索引、组件注册表、宿主注册表及其档案、Skill 小地图和启动胶囊都使用同一实例 ID；快照按 Snapshot Schema 从该 ID 生成稳定匿名 `identity_ref`。方向已锁定，交流方式仍可修改；`profile.user_preferences_ref` 指向真实存在的 `instance/profile/approved-profile.md`，没有继续引用目录说明；
+2. 结果验证索引仍为身份已初始化的具体实例空态：`state = "empty"`、`record_count = 0`，不存在任何 `[[validations]]`；不得把尚未执行的第一项任务、预览、创建成功或快照生成伪造成验证记录；
+3. 组件注册表使用同一实例 ID、`adoption_state = "current"`、`revision = 1`、`component_count = 0`，`instance/components/` 仍只有 `README.md` 和 `registry.toml` 两个物理普通文件，没有为原生文件或尚不存在的功能制造组件条目；
+4. 初始任务族的 `target` 真实存在，且没有预先生成任何记忆、能力、SOP、经验、学习建议或普通待办；
+5. 三张状态为 `active` 的治理卡都有带时区的 `schedule_anchor_at` 和 `next_due_at`，非启动时间索引的 `scheduled_count` 与最早时间一致；
+6. 宿主注册表正好能定位当前宿主的一份最小档案；未知字段如实保留未知；
+7. Skill 小地图使用同一实例 ID，状态不再是 `scan-after-instantiation`；空地图表示当前初始任务没有已确认的额外 Skill 需求，不表示扫描过用户的全部环境；
+8. 启动胶囊严格校验通过，`source_manifest_digest` 与最终 manifest 字节一致；public/dist 双份快照来自同一候选并逐字节一致；
+9. 快照中的 `assets` 计数等于正式资产文件数，所有资产卡片都能指回真实且类型一致的正文；刚完成实例化且尚未做真实任务时，记忆、能力、SOP、经验、学习候选、普通待办和 Skill 计数全部为 0，三张长期治理卡单独计为 `governance = 3`；
+10. 看板显示的实例名称、使命、方向、交流方式、治理数量和下一次时间与正式真源一致；用户的第一项真实任务只被报告为“现在可以开始”或“等待以后提出”，没有被声称已经完成。
 
-任何一项失败都不得报告“正式创建完成”。先只修正这次实例化事务中缺失或越界的内容并重新回读；无法安全完成时保持或恢复模板，不用半成品冒充实例。
+### 原子提交、回滚与幂等
+
+写入前冻结上述完整允许路径集合、每个文件的存在状态和原始字节摘要；`approved-profile.md`、当前宿主档案等原本不存在的目标必须把“缺失”作为前像，不能等同于空文件。先在同一文件系统的隔离候选中生成 manifest、所有身份文件、治理排期、启动胶囊和双快照并完成本节全部回读，再整组提交。
+
+候选生成、胶囊摘要、快照生成、双份安装或最终回读任一步失败，都恢复整个写集的前像；不能出现 manifest／胶囊已成为实例而验证索引、组件注册表或快照仍为模板，也不能只回滚最后一个报错文件。恢复后必须重新证明 manifest、验证索引、组件注册表、胶囊和双快照全都回到完整模板态。相同完整预览第二次执行必须不增加验证记录、组件条目、候选、待办或资产，不改变治理锚点，并在正式真源不变时保持胶囊与快照字节不变、没有时间漂移。
+
+任何一项失败都不得报告“正式创建完成”。先只修正这次实例化事务中缺失或越界的内容并重新回读；实例 ID、空索引计数、组件登记表计数／状态、规范换行和其他能由严格 manifest 与空目录事实唯一确定的信息，应在同一隔离事务中自动修正并用自然语言说明，不把第一次内部错误直接丢给用户。修正后从失败点之前的最小安全检查重新继续，不能跳过最终闭包。无法安全完成时保持或恢复模板，说明已保留内容和推荐下一步，不用半成品冒充实例，也不能让这个失败破坏模板外的 Agent 对话和无关能力。
 
 ## D. 第一项真实任务结束门
 

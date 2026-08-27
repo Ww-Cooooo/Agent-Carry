@@ -87,8 +87,8 @@ requireFragments("assistant.toml", [
   'guidance_modes = "change-detail-and-pace-not-decision-completeness"',
   'protocol = "core/protocols/USER_GUIDANCE.md"',
   'load_policy = "full-body-only-for-multistep-technical-risky-durable-or-user-uncertain-decisions"',
-  'natural_recall = "accept-ordinary-imprecise-language-match-only-small-route-metadata-and-offer-the-most-likely-prior-method-without-requiring-asset-names-or-paths"',
-  'proactive_learning = "at-natural-task-checkpoints-notice-reusable-habits-corrections-and-methods-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"',
+  'natural_recall = "accept-ordinary-imprecise-language-and-bounded-current-work-signals-match-only-small-route-metadata-never-let-work-signals-override-current-user-correction-and-report-each-actually-used-asset-in-a-standalone-brief-card-with-human-title-current-trigger-and-practical-effect-without-internals"',
+  'proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"',
 ]);
 
 requireFragments("core/protocols/USER_GUIDANCE.md", [
@@ -108,6 +108,10 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
   "Agent 负责发现重复习惯、可复用方法和重要纠正",
   "用户无需选择文件、资产类型或写触发词",
   "看板中的“我的习惯”也会显示可管理入口",
+  "使用与学习回执要短、独立、说真话",
+  "> **这次用上了**",
+  "| 🌱 这一步还在学习 | 内容 |",
+  "| 🌱 这一步我学到了 | 内容 |",
 ]);
 
 const userGuidanceRoute = routeBlock("core/maps/domain-lifecycle.toml", "user-decision-guidance");
@@ -217,7 +221,9 @@ requireFragments("core/protocols/ASSET_LIFECYCLE.md", [
   "先依据当前任务的正式来源和用户反馈修正本次结果",
   "没有复用价值的失误、临时调试输出和完整错误日志在任务结束后丢弃",
   "Agent 主动发现，用户只判断“要不要以后继续”",
-  "同一任务最多集中提出一次学习决定",
+  "同一组连贯内容最多在自然停点集中提出一次保存决定",
+  "这一步还在学习",
+  "这一步我学到了",
   "不要问“要不要形成 SOP、能力还是经验”",
   "低风险可撤销试用”不能代替这次确认",
   "询问前的发现只保留在当前任务里",
@@ -227,6 +233,12 @@ requireFragments("core/protocols/ASSET_LIFECYCLE.md", [
 
 requireFragments("core/protocols/CONTEXT_ROUTING.md", [
   "日常语言怎样召回以前的做法",
+  "Agent 工作时怎样主动想起",
+  "当前目标、下一项有实质影响的行动",
+  "用户当次否定、纠正",
+  "标题为“这次用上了”",
+  "由什么当前信息触发",
+  "没有使用长期资产时用一条独立短句说明",
   "用户不需要记住资产标题、稳定 ID、文件路径",
   "只在实例领域地图中比较",
   "不要展示文件名、稳定 ID 或内部评分",
@@ -326,12 +338,18 @@ requireFragments("core/maps/trigger-registry.toml", [
   'id = "task-learning-value-gate"',
   "user-points-out-an-error-current-result-is-corrected",
   "an-error-or-correction-is-evidence-not-automatic-asset-authorization",
+  "report-each-new-meaningful-substage-observation-in-a-separate-brief-receipt",
+  "only-say-learned-after-atomic-write-strict-readback-and-ordinary-language-recall-close",
   'id = "user-decision-guidance"',
   "after-creating-or-changing-user-visible-durable-files",
   'formal_owner = "core/protocols/USER_GUIDANCE.md"',
   "assistant-toml-compact-interaction-baseline-only-never-load-the-full-protocol-for-every-ordinary-message",
   "reuse-known-facts-explain-context-provide-two-to-four-options-with-consequences-and-recommendation-allow-unsure",
   'id = "natural-language-asset-recall"',
+  "next-material-action-verified-state-or-error-change-due-signal-related-asset-or-task-result",
+  "current-user-negation-and-correction-always-win",
+  "each-actually-used-asset-is-reported-in-one-standalone-brief-card",
+  "use-one-standalone-brief-no-long-term-asset-used-or-recall-degraded-report",
   "never-require-an-asset-id-path-or-internal-kind",
   "repeated-habit-or-method-is-observed",
   'id = "memory-engine-health"',
@@ -610,6 +628,24 @@ requireFragments("core/upgrade/release-manifest-1.4.0.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.1.toml", [
+  'release = "1.4.1"',
+  'from_versions = ["1.4.0"]',
+  'id = "first-instantiation-identity-closure-1.4.1"',
+  '"all-template-identity-files-are-inside-the-atomic-first-instantiation-write-readback-and-rollback-set"',
+  '"uninstantiated-1.4.0-template-upgrades-to-blank-1.4.1-and-can-then-instantiate"',
+  '"instantiated-1.4.0-identity-assets-validation-evolution-components-extensions-workspace-local-and-private-state-are-preserved"',
+  '"schema-valid-component-private-collection-refs-enter-source-digest-but-never-dashboard-projection"',
+  '"absolute-component-private-or-device-local-paths-remain-rejected"',
+  '"operational-daily-actions-isolate-unrelated-invalid-sources-and-preserve-raw-bytes"',
+  '"strict-first-use-upgrade-release-and-maintenance-reject-every-operationally-isolated-invalid-source"',
+  '"uniquely-derived-capsule-candidate-signal-and-time-state-repairs-once-atomically-and-idempotently"',
+  '"error-pause-rollback-and-auto-repair-report-impact-data-recovery-usable-scope-and-next-step-in-natural-language"',
+  'status = "published-release"',
+  'release_ref = "v1.4.1"',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -650,7 +686,11 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.0`",
+  "当前版本：`1.4.1`",
+  "点击展开：1.4.1 主要改了什么",
+  "同一次可恢复写入",
+  "一个通用实例和一个完全虚构的剪辑领域实例",
+  "经过结构校验的 `private_collection_refs`",
   "统一的升级兼容协定",
   "复用当前动作已经获得的授权，不额外再问一次",
 ]);

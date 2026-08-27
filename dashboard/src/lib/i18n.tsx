@@ -87,6 +87,12 @@ const englishAssetNoun = (value: string) => ASSET_NOUN_EN[value] ?? value;
 const englishAssetOperation = (value: string) => ASSET_OPERATION_EN[value] ?? { imperative: value, passive: value };
 
 const DYNAMIC_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
+  [/^有\s*(\d+)\s*项内容暂未进入看板，源文件仍(?:原样|然)保留(?:，其他有效内容可以继续使用)?。$/u,
+    (match) => `${match[1]} items are temporarily omitted from the dashboard. Their source files are unchanged, and other valid content remains available.`],
+  [/^受影响类别：(.+)。这次隔离只影响对应内容，不会让整个助手停止工作。$/u,
+    (match) => `Affected areas: ${match[1]}. Isolation is limited to that content and does not stop the whole assistant.`],
+  [/^(\d+)\s*项暂未显示；源文件已保留，其他功能仍可用$/u,
+    (match) => `${match[1]} items are temporarily hidden; source files are preserved and other features remain available`],
   [/^任务命中后按需(读取|执行|调用|参考)$/u, (match) => `${englishAssetOperation(match[1]).imperative[0].toUpperCase()}${englishAssetOperation(match[1]).imperative.slice(1)} on demand when a relevant task matches`],
   [/^这条(记忆|流程|能力|经验)有可核验的使用授权。Agent 仍会先核对当前范围、条件和风险，再只加载必要正文。$/u, (match) => `This ${englishAssetNoun(match[1])} has verifiable use authorization. The Agent still checks the current scope, conditions, and risk, then loads only the necessary content.`],
   [/^这条(记忆|流程|能力|经验)尚未成为稳定资产。只有当前任务精确命中已登记范围且没有冲突时才可(读取|执行|调用|参考)；范围外或影响不清时先询问用户。$/u, (match) => `This ${englishAssetNoun(match[1])} is not yet a stable asset. It may be ${englishAssetOperation(match[2]).passive} only when the current task exactly matches its recorded scope and there is no conflict; ask the user first outside that scope or when the impact is unclear.`],

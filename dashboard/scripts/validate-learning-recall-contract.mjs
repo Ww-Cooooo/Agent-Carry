@@ -52,6 +52,42 @@ const retrievalEntries = [
 ];
 const grounded = rankRetrievalEntries(retrievalEntries, normalizeRetrievalRequest("帮我整理学习通成绩", ["写视频标题", "写周报", "排课程"]), { lifecyclePriority: (entry) => entry.state === "active" ? 30 : 20 });
 assert(grounded.some(({ entry }) => entry.id === "a") && grounded[0].entry.id === "a", "model hints displaced the user's exact direct match");
+const workGrounded = rankRetrievalEntries(retrievalEntries, normalizeRetrievalRequest("", [], ["帮我整理学习通成绩", "学习通成绩"]));
+assert(workGrounded.length === 1 && workGrounded[0].entry.id === "a"
+  && workGrounded[0].evidence.workSignalMatch && !workGrounded[0].evidence.directUserMatch
+  && workGrounded[0].evidence.automaticScopeEvidence && workGrounded[0].evidence.automaticEvidenceSource === "work-context",
+"a bounded current-work signal could not proactively recall a uniquely scoped route without user keywords");
+const workCoverageRanking = rankRetrievalEntries([
+  { ...retrievalEntries[0], id: "specific", topic_key: "grade-analysis", subject_key: "learning-platform", conditions: ["用户需要核对成绩"] },
+  { ...retrievalEntries[0], id: "generic", title: "通用工作方法", summary: "处理一般工作", triggers: ["处理工作"], scope: ["一般工作"], topic_key: "work", subject_key: "general", conditions: [] },
+], normalizeRetrievalRequest("", [], ["帮我整理学习通成绩", "grade-analysis", "learning-platform", "学习通成绩", "用户需要核对成绩"]));
+assert(workCoverageRanking[0]?.entry.id === "specific"
+  && workCoverageRanking[0].evidence.workSignalCoverageScore > workCoverageRanking[1].evidence.workSignalCoverageScore,
+"multiple corroborating work signals did not break a max-score tie in favour of the specifically grounded route");
+const hintStillNeedsGrounding = rankRetrievalEntries(retrievalEntries, normalizeRetrievalRequest("继续处理", ["帮我整理学习通成绩"]));
+assert(hintStillNeedsGrounding[0]?.entry.id === "a" && hintStillNeedsGrounding[0].evidence.hintOnlyMatch
+  && !hintStillNeedsGrounding[0].evidence.automaticScopeEvidence,
+"an inferred hint silently became automatic work evidence");
+const workBlockedByUser = rankRetrievalEntries([{ ...retrievalEntries[0], topic_key: "成绩整理", subject_key: "学习通成绩" }],
+  normalizeRetrievalRequest("这次不要按以前的学习通成绩整理方式", [], ["帮我整理学习通成绩", "成绩整理", "学习通成绩"]));
+assert(workBlockedByUser[0]?.evidence.reuseStopOrCorrectionRequested && !workBlockedByUser[0].evidence.automaticScopeEvidence,
+"a current-work signal overrode the user's explicit request not to reuse the old method");
+const negativeRuleEntry = {
+  id: "habit.negative-rule", title: "看板避免同质化", summary: "看板应保持独立的信息骨架",
+  triggers: ["别和其他看板长得一样"], aliases: ["界面相似要换骨架"], topic_key: "看板设计",
+  subject_key: "Agent Carry", scope: ["Agent Carry 看板设计"], conditions: [], excludes: [], state: "active",
+};
+const negativeRuleRecall = rankRetrievalEntries([negativeRuleEntry], normalizeRetrievalRequest("别和其他看板长得一样"));
+assert(negativeRuleRecall[0] && !negativeRuleRecall[0].evidence.reuseStopOrCorrectionRequested,
+  "a saved rule whose own wording starts with a negation was mistaken for a request to disable that memory");
+const negativeRuleOptOut = rankRetrievalEntries([negativeRuleEntry],
+  normalizeRetrievalRequest("这次不要使用别和其他看板长得一样这条习惯", [], ["别和其他看板长得一样", "看板设计", "Agent Carry", "Agent Carry 看板设计"]));
+assert(negativeRuleOptOut[0]?.evidence.reuseStopOrCorrectionRequested && !negativeRuleOptOut[0].evidence.automaticScopeEvidence,
+  "an explicit meta-level opt-out did not override a saved negative rule");
+assert(!normalizeRetrievalRequest("", [], []).ok && normalizeRetrievalRequest("", [], []).reason === "query-empty",
+  "an empty request without user text or work signals was accepted");
+assert(rankRetrievalEntries(retrievalEntries, normalizeRetrievalRequest("", [], ["烘焙温度换算"])).length === 0,
+  "an unrelated current-work signal produced a false recall");
 const excludeGrounded = rankRetrievalEntries([{ ...retrievalEntries[0], excludes: ["不要整理成绩"] }], normalizeRetrievalRequest("帮我整理学习通成绩", ["不要整理成绩"]));
 assert(excludeGrounded.length === 1, "an untrusted hint triggered a hard exclusion");
 const shortQueryNotExcluded = rankRetrievalEntries([{ ...retrievalEntries[0], excludes: ["修改原始成绩"] }], normalizeRetrievalRequest("成绩"));
@@ -145,6 +181,22 @@ const domainWorkMapSource = read("core/maps/domain-work.toml");
 for (const fragment of ['id = "domain-work"', 'map = "core/maps/domain-work.toml"', 'id = "natural-language-recall"', 'target = "core/protocols/CONTEXT_ROUTING.md"', 'state = "on-demand"', 'minimum_level = 1', '"按上次那种"', '"我不记得名字"']) {
   assert(rootMapSource.includes(fragment) || domainWorkMapSource.includes(fragment), `root-to-natural-recall route closure is missing: ${fragment}`);
 }
+const activeRecallContract = [
+  read("assistant.toml"), read("AGENTS.md"), read("BOOTSTRAP.md"),
+  read("core/protocols/CONTEXT_ROUTING.md"), read("core/maps/trigger-registry.toml"),
+].join("\n");
+for (const fragment of [
+  "bounded-current-work-signals",
+  "每个任务首次路由",
+  "下一项有实质影响的行动",
+  "用户当次否定",
+  "没有使用长期资产时",
+  "这次用上了",
+  "独立短卡",
+  "只列出候选但没有读取正文",
+  "standalone-brief-card",
+  "standalone-brief-no-long-term-asset-used-or-recall-degraded",
+]) assert(activeRecallContract.includes(fragment), `active recall or transparent-use contract is missing: ${fragment}`);
 
 const entries = [
   { id: "evolution.allowed", title: "获准观察", summary: "低敏摘要", topic_key: "", subject_key: "", target_kind: "memory", target_subtype: "general", candidate_relation: "new", risk_tier: "low", independent_event_count: 1, last_evidence_at: "", triggers: [], aliases: [], scope: [], conditions: [], excludes: [], status: "candidate", observation_state: "explicit", observation_basis: "explicit-user", source_ref: "instance/evolution/allowed.md", source_revision: 1 },

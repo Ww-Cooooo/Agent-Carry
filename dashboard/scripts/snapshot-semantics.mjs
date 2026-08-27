@@ -10,7 +10,7 @@ const memorySubtypes = new Set(["general", "habit"]);
 const experienceSubtypes = new Set(["task", "host-execution"]);
 const evolutionTargets = new Set(["memory", "capability", "sop", "experience", "preference", "unknown"]);
 const todoStatuses = new Set(["pending", "done", "paused", "cancelled", "history"]);
-const rootKeys = new Set(["meta", "overview", "profile", "model", "assets", "memories", "sops", "capabilities", "experiences", "evolution", "governance", "todo", "deferred", "skills", "changes", "advanced"]);
+const rootKeys = new Set(["meta", "overview", "profile", "model", "health", "assets", "memories", "sops", "capabilities", "experiences", "evolution", "governance", "todo", "deferred", "skills", "changes", "advanced"]);
 const formalItemKeys = new Set(["id", "title", "summary", "subtype", "triggers", "scope_summary", "source_summary", "evidence_summary", "reliability", "status", "approval_state", "activation_basis", "risk_tier", "approved_by_user", "maturity"]);
 const candidateItemKeys = new Set(["id", "title", "summary", "status", "source_summary", "target_kind", "target_subtype", "next_step", "observation_state", "observation_basis"]);
 
@@ -192,6 +192,22 @@ export function validateSnapshotSemantics(snapshot, label = "snapshot") {
     exactKeys(model, new Set(["level", "name", "platform", "confirmed_at", "status"]), ["level", "name", "platform", "confirmed_at", "status"], label, "$.model");
     if (![1, 2, 3].includes(model.level)) fail(label, "$.model.level must be 1, 2, or 3");
     for (const field of ["name", "platform", "confirmed_at", "status"]) text(model[field], label, `$.model.${field}`, { max: field === "name" ? 160 : 80, allowEmpty: field === "confirmed_at" });
+  }
+
+  if (Object.hasOwn(snapshot, "health")) {
+    const health = object(snapshot.health, label, "$.health");
+    exactKeys(health,
+      new Set(["state", "isolated_item_count", "affected_areas", "source_data_preserved", "summary", "next_step"]),
+      ["state", "isolated_item_count", "affected_areas", "source_data_preserved", "summary", "next_step"], label, "$.health");
+    if (meta.state !== "instance" || health.state !== "degraded") fail(label, "$.health is only valid for a degraded instance projection");
+    const isolatedCount = count(health.isolated_item_count, label, "$.health.isolated_item_count");
+    if (isolatedCount < 1 || isolatedCount > 64) fail(label, "$.health.isolated_item_count must be between 1 and 64");
+    textList(health.affected_areas, label, "$.health.affected_areas", { maxItems: 12, maxText: 40, allowEmpty: false });
+    if (health.affected_areas.length < 1 || new Set(health.affected_areas).size !== health.affected_areas.length
+      || health.affected_areas.some((area) => !stableId.test(area))) fail(label, "$.health.affected_areas must be unique stable category IDs");
+    if (health.source_data_preserved !== true) fail(label, "$.health.source_data_preserved must explicitly preserve source data");
+    text(health.summary, label, "$.health.summary", { max: 320 });
+    text(health.next_step, label, "$.health.next_step", { max: 320 });
   }
 
   if (meta.state === "template") {

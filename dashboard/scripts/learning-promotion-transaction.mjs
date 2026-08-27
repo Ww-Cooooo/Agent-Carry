@@ -30,6 +30,7 @@ import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.
 import { containsForbiddenLocationReference } from "./safe-output-boundary.mjs";
 import { buildSnapshotCandidate } from "./snapshot-source-builder.mjs";
 import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { operationalDerivedStateGate } from "./cross-session-signal-transaction.mjs";
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 const digestPattern = /^sha256:[a-f0-9]{64}$/u;
@@ -761,7 +762,9 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
     for (const [ref, buffer] of proposed) replaceProjection(projectionRoot, ref, buffer);
     const projected = loadTrustedDomainEnvelope(projectionRoot, { explicitRequestedId: handoff.asset.id });
     if (projected.envelope.explicitRoute?.id !== handoff.asset.id) throw new Error("formal route did not close in isolated projection");
-    const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicRead.text, now: new Date(transactionAt) });
+    const requiredSourceRefs = [...proposed.keys()];
+    const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicRead.text, now: new Date(transactionAt),
+      mode: "operational", requiredSourceRefs });
     if (!snapshot.updated || typeof snapshot.source !== "string") throw new Error("formal promotion did not create a changed snapshot");
     const parsedSnapshot = parseSnapshotEnvelope(snapshot.source, "promotion snapshot");
     const formalCards = [...parsedSnapshot.memories, ...parsedSnapshot.sops, ...parsedSnapshot.capabilities, ...parsedSnapshot.experiences]
@@ -769,7 +772,8 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
     if (formalCards.length !== 1 || parsedSnapshot.evolution.some((item) => item.id === handoff.candidate.id)) {
       throw new Error("snapshot contains a duplicate formal card or retained promoted candidate");
     }
-    const second = buildSnapshotCandidate(projectionRoot, { existingSource: snapshot.source, now: new Date(transactionAt) });
+    const second = buildSnapshotCandidate(projectionRoot, { existingSource: snapshot.source, now: new Date(transactionAt),
+      mode: "operational", requiredSourceRefs });
     if (second.updated || second.source !== snapshot.source) throw new Error("promotion snapshot is not byte-idempotent");
     snapshotSource = snapshot.source;
   } finally { if (projectionRoot) removeOwnedProjectionRoot(projectionRoot, repositoryReal); }
@@ -1048,18 +1052,21 @@ function persistBundle(repositoryReal, plan, nonce, status, expiresAt) {
   return { record, planRef };
 }
 
-function preparationSummary(record, plan, nonce, decision, { updated = true } = {}) {
+function preparationSummary(record, plan, nonce, decision, { updated = true, userReport = null } = {}) {
   return Object.freeze({ decision, executable: false, transactionId: record.transaction_id,
     transactionNonce: nonce, planDigest: plan.plan_digest, status: record.status, updated,
     candidateId: plan.candidate_id, formalId: plan.formal_id, writeTargetCount: plan.write_set.length,
     stepCount: plan.steps.length, relatedSignalCount: plan.steps.filter((step) => step.phase === "related-learning-signal-resolved").length,
-    authorizationBasis: plan.authorization.basis, contentIncluded: false });
+    authorizationBasis: plan.authorization.basis, contentIncluded: false, ...(userReport ? { userReport } : {}) });
 }
 
 export function preparePersistentPromotionFromHandoff(repository, request,
   { now = new Date(), proposedFormalPreview = undefined } = {}) {
   try {
-    const repositoryReal = realpathSync(repository); const checked = parseHandoff(repositoryReal, request, { proposedFormalPreview });
+    const repositoryReal = realpathSync(repository);
+    const operationalGate = operationalDerivedStateGate(repositoryReal, "learning-promotion");
+    if (!operationalGate.proceed) return operationalGate.result;
+    const checked = parseHandoff(repositoryReal, request, { proposedFormalPreview });
     if (checked.decision === "learning-promotion-new-confirmation-required") return checked;
     const nowMs = now instanceof Date ? now.getTime() : Number.NaN;
     if (!Number.isFinite(nowMs)) throw new Error("promotion transaction time is invalid");
@@ -1068,7 +1075,8 @@ export function preparePersistentPromotionFromHandoff(repository, request,
     const plan = buildPromotionPlan(repositoryReal, checked, { transactionId, transactionAt });
     const expiresAt = new Date(nowMs + 30 * 60_000).toISOString();
     const { record } = persistBundle(repositoryReal, plan, nonce, "prepared", expiresAt);
-    return preparationSummary(record, plan, nonce, "persistent-learning-promotion-prepared");
+    return preparationSummary(record, plan, nonce, "persistent-learning-promotion-prepared",
+      { userReport: operationalGate.repair.userReport ?? null });
   } catch (error) {
     return Object.freeze({ decision: "persistent-learning-promotion-prepare-denied", reason: error.message,
       executable: false, contentIncluded: false });
@@ -1300,7 +1308,8 @@ function verifyFinalSemantics(loaded) {
     throw new Error("committed snapshot closure is duplicated or stale");
   }
   const second = buildSnapshotCandidate(loaded.repositoryReal, { existingSource: publicRead.text,
-    now: new Date(loaded.plan.transaction_at) });
+    now: new Date(loaded.plan.transaction_at), mode: "operational",
+    requiredSourceRefs: loaded.plan.steps.map((step) => step.target) });
   if (second.updated || second.source !== publicRead.text) throw new Error("committed snapshot is not byte-idempotent from current truth sources");
 }
 function executeFromCheckpoint(loaded, checkpoint, { faultAfterStep = 0 } = {}) {

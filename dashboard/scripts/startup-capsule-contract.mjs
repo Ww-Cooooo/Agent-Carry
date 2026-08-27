@@ -75,23 +75,40 @@ export function buildStartupCapsule(repository) {
 }
 
 export function inspectStartupCapsule(repository) {
+  let expected;
   try {
-    const expected = buildStartupCapsule(repository);
-    const root = realpathSync(repository);
-    const actualBuffer = stableRead(resolve(root, "instance/startup-capsule.toml"), MAX_CAPSULE_BYTES, "startup capsule");
+    expected = buildStartupCapsule(repository);
+  } catch {
+    return Object.freeze({ decision: "startup-repair-required", reason: "manifest-or-core-contract-invalid",
+      repairable: false, executable: false });
+  }
+  try {
+    const root = realpathSync(repository); const target = resolve(root, "instance/startup-capsule.toml");
+    let info;
+    try { info = lstatSync(target); }
+    catch (error) {
+      if (error?.code === "ENOENT") return Object.freeze({ decision: "startup-repair-required", reason: "capsule-missing",
+        repairable: true, executable: false });
+      return Object.freeze({ decision: "startup-repair-required", reason: "capsule-path-unavailable",
+        repairable: false, executable: false });
+    }
+    if (!info.isFile() || info.isSymbolicLink()) return Object.freeze({ decision: "startup-repair-required",
+      reason: "capsule-path-unsafe", repairable: false, executable: false });
+    const actualBuffer = stableRead(target, MAX_CAPSULE_BYTES, "startup capsule");
     let actualSource;
-    try { actualSource = utf8.decode(actualBuffer); } catch { return Object.freeze({ decision: "startup-repair-required", reason: "capsule-not-utf8", executable: false }); }
+    try { actualSource = utf8.decode(actualBuffer); } catch { return Object.freeze({ decision: "startup-repair-required", reason: "capsule-not-utf8", repairable: true, executable: false }); }
     if (actualSource.startsWith("\uFEFF") || actualSource.includes("\r")) {
-      return Object.freeze({ decision: "startup-repair-required", reason: "capsule-stale-or-invalid", executable: false });
+      return Object.freeze({ decision: "startup-repair-required", reason: "capsule-stale-or-invalid", repairable: true, executable: false });
     }
     const parsed = parseSectionedToml(actualSource, "startup capsule");
     const values = parsed[""] ?? {};
     if (Object.keys(parsed).some((section) => section !== "") || Object.keys(values).length !== capsuleFields.size
       || Object.keys(values).some((field) => !capsuleFields.has(field)) || actualSource !== expected.source) {
-      return Object.freeze({ decision: "startup-repair-required", reason: "capsule-stale-or-invalid", executable: false });
+      return Object.freeze({ decision: "startup-repair-required", reason: "capsule-stale-or-invalid", repairable: true, executable: false });
     }
     return Object.freeze({ decision: "startup-capsule-valid", executable: false, ...expected.values });
   } catch {
-    return Object.freeze({ decision: "startup-repair-required", reason: "manifest-or-capsule-contract-invalid", executable: false });
+    return Object.freeze({ decision: "startup-repair-required", reason: "capsule-read-unstable-or-unbounded",
+      repairable: false, executable: false });
   }
 }

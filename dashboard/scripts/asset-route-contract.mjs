@@ -1,7 +1,7 @@
 import { closeSync, fstatSync, lstatSync, openSync, readSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import { dirname, relative, resolve, sep } from "node:path";
-import { lexicalSimilarity, normalizeRetrievalRequest, rankRetrievalEntries } from "./bounded-retrieval.mjs";
+import { lexicalSimilarity, normalizeRetrievalRequest, projectRecallUse, rankRetrievalEntries } from "./bounded-retrieval.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { containsForbiddenLocationReference, containsForbiddenStructuredLocation } from "./safe-output-boundary.mjs";
 
@@ -1083,22 +1083,12 @@ export function auditFormalSourceClosure(repository) {
 // Explicit snapshot-maintenance projection. It runs the full source closure
 // first, then emits only low-sensitivity metadata; ordinary startup and task
 // routing never call this function.
-export function projectFormalAssetsForSnapshot(repository) {
-  auditFormalSourceClosure(repository);
-  const { envelope } = loadTrustedDomainEnvelope(repository);
-  const trust = trustedEnvelopes.get(envelope);
-  if (!trust || !envelopeFresh(trust)) fail("snapshot formal projection lacks a fresh trusted maintenance envelope");
-  const evidenceRegistry = loadResultValidationEvidence(repository, trust.expected);
-  if (!evidenceRegistry) fail("snapshot result-validation evidence index is unavailable or invalid");
-  const result = { memory: [], sops: [], capabilities: [], experiences: [] };
-  const targetKey = { memory: "memory", sop: "sops", capability: "capabilities", experience: "experiences" };
-  for (const route of [...trust.maintenanceRoutes].filter((entry) => entry.asset_kind !== "task-family").sort((left, right) => left.id.localeCompare(right.id, "en"))) {
-    const read = readFormalAsset(repository, route);
-    const asset = read.asset;
-    if (!routeAssetProjectionMatches(route, asset)) fail(`snapshot route/source drift at ${route.id}`);
-    const routeIndex = new Map(trust.maintenanceRoutes.map((entry) => [entry.id, entry]));
-    const execution = formalExecutionMetadata(asset, routeIndex, route.id, evidenceRegistry);
-    if (!execution || execution.ignoredInvalidHostExperienceRefCount > 0) fail(`snapshot maturity or reference metadata is invalid at ${route.id}`);
+function projectFormalSnapshotRoute(repository, route, routeIndex, evidenceRegistry) {
+  const read = readFormalAsset(repository, route);
+  const asset = read.asset;
+  if (!routeAssetProjectionMatches(route, asset)) fail(`snapshot route/source drift at ${route.id}`);
+  const execution = formalExecutionMetadata(asset, routeIndex, route.id, evidenceRegistry);
+  if (!execution || execution.ignoredInvalidHostExperienceRefCount > 0) fail(`snapshot maturity or reference metadata is invalid at ${route.id}`);
     const approvalState = ["explicit", "policy-authorized", "pending"].includes(asset.approval_state) ? asset.approval_state : "pending";
     const activationBasis = clean(asset.activation_basis ?? "", 64, false) ? asset.activation_basis : "candidate";
     const riskTier = ["low", "medium", "high"].includes(asset.risk_tier) ? asset.risk_tier : "high";
@@ -1127,9 +1117,89 @@ export function projectFormalAssetsForSnapshot(repository) {
       item.reliability = execution.maturity;
       item.evidence_summary = `独立任务 ${execution.independentTaskCount}；成功 ${execution.successfulUseCount}；失败 ${execution.failedUseCount}；宿主 ${execution.distinctHostCount}`;
     }
-    result[targetKey[asset.kind]].push(Object.freeze(item));
+  return Object.freeze({ route, asset, targetKey: { memory: "memory", sop: "sops", capability: "capabilities", experience: "experiences" }[asset.kind],
+    item: Object.freeze(item) });
+}
+
+function freezeFormalProjection(result) {
+  return Object.freeze(Object.fromEntries(Object.entries(result).map(([key, value]) => [key,
+    Object.freeze(value.sort((left, right) => left.id.localeCompare(right.id, "en")))])));
+}
+
+function formalSnapshotArea(kind) {
+  return { memory: "memory", sop: "sops", capability: "capabilities", experience: "experiences" }[kind] ?? "formal-assets";
+}
+
+export function projectFormalAssetsForSnapshot(repository) {
+  auditFormalSourceClosure(repository);
+  const { envelope } = loadTrustedDomainEnvelope(repository);
+  const trust = trustedEnvelopes.get(envelope);
+  if (!trust || !envelopeFresh(trust)) fail("snapshot formal projection lacks a fresh trusted maintenance envelope");
+  const evidenceRegistry = loadResultValidationEvidence(repository, trust.expected);
+  if (!evidenceRegistry) fail("snapshot result-validation evidence index is unavailable or invalid");
+  const result = { memory: [], sops: [], capabilities: [], experiences: [] };
+  const routeIndex = new Map(trust.maintenanceRoutes.map((entry) => [entry.id, entry]));
+  for (const route of [...trust.maintenanceRoutes].filter((entry) => entry.asset_kind !== "task-family")) {
+    const projected = projectFormalSnapshotRoute(repository, route, routeIndex, evidenceRegistry);
+    result[projected.targetKey].push(projected.item);
   }
-  return Object.freeze(Object.fromEntries(Object.entries(result).map(([key, value]) => [key, Object.freeze(value)])));
+  return freezeFormalProjection(result);
+}
+
+export function projectFormalAssetsForOperationalSnapshot(repository, {
+  requiredSourceRefs = new Set(), onIssue = undefined,
+} = {}) {
+  if (!(requiredSourceRefs instanceof Set) || typeof onIssue !== "function") fail("operational formal projection requires bounded isolation controls");
+  const { envelope } = loadTrustedDomainEnvelope(repository);
+  const trust = trustedEnvelopes.get(envelope);
+  if (!trust || !envelopeFresh(trust)) fail("operational formal projection lacks a fresh trusted maintenance envelope");
+  const evidenceRegistry = loadResultValidationEvidence(repository, trust.expected);
+  if (!evidenceRegistry) fail("operational result-validation evidence index is unavailable or invalid");
+  const routes = [...trust.maintenanceRoutes].filter((entry) => entry.asset_kind !== "task-family");
+  const routeIndex = new Map(trust.maintenanceRoutes.map((entry) => [entry.id, entry]));
+  const projectedById = new Map(); const invalidIds = new Set();
+  for (const route of routes) {
+    try { projectedById.set(route.id, projectFormalSnapshotRoute(repository, route, routeIndex, evidenceRegistry)); }
+    catch (error) {
+      if (requiredSourceRefs.has(route.target)) throw error;
+      invalidIds.add(route.id); onIssue({ area: formalSnapshotArea(route.asset_kind), sourceRef: route.target, code: "formal-source-invalid" });
+    }
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [id, projected] of projectedById) {
+      const dependencies = [...(projected.asset.related_asset_ids ?? []), ...(projected.asset.host_experience_refs ?? [])];
+      if (!dependencies.some((dependency) => invalidIds.has(dependency))) continue;
+      if (requiredSourceRefs.has(projected.route.target)) fail(`required formal source ${id} depends on an isolated source`);
+      projectedById.delete(id); invalidIds.add(id); changed = true;
+      onIssue({ area: formalSnapshotArea(projected.route.asset_kind), sourceRef: projected.route.target, code: "formal-dependency-isolated" });
+    }
+  }
+  const registeredTargets = new Set(routes.map((route) => portablePathKey(route.target)));
+  const repositoryReal = realpathSync(repository); let visited = 0;
+  for (const [kind, relativeRoot] of Object.entries(roots).filter(([assetKind]) => assetKind !== "evolution")) {
+    const queue = [resolve(repositoryReal, relativeRoot)];
+    while (queue.length) {
+      const directory = queue.shift();
+      if (++visited > 4096) fail("operational formal source scan exceeds its directory bound");
+      const directoryInfo = lstatSync(directory);
+      if (!directoryInfo.isDirectory() || directoryInfo.isSymbolicLink()) fail(`operational formal ${kind} root is unsafe`);
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const path = resolve(directory, entry.name); const info = lstatSync(path);
+        if (info.isSymbolicLink()) fail("operational formal source scan crosses a link or reparse point");
+        if (entry.isDirectory()) { queue.push(path); continue; }
+        if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".md") || entry.name.toLowerCase() === "readme.md") continue;
+        const sourceRef = relative(repositoryReal, realpathSync(path)).split(sep).join("/").normalize("NFC");
+        if (registeredTargets.has(portablePathKey(sourceRef))) continue;
+        if (requiredSourceRefs.has(sourceRef)) fail(`required formal source ${sourceRef} is not registered`);
+        onIssue({ area: formalSnapshotArea(kind), sourceRef, code: "formal-source-unregistered" });
+      }
+    }
+  }
+  const result = { memory: [], sops: [], capabilities: [], experiences: [] };
+  for (const projected of projectedById.values()) result[projected.targetKey].push(projected.item);
+  return freezeFormalProjection(result);
 }
 
 function envelopeFresh(trust) {
@@ -1320,8 +1390,8 @@ export function inspectAssetMetadata(repository, envelope, routeId) {
   });
 }
 
-export function queryFormalAssetShortlist(repository, { queryText, intentHints = [] } = {}) {
-  const request = normalizeRetrievalRequest(queryText, intentHints);
+export function queryFormalAssetShortlist(repository, { queryText = "", intentHints = [], workSignals = [] } = {}) {
+  const request = normalizeRetrievalRequest(queryText, intentHints, workSignals);
   if (!request.ok) return Object.freeze({ decision: "query-rejected", reason: request.reason, candidates: Object.freeze([]), disposition: "ask-user-to-rephrase" });
   let envelope;
   try { ({ envelope } = loadTrustedDomainEnvelope(repository)); }
@@ -1339,7 +1409,8 @@ export function queryFormalAssetShortlist(repository, { queryText, intentHints =
       candidates.push(Object.freeze({
         id: entry.id, kind: "task-family", subtype: "", title: entry.title, summary: entry.summary,
         state: entry.state, requiredLevel: entry.minimum_level, selectionMode: "navigation-only-after-intent-is-clear", executable: false,
-        retrievalEvidence: Object.freeze({ directUserMatch: evidence.directUserMatch, hintOnlyMatch: evidence.hintOnlyMatch }),
+        retrievalEvidence: Object.freeze({ directUserMatch: evidence.directUserMatch, workSignalMatch: evidence.workSignalMatch,
+          hintOnlyMatch: evidence.hintOnlyMatch, automaticEvidenceSource: evidence.automaticEvidenceSource }),
       }));
       continue;
     }
@@ -1349,16 +1420,20 @@ export function queryFormalAssetShortlist(repository, { queryText, intentHints =
         ? "confirm-fuzzy-before-body" : metadata.selectionMode;
       candidates.push(Object.freeze({ ...metadata, selectionMode, retrievalEvidence: Object.freeze({
         triggerMatchStrong: evidence.triggerScore >= 0.72,
+        workTriggerMatchStrong: evidence.workTriggerScore >= 0.72,
         scopeOrObjectMatch: evidence.scopeScore >= 0.45,
+        workScopeOrObjectMatch: evidence.workScopeScore >= 0.45,
         automaticScopeEvidence: evidence.automaticScopeEvidence,
+        automaticEvidenceSource: evidence.automaticEvidenceSource,
         directUserMatch: evidence.directUserMatch,
+        workSignalMatch: evidence.workSignalMatch,
         hintOnlyMatch: evidence.hintOnlyMatch,
       }) }));
     } else rejectedMetadataCount += 1;
   }
   if (rejectedMetadataCount >= 8) return Object.freeze({
     decision: "route-map-rebuild-required", candidates: Object.freeze([]),
-    disposition: "maintenance-required", rejectedMetadataCount, intentHintCount: request.hints.length,
+    disposition: "maintenance-required", rejectedMetadataCount, intentHintCount: request.hints.length, workSignalCount: request.workSignals.length,
   });
   const frozen = Object.freeze(candidates.slice(0, 3));
   const disposition = frozen.length === 0 ? "no-trusted-match"
@@ -1366,7 +1441,8 @@ export function queryFormalAssetShortlist(repository, { queryText, intentHints =
       : frozen[0].selectionMode.startsWith("automatic-confirmed-habit") ? frozen[0].selectionMode
         : frozen[0].kind === "task-family" ? "load-navigation-after-intent-is-clear" : "confirm-single-before-body";
   const result = Object.freeze({ decision: frozen.length ? "shortlist-ready" : "no-match", candidates: frozen, disposition,
-    rejectedMetadataCount, integrityState: rejectedMetadataCount === 0 ? "verified" : "degraded-valid-matches-only", intentHintCount: request.hints.length });
+    rejectedMetadataCount, integrityState: rejectedMetadataCount === 0 ? "verified" : "degraded-valid-matches-only",
+    intentHintCount: request.hints.length, workSignalCount: request.workSignals.length });
   trustedFormalShortlists.set(result, Object.freeze({ repository: realpathSync(repository), envelope, allowedIds: new Set(frozen.map((entry) => entry.id)) }));
   return result;
 }
@@ -1389,6 +1465,7 @@ export function inspectShortlistedFormalAsset(repository, shortlist, routeId, { 
       decision: "selection-confirmation-required", executable: false, selected, reason,
       challengeNonce, challengeDigest, issuedAt: new Date(issuedAtMs).toISOString(), expiresAt: new Date(issuedAtMs + 10 * 60_000).toISOString(),
       confirmationReceiptContract: "same-process-host-current-user-message-v2",
+      recallUse: projectRecallUse(selected, "candidate-found-not-used"),
     });
     trustedSelectionChallenges.set(result, Object.freeze({
       repository: repositoryReal, routeId, targetFingerprint, challengeNonce, challengeDigest, issuedAtMs, resume: () => selected.kind === "task-family"
@@ -1400,13 +1477,16 @@ export function inspectShortlistedFormalAsset(repository, shortlist, routeId, { 
   if (selected.retrievalEvidence?.hintOnlyMatch) return challenge("hint-only-match");
   if (selected.kind === "task-family") {
     if (shortlist.candidates.length !== 1 || !selected.retrievalEvidence?.directUserMatch) return challenge("navigation-intent-not-unique");
-    return inspectTaskFamilyRoute(repository, trust.envelope, routeId, { levelEvidence });
+    const inspected = inspectTaskFamilyRoute(repository, trust.envelope, routeId, { levelEvidence });
+    return Object.freeze({ ...inspected, recallUse: projectRecallUse(selected, "candidate-found-not-used") });
   }
   if (shortlist.candidates.length !== 1 || !selected.selectionMode?.startsWith("automatic-confirmed-habit")
     || selected.retrievalEvidence?.automaticScopeEvidence !== true) {
     return challenge("fuzzy-or-choice-match");
   }
-  return inspectAssetRoute(repository, trust.envelope, routeId, { levelEvidence });
+  const inspected = inspectAssetRoute(repository, trust.envelope, routeId, { levelEvidence });
+  return Object.freeze({ ...inspected,
+    recallUse: projectRecallUse(selected, inspected.decision === "load-bounded-body" ? "asset-body-loaded" : "candidate-found-not-used") });
 }
 
 export function resumeShortlistedAssetSelection(repository, challenge, receipt) {

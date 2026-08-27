@@ -9,6 +9,7 @@ import {
   resumePersistentCrossSessionSignalTransaction,
   rollbackPersistentCrossSessionSignalTransaction,
 } from "./cross-session-signal-transaction.mjs";
+import { operationalUserReport, withOperationalUserReport } from "./operational-user-report.mjs";
 
 const STDOUT_MAX_BYTES = 4096;
 const SUMMARY_LIST_MAX = 16;
@@ -37,6 +38,8 @@ function summarize(result) {
     }));
     summary.truncated = result.transactions.length > SUMMARY_LIST_MAX;
   }
+  const userReport = operationalUserReport(result, { operation: "cross-session-signal" });
+  if (userReport) summary.userReport = userReport;
   return summary;
 }
 
@@ -70,6 +73,8 @@ try {
   const result = summarize(run()); output(result);
   if (String(result.decision).endsWith("-denied") || String(result.decision).endsWith("-recovery-required")) process.exitCode = 2;
 } catch (error) {
-  process.stderr.write(`${JSON.stringify({ decision: "cross-session-signal-cli-denied", reason: safeReason(error.message), executable: false })}\n`);
+  const result = withOperationalUserReport({ decision: "cross-session-signal-cli-denied", reason: safeReason(error.message),
+    executable: false }, { operation: "cross-session-signal" });
+  process.stderr.write(`${JSON.stringify(result)}\n`);
   process.exitCode = 2;
 }

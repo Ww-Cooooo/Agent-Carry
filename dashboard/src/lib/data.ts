@@ -123,7 +123,7 @@ export const assets = projectAssets(S);
 export let assetTotal = Object.values(assets).reduce((sum, n) => sum + n, 0);
 
 export type SnapshotStatusTone = "ready" | "template" | "warning";
-export type SnapshotStatusKey = "ready" | "template" | "unavailable" | "unknown-time" | "stale" | "future-time" | "refresh-failed";
+export type SnapshotStatusKey = "ready" | "template" | "degraded" | "unavailable" | "unknown-time" | "stale" | "future-time" | "refresh-failed";
 
 export interface SnapshotStatus {
   key: SnapshotStatusKey;
@@ -205,6 +205,24 @@ export function getSnapshotStatus(refreshFailed = false): SnapshotStatus {
       healthTone: "neutral",
       canRefresh: false,
       canRebuild: false,
+    };
+  }
+
+  if (S.health?.state === "degraded") {
+    const isolatedCount = Math.max(Number(S.health.isolated_item_count ?? 0), 1);
+    const affectedAreas = Array.isArray(S.health.affected_areas) ? S.health.affected_areas.slice(0, 12).join("、") : "部分内容";
+    return {
+      key: "degraded",
+      label: "部分内容已安全隔离",
+      title: "看板保留了可用内容，并标出了需要修复的部分",
+      summary: typeof S.health.summary === "string" ? S.health.summary : `有 ${isolatedCount} 项内容暂未进入看板，源文件仍然保留。`,
+      reason: `受影响类别：${affectedAreas}。这次隔离只影响对应内容，不会让整个助手停止工作。`,
+      nextStep: typeof S.health.next_step === "string" ? S.health.next_step : "让 Agent 只检查受影响类别并给出修复建议；其他无关工作可以继续。",
+      cardDetail: `${isolatedCount} 项暂未显示；源文件已保留，其他功能仍可用`,
+      tone: "warning",
+      healthTone: "warn",
+      canRefresh: true,
+      canRebuild: true,
     };
   }
 

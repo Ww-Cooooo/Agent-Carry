@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.0`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.4.1`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -81,6 +81,10 @@ The kit can include registered local materials such as course files, video files
 <summary><strong>Click to expand: How learning stays visible, discussable, and correctable</strong></summary>
 
 Agent Carry does not hide “self-improvement” in unexplained background changes.
+
+When an earlier memory, capability, experience, or SOP actually affects the work, the current Agent shows a separate, brief “Used this time” card. A reusable finding at a meaningful substage gets a different “Still learning” receipt. It becomes “Learned this step” only after the content is saved, read back, and reachable again through ordinary language; a preview or candidate is never presented as completed learning.
+
+Recall does not wait for the user to repeat an old keyword. At first routing, or when the goal, next material action, verified state, or task result changes, a few bounded work signals may select an already approved, uniquely scoped asset. The user's current correction or “do not reuse that” always wins. The “Used this time” card appears only after the source body was actually loaded and changed the current approach.
 
 1. You give a real task to the current host Agent; the host and model complete it and verify the result.
 2. If a result is wrong, the host fixes the current task first. A reusable root cause is initially kept only inside the current task; a one-off mistake and its full log do not become permanent memory.
@@ -192,6 +196,21 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.1</strong></summary>
+
+- First creation is now one recoverable identity transaction. The manifest, empty result-validation and candidate indexes, zero-component registry, host and Skill state, strict startup capsule, and both snapshots cannot be left half instance and half template.
+- The result-validation index receives only the new instance identity and remains record-free. The empty candidate index receives the real zoned time of the atomic creation without inventing a candidate. The registry becomes a current revision-one zero-component instance registry without preinstalling component bodies.
+- Every fixed release candidate and local validation archive creates a minimal general instance and a fully synthetic video-editing domain instance from the same canonical blank template. The small lifeline checks the strict capsule, byte-identical snapshots, zero business and learning assets, three governance cards, a byte-stable second run, and complete rollback after a representative mid-transaction fault. It is not a full-product regression during ordinary work.
+- An uninstantiated 1.4.0 template can update and then create an assistant. An existing 1.4.0 instance preserves its identity, direction, profile, memories, capabilities, SOPs, experiences, validation records, candidates, components, professional workspaces, device-local bindings, and private state; only the product version changes before the capsule and snapshots are rebuilt from merged instance truth.
+- Snapshot source scanning now accepts only schema-valid structured `private_collection_refs` in component manifests and keeps them out of the dashboard projection. Absolute private paths, absolute device-local paths, and malformed locators still fail closed.
+- Daily saves now isolate an unrelated damaged item instead of blocking every valid action. The original bytes still remain part of the complete source digest. The current target, instance identity, core manifest, path escape, and private boundary remain hard stops for that action, while first creation, upgrades, and releases still use strict validation.
+- Only a startup capsule or candidate/signal index that can be derived uniquely from formal truth may be repaired once and retried after strict readback. Unknown future fields are preserved, and an unresolved problem pauses only the related learning or signal capability. The Agent reports the impact, data state, what still works, and the recommended next step in plain language; healthy success stays quiet.
+- Active recall no longer waits for the user to repeat an old keyword. At task start or when the goal, next material action, verified state, or result changes, a few bounded work signals may select an already approved, uniquely scoped asset; the user's current correction always wins. “Used this time” appears only after the body was loaded and affected the work, while a meaningful-stage finding and a genuinely completed “Learned this step” use distinct receipts.
+- Version 1.4.1 can authorize an instance replacement only when the fixed `v1.4.1` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action. The public blank template still contains no maintainer data, test instance, or prebuilt learning asset.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.0</strong></summary>

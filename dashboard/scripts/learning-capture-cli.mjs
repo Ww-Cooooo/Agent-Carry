@@ -12,6 +12,7 @@ import {
   preparePersistentLearningCaptureChallenge,
   rollbackPersistentLearningCaptureTransaction,
 } from "./learning-capture-transaction.mjs";
+import { withOperationalUserReport } from "./operational-user-report.mjs";
 
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -63,6 +64,7 @@ function planSummary(result) {
     planRef: result.planRef, planDigest: result.plan.planDigest, planDecision: result.plan.decision,
     choice: result.plan.choice, writeSet: result.plan.writeSet.map((item) => item.target),
     hostExecutionRequired: result.plan.hostExecutionRequired, idempotent: result.idempotent,
+    ...(result.userReport ? { userReport: result.userReport } : {}),
   };
 }
 
@@ -108,9 +110,12 @@ function run() {
 }
 
 try {
-  const result = run(); process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  const result = withOperationalUserReport(run(), { operation: "learning-capture" });
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   if (String(result?.decision ?? "").endsWith("-denied")) process.exitCode = 2;
 } catch (error) {
-  process.stderr.write(`${JSON.stringify({ decision: "learning-capture-cli-denied", reason: error.message, executable: false })}\n`);
+  const result = withOperationalUserReport({ decision: "learning-capture-cli-denied", reason: error.message,
+    executable: false }, { operation: "learning-capture" });
+  process.stderr.write(`${JSON.stringify(result)}\n`);
   process.exitCode = 2;
 }

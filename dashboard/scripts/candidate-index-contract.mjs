@@ -499,6 +499,24 @@ export function auditCandidateSourceClosure(repository, { instanceContext } = {}
 // Explicit snapshot-maintenance projection. It is deliberately separate from
 // ordinary candidate retrieval and never exposes source refs, event IDs, paths
 // or candidate bodies.
+function projectCandidateSnapshotEntry(entry) {
+  const sourceSummary = entry.independent_event_count > 0
+    ? `宿主已区分出 ${entry.independent_event_count} 次不同任务观察；这只用于安排复核，不代表任务结果已经验证`
+    : "现有记录尚无宿主可区分的任务观察，也没有任务结果验证";
+  const nextStep = entry.status === "review" || ["conflict", "duplicate", "replace", "uncertain"].includes(entry.candidate_relation)
+    ? "先核对冲突、重复关系或建议去向，再决定是否保留"
+    : entry.observation_state !== "explicit"
+      ? "先用普通语言询问用户是否允许继续观察"
+      : ["medium", "high"].includes(entry.risk_tier)
+        ? "在下一次合适的真实任务中核验证据，再由 Level 3 向用户展示完整预览并取得明确确认"
+        : "在下一次合适的真实任务中继续验证，满足政策后再向用户展示可撤销的保留建议";
+  return Object.freeze({
+    id: entry.id, title: entry.title, summary: entry.summary, status: entry.status,
+    source_summary: sourceSummary, target_kind: entry.target_kind, target_subtype: entry.target_subtype ?? "",
+    next_step: nextStep, observation_state: entry.observation_state, observation_basis: entry.observation_basis,
+  });
+}
+
 export function projectCandidatesForSnapshot(repository, { instanceContext } = {}) {
   auditCandidateSourceClosure(repository, { instanceContext });
   const identity = readTrustedInstanceIdentity(repository, instanceContext);
@@ -514,20 +532,58 @@ export function projectCandidatesForSnapshot(repository, { instanceContext } = {
     if (!candidateSourceMatchesEntry(source, entry)) fail("candidate snapshot projection found source drift");
     const body = read.text.replaceAll("\r\n", "\n").slice(parsedSource.bodyOffset);
     if (locateHighConfidenceSecretCandidates(body).blocked || containsForbiddenLocationReference(body)) fail("candidate snapshot projection found unsafe body content");
-    const sourceSummary = entry.independent_event_count > 0
-      ? `宿主已区分出 ${entry.independent_event_count} 次不同任务观察；这只用于安排复核，不代表任务结果已经验证`
-      : "现有记录尚无宿主可区分的任务观察，也没有任务结果验证";
-    const nextStep = entry.status === "review" || ["conflict", "duplicate", "replace", "uncertain"].includes(entry.candidate_relation)
-      ? "先核对冲突、重复关系或建议去向，再决定是否保留"
-      : entry.observation_state !== "explicit"
-        ? "先用普通语言询问用户是否允许继续观察"
-        : ["medium", "high"].includes(entry.risk_tier)
-          ? "在下一次合适的真实任务中核验证据，再由 Level 3 向用户展示完整预览并取得明确确认"
-          : "在下一次合适的真实任务中继续验证，满足政策后再向用户展示可撤销的保留建议";
-    return Object.freeze({
-      id: entry.id, title: entry.title, summary: entry.summary, status: entry.status,
-      source_summary: sourceSummary, target_kind: entry.target_kind, target_subtype: entry.target_subtype ?? "",
-      next_step: nextStep, observation_state: entry.observation_state, observation_basis: entry.observation_basis,
-    });
+    return projectCandidateSnapshotEntry(entry);
   }));
+}
+
+export function projectCandidatesForOperationalSnapshot(repository, {
+  instanceContext, requiredSourceRefs = new Set(), onIssue = undefined,
+} = {}) {
+  if (!(requiredSourceRefs instanceof Set) || typeof onIssue !== "function") fail("operational candidate projection requires bounded isolation controls");
+  const identity = readTrustedInstanceIdentity(repository, instanceContext);
+  if (!identity) fail("operational candidate projection lacks trusted instance identity");
+  const indexRead = readIndexSnapshot(repository);
+  const parsed = parseArrayTableDocument(indexRead.text, "candidates", "candidate index");
+  const index = { ...parsed.root, candidates: parsed.entries };
+  if (!validateCandidateIndexMetadata(index, { expectedInstanceId: identity.instanceId, actualFileBytes: indexRead.fileBytes })) {
+    fail("operational candidate projection found an invalid index");
+  }
+  const projected = [];
+  const indexedRefs = new Set(index.candidates.map((entry) => entry.source_ref.toLowerCase()));
+  for (const entry of [...index.candidates].sort((left, right) => left.id.localeCompare(right.id, "en"))) {
+    try {
+      const read = readCandidateSnapshot(repository, entry);
+      const parsedSource = parseMarkdownFrontmatterHead(read.text, entry.id); const source = parsedSource.values;
+      if (!candidateSourceMatchesEntry(source, entry)) fail("operational candidate source drift");
+      const body = read.text.replaceAll("\r\n", "\n").slice(parsedSource.bodyOffset);
+      if (locateHighConfidenceSecretCandidates(body).blocked || containsForbiddenLocationReference(body)) fail("operational candidate body is unsafe");
+      projected.push(projectCandidateSnapshotEntry(entry));
+    } catch (error) {
+      if (requiredSourceRefs.has(entry.source_ref)) throw error;
+      onIssue({ area: "evolution", sourceRef: entry.source_ref, code: "candidate-source-invalid" });
+    }
+  }
+  const repositoryReal = realpathSync(repository); const queue = [dirname(resolveIndex(repository))]; let visited = 0;
+  while (queue.length) {
+    const directory = queue.shift();
+    if (++visited > 512) fail("operational candidate source scan exceeds its directory bound");
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = resolve(directory, entry.name); const info = lstatSync(path);
+      if (info.isSymbolicLink()) fail("operational candidate source scan crosses a link or reparse point");
+      if (entry.isDirectory()) { if (entry.name.toLowerCase() !== "archive") queue.push(path); continue; }
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".md") || entry.name.toLowerCase() === "readme.md") continue;
+      const sourceRef = relative(repositoryReal, realpathSync(path)).split(sep).join("/").normalize("NFC");
+      if (indexedRefs.has(sourceRef.toLowerCase())) continue;
+      let unresolved = true;
+      try {
+        const source = parseMarkdownFrontmatterHead(stableRead(path, 32 * 1024, "operational candidate source").text).values;
+        unresolved = source.kind !== "evolution-candidate" || ["candidate", "review"].includes(source.status);
+        if (source.kind === "evolution-candidate" && source.status === "archived") unresolved = false;
+      } catch { unresolved = true; }
+      if (!unresolved) continue;
+      if (requiredSourceRefs.has(sourceRef)) fail(`required candidate source ${sourceRef} is not indexed`);
+      onIssue({ area: "evolution", sourceRef, code: "candidate-source-unindexed-or-invalid" });
+    }
+  }
+  return Object.freeze(projected);
 }

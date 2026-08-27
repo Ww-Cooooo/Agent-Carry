@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectShortlistedFormalAsset, queryFormalAssetShortlist, stableAssetId } from "./asset-route-contract.mjs";
-import { normalizeRetrievalRequest } from "./bounded-retrieval.mjs";
+import { normalizeRetrievalRequest, projectRecallUse } from "./bounded-retrieval.mjs";
 import { assertLocationFreeProjection } from "./safe-output-boundary.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -20,7 +20,7 @@ const queryPurposes = new Set(["task-recall", "learning-review"]);
 const learningSignals = new Set(["none", "user-explicit-learning-review", "formal-no-match-with-reusable-pattern"]);
 const safeReasonCodes = new Set([
   "input-size-invalid", "input-json-invalid", "query-fields-invalid", "query-invalid", "query-too-long", "query-empty",
-  "intent-hints-invalid", "intent-hint-invalid", "query-purpose-or-learning-signal-invalid",
+  "intent-hints-invalid", "intent-hint-invalid", "work-signals-invalid", "work-signal-invalid", "query-purpose-or-learning-signal-invalid",
   "task-recall-cannot-assert-learning-signal", "selected-id-invalid", "selected-id-not-in-current-shortlist",
   "operation-unsupported", "output-size-exceeded", "unsafe-output",
 ]);
@@ -37,10 +37,10 @@ function exactKeys(value, allowed) {
 }
 
 function validateQueryInput(input, { withSelection = false } = {}) {
-  const allowed = new Set(["operation", "queryText", "intentHints", "purpose", "learningSignal"]);
+  const allowed = new Set(["operation", "queryText", "intentHints", "workSignals", "purpose", "learningSignal"]);
   if (withSelection) allowed.add("selectedId");
   if (!exactKeys(input, allowed)) throw new Error("query-fields-invalid");
-  const retrieval = normalizeRetrievalRequest(input.queryText, input.intentHints ?? []);
+  const retrieval = normalizeRetrievalRequest(input.queryText ?? "", input.intentHints ?? [], input.workSignals ?? []);
   if (!retrieval.ok) throw new Error(retrieval.reason);
   const purpose = input.purpose ?? "task-recall";
   const learningSignal = input.learningSignal ?? "none";
@@ -55,7 +55,7 @@ function selectionDigest(selected) {
 }
 
 function buildBoundedQuery(input, controls) {
-  const formal = queryFormalAssetShortlist(root, { queryText: input.queryText, intentHints: input.intentHints ?? [] });
+  const formal = queryFormalAssetShortlist(root, { queryText: input.queryText ?? "", intentHints: input.intentHints ?? [], workSignals: input.workSignals ?? [] });
   const formalCandidates = formal.candidates.slice(0, 3);
   // Candidate evidence is more sensitive than ordinary formal-route metadata.
   // A stateless stdin caller cannot prove that the current user asked to review
@@ -70,6 +70,8 @@ function buildBoundedQuery(input, controls) {
       formal,
       evolutionCandidates: Object.freeze({ decision: evolutionDecision, candidates: Object.freeze(evolutionCandidates) }),
       visibleCandidateCount: formalCandidates.length + evolutionCandidates.length, visibleCandidateLimit: 3,
+      recallUse: formalCandidates.length === 0 ? projectRecallUse(null, "no-long-term-asset-used")
+        : projectRecallUse(formalCandidates[0], "candidate-found-not-used"),
     }),
     formal, formalCandidates, evolutionCandidates,
   });
@@ -98,7 +100,9 @@ try {
     if (!formal && !candidate) throw new Error("selected-id-not-in-current-shortlist");
     if (formal) {
       const digest = selectionDigest(formal);
-      if (formal.requiredLevel > 1) result = Object.freeze({ decision: "host-level-confirmation-required", executable: false, selected: formal, selectionDigest: digest, levelTrust: "not-assertable-through-this-cli", disposition: "use-a-host-profile-or-model-level-route-that-can-be-verified-outside-this-cli" });
+      if (formal.requiredLevel > 1) result = Object.freeze({ decision: "host-level-confirmation-required", executable: false, selected: formal,
+        selectionDigest: digest, recallUse: projectRecallUse(formal, "candidate-found-not-used"),
+        levelTrust: "not-assertable-through-this-cli", disposition: "use-a-host-profile-or-model-level-route-that-can-be-verified-outside-this-cli" });
       else {
         const inspected = inspectShortlistedFormalAsset(root, bounded.formal, formal.id);
         result = inspected.decision === "selection-confirmation-required" || inspected.decision === "read-confirmation-required"
@@ -106,14 +110,17 @@ try {
             ...inspected,
             selectionDigest: digest,
             nextOperation: null,
+            recallUse: projectRecallUse(formal, "candidate-found-not-used"),
             disposition: "this-stateless-cli-cannot-consume-or-resume-confirmations; protected-body-reading-requires-a-stateful-trusted-host-integration-that-keeps-the-challenge-in-the-same-live-process",
           })
-          : inspected;
+          : Object.freeze({ ...inspected,
+            recallUse: projectRecallUse(formal, inspected.decision === "load-bounded-body" ? "asset-body-loaded" : "candidate-found-not-used") });
       }
     } else {
       const digest = selectionDigest(candidate);
       result = Object.freeze({ decision: "candidate-selection-confirmation-required",
         executable: false, selected: candidate, selectionDigest: digest, contentRole: "candidate-metadata-only", authorizedActions: Object.freeze([]),
+        recallUse: projectRecallUse(candidate, "candidate-found-not-used"),
         levelTrust: "candidate-evidence-requires-level-2-or-higher-and-is-not-assertable-through-this-cli",
         nextOperation: null,
         disposition: "this-stateless-cli-cannot-complete-candidate-selection; use-a-stateful-trusted-host-integration-that-keeps-selection-state-in-the-same-live-process",

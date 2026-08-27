@@ -23,6 +23,11 @@ import { buildSnapshotCandidate, computeSnapshotSourceDigest } from "./snapshot-
 import { normalizeRetrievalRequest, rankRetrievalEntries } from "./bounded-retrieval.mjs";
 import { containsForbiddenLocationReference } from "./safe-output-boundary.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
+import {
+  bindOperationalDerivedStateReport,
+  getOperationalDerivedStateReport,
+  operationalDerivedStateGate,
+} from "./cross-session-signal-transaction.mjs";
 
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const unsafeText = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u;
@@ -743,7 +748,8 @@ function buildDirectKeepProjection(repositoryReal, checked, envelope, context, i
   const publicSnapshotRead = stableRead(repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
   const distSnapshotRead = stableRead(repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
   if (publicSnapshotRead.digest !== distSnapshotRead.digest) throw new Error("dashboard snapshot pair is already drifted");
-  const baseSnapshotSourceDigest = computeSnapshotSourceDigest(repositoryReal).digest;
+  const baseSnapshotSourceDigest = computeSnapshotSourceDigest(repositoryReal, { mode: "operational",
+    requiredSourceRefs: [formalTarget, context.domainMapRef] }).digest;
 
   cleanupStaleLearningCaptureProjections(repositoryReal);
   let projectionRoot;
@@ -758,7 +764,8 @@ function buildDirectKeepProjection(repositoryReal, checked, envelope, context, i
     replaceProjectionFile(projectionRoot, formalTarget, normalizedPreview);
     const projectedEnvelope = loadTrustedDomainEnvelope(projectionRoot, { explicitRequestedId: asset.id });
     if (projectedEnvelope.envelope.explicitRoute?.id !== asset.id) throw new Error("direct formal route did not close in the isolated projection");
-    const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicSnapshotRead.text, now: new Date(issuedAt) });
+    const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicSnapshotRead.text, now: new Date(issuedAt),
+      mode: "operational", requiredSourceRefs: [formalTarget, context.domainMapRef] });
     if (!snapshot.updated || typeof snapshot.source !== "string" || Buffer.byteLength(snapshot.source, "utf8") > limits.snapshot) {
       throw new Error("the isolated snapshot projection did not produce a bounded changed pair");
     }
@@ -848,6 +855,8 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
       || observationTrust.manifestDigest !== manifestRead.digest || Date.now() > observationTrust.expiresAtMs) {
       throw new Error("a same-process host observation receipt is required before offering durable learning choices");
     }
+    const operationalGate = operationalDerivedStateGate(repositoryReal, "learning-capture");
+    if (!operationalGate.proceed) return operationalGate.result;
     consumedObservationReceipts.add(observationReceipt);
     const { context, envelope } = loadTrustedDomainEnvelope(repositoryReal, { explicitRequestedId: checked.formal.id });
     if (context.instanceId !== manifest.root.instance_id || context.manifestState !== "instance") throw new Error("trusted formal routing context does not match the instance");
@@ -916,7 +925,7 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
       instanceId: manifest.root.instance_id, checked, observation, directKeep,
       allowedChoices: choices,
       issuedAtMs, expiresAtMs: issuedAtMs + 10 * 60_000, nonce }));
-    return challenge;
+    return bindOperationalDerivedStateReport(challenge, operationalGate.repair);
   } catch (error) {
     return deepFreeze({ decision: "learning-capture-challenge-denied", reason: error.message, executable: false });
   }
@@ -954,7 +963,8 @@ export function confirmLearningCaptureChoice(challenge, receipt) {
   });
   trustedSelections.set(selection, Object.freeze({ ...trust, receipt: Object.freeze({ ...receipt }), ids, transactionAt,
     expiresAtMs: Math.min(trust.expiresAtMs, now + 2 * 60_000) }));
-  return selection;
+  const earlierReport = getOperationalDerivedStateReport(challenge);
+  return bindOperationalDerivedStateReport(selection, earlierReport ? { userReport: earlierReport } : null);
 }
 
 export function closeLearningCaptureWithoutResponse(challenge) {
@@ -1031,7 +1041,7 @@ function readPersistentJson(target, maxBytes, label) {
 }
 
 function currentPersistentStateDigest(repositoryReal) {
-  const source = computeSnapshotSourceDigest(repositoryReal);
+  const source = computeSnapshotSourceDigest(repositoryReal, { mode: "operational" });
   const refs = ["assistant.toml", "core/manifest.toml", "core/maps/asset-confirmation-gates.toml",
     PUBLIC_SNAPSHOT_REF, DIST_SNAPSHOT_REF];
   return sha256(canonical({ source: source.digest,
@@ -1128,7 +1138,10 @@ export function preparePersistentLearningCaptureChallenge(repository, proposal, 
     const observationReceipt = createLearningCaptureObservationReceipt(repositoryReal, observationAssertion);
     if (observationReceipt.decision !== "learning-capture-host-observation-bound") throw new Error(observationReceipt.reason ?? "host observation unavailable");
     const embedded = createLearningCaptureChoiceChallenge(repositoryReal, proposal, { levelEvidence, observationReceipt });
-    if (embedded.decision !== "learning-capture-current-user-choice-required") throw new Error(embedded.reason ?? "learning choice unavailable");
+    if (embedded.decision !== "learning-capture-current-user-choice-required") {
+      if (embedded.userReport) return embedded;
+      throw new Error(embedded.reason ?? "learning choice unavailable");
+    }
     const challengeId = `capture.${randomBytes(16).toString("hex")}`; const challengeNonce = randomBytes(18).toString("hex");
     const record = {
       schema_version: 1, record_type: "learning-capture-operational-challenge", challenge_id: challengeId,
@@ -1141,11 +1154,12 @@ export function preparePersistentLearningCaptureChallenge(repository, proposal, 
       status: "prepared", message_ref: "", message_digest: "", choice: "", remind_at: "", plan_digest: "", plan_ref: "",
     };
     atomicJson(persistentRecordPath(repositoryReal, challengeId), record);
+    const userReport = getOperationalDerivedStateReport(embedded);
     return deepFreeze({ decision: "persistent-learning-capture-choice-required", executable: false,
       persistentChallengeId: challengeId, instanceId: embedded.instanceId, proposalDigest: embedded.proposalDigest,
       challengeNonce, issuedAt: embedded.issuedAt, expiresAt: embedded.expiresAt,
       choices: embedded.choices, preview: embedded.preview, userMeaning: embedded.userMeaning,
-      operationalRecordContainsSemanticBody: false });
+      operationalRecordContainsSemanticBody: false, ...(userReport ? { userReport } : {}) });
   } catch (error) {
     return deepFreeze({ decision: "persistent-learning-capture-prepare-denied", reason: error.message, executable: false });
   }
@@ -1189,6 +1203,8 @@ export function confirmPersistentLearningCaptureChallenge(repository, { challeng
       return deepFreeze({ decision: "persistent-learning-capture-plan-ready", executable: false,
         persistentChallengeId: challengeId, planRef: record.plan_ref, plan: existing, idempotent: true });
     }
+    const operationalGate = operationalDerivedStateGate(repositoryReal, "persistent-learning-capture-confirm");
+    if (!operationalGate.proceed) return operationalGate.result;
     if (currentPersistentStateDigest(repositoryReal) !== record.state_digest) throw new Error("repository state changed after the user reviewed the persistent challenge");
     const observationReceipt = createLearningCaptureObservationReceipt(repositoryReal, observationAssertion);
     if (observationReceipt.decision !== "learning-capture-host-observation-bound"
@@ -1216,7 +1232,8 @@ export function confirmPersistentLearningCaptureChallenge(repository, { challeng
       unlinkSync(target);
       removeEmptyPersistentDirectories(repositoryReal);
       return deepFreeze({ decision: "persistent-learning-capture-discard-closed", executable: false,
-        durableEffect: "zero-semantic-writes", plan, operationalRecordRemoved: true });
+        durableEffect: "zero-semantic-writes", plan, operationalRecordRemoved: true,
+        ...(operationalGate.repair.userReport ? { userReport: operationalGate.repair.userReport } : {}) });
     }
     atomicJson(planTarget, plan);
     const planRef = `${PERSISTENT_CAPTURE_DIR}/${challengeId}.plan.json`;
@@ -1224,7 +1241,8 @@ export function confirmPersistentLearningCaptureChallenge(repository, { challeng
       message_digest: receipt.message_digest, choice: receipt.choice, remind_at: receipt.remind_at,
       plan_digest: plan.planDigest, plan_ref: planRef }, { replace: true });
     return deepFreeze({ decision: "persistent-learning-capture-plan-ready", executable: false,
-      persistentChallengeId: challengeId, planRef, plan, idempotent: false });
+      persistentChallengeId: challengeId, planRef, plan, idempotent: false,
+      ...(operationalGate.repair.userReport ? { userReport: operationalGate.repair.userReport } : {}) });
   } catch (error) {
     return deepFreeze({ decision: "persistent-learning-capture-confirm-denied", reason: error.message, executable: false });
   }
@@ -1679,7 +1697,10 @@ function buildState(repositoryReal, trust) {
       ...(reviewPayloadArtifact ? [reviewPayloadArtifact] : [])]) {
       replaceProjectionFile(projectionRoot, item.target, Buffer.from(item.contentBase64, "base64").toString("utf8"));
     }
-    const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicSnapshotRead.text, now: new Date(transactionAt) });
+    const currentTargets = [cleanControlArtifact, candidateArtifact, indexArtifact, signalArtifact, timeArtifact, signalMapArtifact,
+      ...(reviewPayloadArtifact ? [reviewPayloadArtifact] : [])].map((item) => item.target);
+    const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicSnapshotRead.text, now: new Date(transactionAt),
+      mode: "operational", requiredSourceRefs: currentTargets });
     if (!snapshot.updated || typeof snapshot.source !== "string" || Buffer.byteLength(snapshot.source, "utf8") > limits.snapshot) {
       throw new Error("candidate transaction did not produce one bounded changed dashboard snapshot");
     }
@@ -1726,7 +1747,8 @@ function buildDirectKeepPlan(repositoryReal, trust) {
     || currentFormalDigest !== trust.formalStateDigest || registeredFormalId(current.envelope, trust.checked.formal.id)
     || currentDuplicates.decision !== "duplicate-check-complete" || currentDuplicates.matches.length > 0
     || !verifyNewFormalTarget(repositoryReal, direct.targetProof)
-    || computeSnapshotSourceDigest(repositoryReal).digest !== direct.baseSnapshotSourceDigest) {
+    || computeSnapshotSourceDigest(repositoryReal, { mode: "operational",
+      requiredSourceRefs: [direct.formalTarget, direct.domainMapRef] }).digest !== direct.baseSnapshotSourceDigest) {
     throw new Error("direct keep inputs changed after the user reviewed the exact preview");
   }
   const domainMapRead = stableRead(repositoryReal, direct.domainMapRef, limits.domainMap);
@@ -1791,17 +1813,23 @@ export function buildLearningCaptureTransactionPlan(repository, selection) {
   if (!trust || trust.repositoryReal !== repositoryReal || consumedSelections.has(selection) || Date.now() > trust.expiresAtMs) {
     return deepFreeze({ decision: "learning-capture-plan-denied", reason: "trusted-current-choice-required", executable: false });
   }
-  consumedSelections.add(selection);
   if (trust.receipt.choice === "discard") {
+    consumedSelections.add(selection);
     const plan = buildNoWritePlan(trust); trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: trust.expiresAtMs, noWrite: true }));
     return plan;
   }
+  const operationalGate = operationalDerivedStateGate(repositoryReal, "learning-capture-plan");
+  if (!operationalGate.proceed) return operationalGate.result;
+  consumedSelections.add(selection);
+  const earlierReport = getOperationalDerivedStateReport(selection);
+  const reportSource = operationalGate.repair.userReport ? operationalGate.repair
+    : earlierReport ? { userReport: earlierReport } : null;
   if (trust.receipt.choice === "keep") {
     if (trust.directKeep.eligible) try {
       const plan = buildDirectKeepPlan(repositoryReal, trust);
       trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: trust.expiresAtMs,
         noWrite: false }));
-      return plan;
+      return bindOperationalDerivedStateReport(plan, reportSource);
     } catch (error) {
       return deepFreeze({ decision: "learning-capture-plan-denied", reason: error.message, executable: false });
     }
@@ -1881,7 +1909,7 @@ export function buildLearningCaptureTransactionPlan(repository, selection) {
     };
     const plan = sealPlan(core);
     trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: trust.expiresAtMs, noWrite: false }));
-    return plan;
+    return bindOperationalDerivedStateReport(plan, reportSource);
   } catch (error) {
     return deepFreeze({ decision: "learning-capture-plan-denied", reason: error.message, executable: false });
   }

@@ -32,7 +32,13 @@ import {
   validateLearningReminderCancellationPlan,
 } from "./learning-capture-transaction.mjs";
 import * as learningCaptureRuntime from "./learning-capture-transaction.mjs";
-import { loadTrustedDomainEnvelope, parseArrayTableDocument, parseMarkdownFrontmatterHead } from "./asset-route-contract.mjs";
+import {
+  inspectShortlistedFormalAsset,
+  loadTrustedDomainEnvelope,
+  parseArrayTableDocument,
+  parseMarkdownFrontmatterHead,
+  queryFormalAssetShortlist,
+} from "./asset-route-contract.mjs";
 import { validateCandidateIndex } from "./candidate-index-contract.mjs";
 import { buildSnapshotCandidate } from "./snapshot-source-builder.mjs";
 import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
@@ -868,6 +874,25 @@ function testKeepWritesExactFormalRouteAndSnapshots() {
     "direct keep formal bytes differ from the user-reviewed preview");
   expect(loadTrustedDomainEnvelope(root, { explicitRequestedId: plan.formalId }).envelope.explicitRoute?.target === plan.formalTarget,
     "direct formal route did not close after commit");
+  const recalled = queryFormalAssetShortlist(root, {
+    queryText: "帮我弄一下上次那个",
+    workSignals: [
+      "帮我弄一下上次那个",
+      "natural-language-recall",
+      "previous-workflow",
+      "相近的真实任务",
+      "当前说法与已保存做法有明确语义关联",
+    ],
+  });
+  expect(recalled.decision === "shortlist-ready" && recalled.candidates.length === 1
+    && recalled.candidates[0].id === plan.formalId,
+  "saved direct formal asset could not be shortlisted again through ordinary language");
+  const recalledBody = inspectShortlistedFormalAsset(root, recalled, plan.formalId);
+  expect(recalledBody.decision === "load-bounded-body" && recalledBody.body.includes("在相近真实任务中先用普通语言提示")
+    && recalledBody.recallUse?.state === "asset-body-loaded"
+    && recalledBody.recallUse?.assetKind === "memory"
+    && recalledBody.recallUse?.userReportContract === "standalone-brief-card-name-actual-asset-kind-and-title-explain-current-trigger-and-practical-effect-without-internals",
+  "saved direct formal asset did not close the body-load and transparent-use receipt path");
   const publicSnapshot = readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8");
   const distSnapshot = readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8");
   expect(publicSnapshot === distSnapshot, "direct keep did not install byte-identical snapshot projections");
@@ -875,6 +900,39 @@ function testKeepWritesExactFormalRouteAndSnapshots() {
     "committed direct keep snapshot is not a byte-idempotent projection of current sources");
   const after = treeIdentity(root);
   expect(applyPlan(root, plan) === 0 && treeIdentity(root) === after, "second direct keep application was not idempotent");
+
+  const degradedRoot = createFixture("keep-with-unrelated-bad-todo", { full: true });
+  const degradedTodoPath = join(degradedRoot, "instance/todo/unrelated-invalid.md");
+  const degradedTodoBytes = Buffer.from(`+++
+id = "todo.unrelated-invalid"
+kind = "todo"
+status = "pending"
+visible = true
+title = "保持原样的无关坏待办"
+summary = "验证无关坏项不会阻止保存新记忆。"
+unsupported_field = "preserve-exactly"
++++
+# fixture
+`, "utf8");
+  writeFileSync(degradedTodoPath, degradedTodoBytes);
+  const degradedPlan = buildLearningCaptureTransactionPlan(degradedRoot,
+    select(degradedRoot, "keep", "keep-with-unrelated-bad-todo").selection);
+  expect(validateLearningCaptureTransactionPlan(degradedPlan)
+    && degradedPlan.decision === "learning-capture-direct-formal-host-transaction-preview",
+  `an unrelated invalid TODO blocked a new memory save: ${degradedPlan.reason ?? degradedPlan.decision}`);
+  applyPlan(degradedRoot, degradedPlan);
+  const degradedPublic = readFileSync(join(degradedRoot, "dashboard/public/snapshot.js"), "utf8");
+  const degradedDist = readFileSync(join(degradedRoot, "dashboard/dist/snapshot.js"), "utf8");
+  const degradedSnapshot = parseSnapshotEnvelope(degradedPublic, "degraded direct keep snapshot");
+  expect(degradedPublic === degradedDist && degradedSnapshot.assets.memory === 1
+    && degradedSnapshot.health?.state === "degraded" && degradedSnapshot.health?.isolated_item_count === 1
+    && degradedSnapshot.health?.affected_areas?.[0] === "todo" && degradedSnapshot.health?.source_data_preserved === true,
+  "the valid memory save did not finish with one bounded TODO isolation warning and byte-identical snapshots");
+  expect(readFileSync(degradedTodoPath).equals(degradedTodoBytes),
+    "the unrelated invalid TODO bytes changed while saving the new memory");
+  let degradedStrictBlocked = false;
+  try { buildSnapshotCandidate(degradedRoot, { existingSource: degradedPublic }); } catch { degradedStrictBlocked = true; }
+  expect(degradedStrictBlocked, "strict maintenance accepted the TODO that operational save isolated");
 
   const faultRoot = createFixture("keep-direct-fault", { full: true }); const before = treeIdentity(faultRoot);
   const faultPlan = buildLearningCaptureTransactionPlan(faultRoot, select(faultRoot, "keep", "keep-fault").selection);

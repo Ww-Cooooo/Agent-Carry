@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { buildStartupCapsule, inspectStartupCapsule } from "./startup-capsule-contract.mjs";
+import { buildVerifiedStartupProjection } from "./query-startup-capsule.mjs";
 import { syncStartupCapsule } from "./sync-startup-capsule.mjs";
 
 const assert = (condition, message) => { if (!condition) throw new Error(`Startup capsule sync test failed: ${message}`); };
@@ -12,15 +13,52 @@ try {
   write("core/manifest.toml", `schema_version = 1\nversion = "1.3.0"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
   write("instance/manifest.toml", manifest("balanced")); write("instance/startup-capsule.toml", buildStartupCapsule(root).source);
   assert(syncStartupCapsule(root).decision === "startup-capsule-current", "unchanged capsule was not idempotent");
+
+  const manifestBytes = readFileSync(resolve(root, "instance/manifest.toml"));
+  const crlfCapsule = buildStartupCapsule(root).source.replaceAll("\n", "\r\n");
+  write("instance/startup-capsule.toml", crlfCapsule);
+  const repairedCrlf = buildVerifiedStartupProjection(root, { repairDerived: true });
+  assert(repairedCrlf.decision === "startup-capsule-valid" && repairedCrlf.repair?.state === "repaired"
+    && repairedCrlf.repair?.attempt_count === 1 && repairedCrlf.repair?.data_state.includes("用户资产")
+    && !readFileSync(resolve(root, "instance/startup-capsule.toml"), "utf8").includes("\r")
+    && readFileSync(resolve(root, "instance/manifest.toml")).equals(manifestBytes),
+  "the startup query did not repair one CRLF-only derived capsule and report unchanged source truth");
+  const stableCapsuleBytes = readFileSync(resolve(root, "instance/startup-capsule.toml"));
+  const repeatedProjection = buildVerifiedStartupProjection(root, { repairDerived: true });
+  assert(repeatedProjection.decision === "startup-capsule-valid" && !Object.hasOwn(repeatedProjection, "repair")
+    && readFileSync(resolve(root, "instance/startup-capsule.toml")).equals(stableCapsuleBytes),
+  "a second healthy startup query refreshed or re-reported the derived capsule repair");
+
   write("instance/manifest.toml", manifest("direct"));
   assert(inspectStartupCapsule(root).decision === "startup-repair-required" && syncStartupCapsule(root).decision === "startup-capsule-update-required", "manifest drift did not require a capsule update");
-  assert(syncStartupCapsule(root, { write: true }).decision === "startup-capsule-updated" && inspectStartupCapsule(root).guidance_mode === "direct", "authorized sync did not install and verify the new capsule");
+  const repairedStale = buildVerifiedStartupProjection(root, { repairDerived: true });
+  assert(repairedStale.decision === "startup-capsule-valid" && repairedStale.guidance_mode === "direct"
+    && repairedStale.repair?.state === "repaired", "startup did not repair and retry one stale capsule");
   assert(syncStartupCapsule(root, { write: true }).updated === false, "second capsule sync changed bytes");
+
+  const validManifest = readFileSync(resolve(root, "instance/manifest.toml"), "utf8");
+  const validCapsule = readFileSync(resolve(root, "instance/startup-capsule.toml"));
+  write("instance/manifest.toml", validManifest.replaceAll("\n", "\r\n"));
+  const invalidManifest = buildVerifiedStartupProjection(root, { repairDerived: true });
+  assert(invalidManifest.decision === "startup-repair-required" && invalidManifest.reason === "manifest-or-core-contract-invalid"
+    && invalidManifest.repairable === false && !Object.hasOwn(invalidManifest, "repair")
+    && readFileSync(resolve(root, "instance/startup-capsule.toml")).equals(validCapsule),
+  "an invalid manifest was treated as a repairable derived capsule or changed capsule bytes");
+  write("instance/manifest.toml", validManifest);
+
+  write("instance/startup-capsule.toml", buildStartupCapsule(root).source.replaceAll("\n", "\r\n"));
+  const beforeFault = readFileSync(resolve(root, "instance/startup-capsule.toml"));
+  const failedRepair = buildVerifiedStartupProjection(root, { repairDerived: true, testFaultAfterInstall: true });
+  assert(failedRepair.decision === "startup-repair-required" && failedRepair.reason === "capsule-auto-repair-failed"
+    && failedRepair.repair?.state === "repair-failed" && failedRepair.repair?.still_usable.includes("实例数据仍在")
+    && readFileSync(resolve(root, "instance/startup-capsule.toml")).equals(beforeFault),
+  "a failed automatic capsule repair did not roll back and report data safety in natural language");
+  assert(buildVerifiedStartupProjection(root, { repairDerived: true }).decision === "startup-capsule-valid",
+    "a clean startup retry could not recover after one rolled-back automatic repair");
+
   unlinkSync(resolve(root, "instance/startup-capsule.toml"));
-  let missingInstallFailed = false;
-  try { syncStartupCapsule(root, { write: true, testFaultAfterInstall: true }); }
-  catch { missingInstallFailed = true; }
-  assert(missingInstallFailed && !existsSync(resolve(root, "instance/startup-capsule.toml")), "a failed first capsule installation left a partial official target");
-  assert(syncStartupCapsule(root, { write: true }).decision === "startup-capsule-updated", "a clean retry could not recover after the injected first-install failure");
-  console.log("Startup capsule sync passed drift, atomic readback, missing-target rollback, clean retry, and idempotence checks.");
+  const repairedMissing = buildVerifiedStartupProjection(root, { repairDerived: true });
+  assert(repairedMissing.decision === "startup-capsule-valid" && repairedMissing.repair?.state === "repaired"
+    && existsSync(resolve(root, "instance/startup-capsule.toml")), "startup did not repair and retry a missing derived capsule");
+  console.log("Startup capsule sync passed one-attempt CRLF/stale/missing auto-repair, invalid-manifest hard stop, rollback, clean retry, natural-language reporting, and idempotence checks.");
 } finally { rmSync(root, { recursive: true, force: true }); }

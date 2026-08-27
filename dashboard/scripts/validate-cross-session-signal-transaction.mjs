@@ -16,6 +16,8 @@ import {
   inspectPersistentCrossSessionSignalTransaction,
   inspectCrossSessionSignalRecovery,
   inspectCrossSessionSignalStartup,
+  getOperationalDerivedStateReport,
+  repairOperationalDerivedStateOnce,
   resumePersistentCrossSessionSignalTransaction,
   rollbackPersistentCrossSessionSignalTransaction,
   validateCrossSessionSignalTransactionPlan,
@@ -637,7 +639,66 @@ function runCaptureSignalInteropFixture() {
   }
 }
 
+function runOperationalDerivedRepairFixture() {
+  const roots = [];
+  const refs = ["instance/evolution/index.toml", "instance/maps/time-trigger-map.toml", "instance/maps/signal-map.toml"];
+  const digestRows = (root) => refs.map((ref) => createHash("sha256").update(fixtureText(root, ref)).digest("hex"));
+  const breakRepairableMetadata = (root) => {
+    fixtureWrite(root, refs[0], fixtureText(root, refs[0]).replace("candidate_count = 0", "candidate_count = 7").replaceAll("\n", "\r\n"));
+    fixtureWrite(root, refs[1], fixtureText(root, refs[1]).replace("scheduled_count = 0", "scheduled_count = 5").replaceAll("\n", "\r\n"));
+    fixtureWrite(root, refs[2], fixtureText(root, refs[2]).replace("active_count = 0", "active_count = 3").replaceAll("\n", "\r\n"));
+  };
+  try {
+    const root = createInteropFixture(); roots.push(root);
+    const candidateGeneratedAt = parseArrayTableDocument(fixtureText(root, refs[0]), "candidates", "repair fixture candidate").root.generated_at;
+    breakRepairableMetadata(root);
+    const repaired = repairOperationalDerivedStateOnce(root);
+    assert(repaired.decision === "operational-derived-state-repaired" && repaired.attemptCount === 1
+      && repaired.repairedTargetCount === 3 && repaired.userReport?.data_state.includes("用户数据")
+      && repaired.userReport?.still_usable.includes("原来的学习动作已继续"),
+    "repairable candidate/signal/time metadata drift did not repair once and report the resumed action");
+    const repairedCandidate = parseArrayTableDocument(fixtureText(root, refs[0]), "candidates", "repaired candidate").root;
+    const repairedTime = parseArrayTableDocument(fixtureText(root, refs[1]), "triggers", "repaired time").root;
+    const repairedSignal = parseArrayTableDocument(fixtureText(root, refs[2]), "signals", "repaired signal").root;
+    assert(repairedCandidate.candidate_count === 0 && repairedCandidate.indexed_count === 0 && repairedCandidate.active_count === 0
+      && repairedCandidate.generated_at === candidateGeneratedAt && repairedTime.scheduled_count === 0
+      && repairedTime.next_wakeup_at === "" && repairedSignal.active_count === 0 && repairedSignal.scheduled_count === 0
+      && !fixtureText(root, refs[0]).includes("\r") && !fixtureText(root, refs[1]).includes("\r")
+      && !fixtureText(root, refs[2]).includes("\r"),
+    "derived repair changed time/revision semantics or failed to canonicalize only deterministic metadata and LF bytes");
+    const after = digestRows(root);
+    const repeated = repairOperationalDerivedStateOnce(root);
+    assert(repeated.decision === "operational-derived-state-current" && repeated.attempted === false
+      && JSON.stringify(digestRows(root)) === JSON.stringify(after),
+    "a second operational repair refreshed healthy derived bytes");
+
+    const faultRoot = createInteropFixture(); roots.push(faultRoot); breakRepairableMetadata(faultRoot);
+    const beforeFault = digestRows(faultRoot);
+    const failed = repairOperationalDerivedStateOnce(faultRoot, { testFaultAfterInstall: 1 });
+    assert(failed.decision === "operational-derived-state-related-capability-paused" && failed.attemptCount === 1
+      && failed.ordinaryTasksContinue === true && JSON.stringify(digestRows(faultRoot)) === JSON.stringify(beforeFault),
+    "an interrupted derived repair did not restore the exact three-file preimage and bound the fault to related capabilities");
+    assert(repairOperationalDerivedStateOnce(faultRoot).decision === "operational-derived-state-repaired",
+      "a clean retry could not repair the preserved derived state after one rolled-back failure");
+
+    const unknownRoot = createInteropFixture(); roots.push(unknownRoot);
+    const unknownCandidate = `${fixtureText(unknownRoot, refs[0]).trimEnd()}\nfuture_field = "preserve-me"\n`;
+    fixtureWrite(unknownRoot, refs[0], unknownCandidate);
+    const beforeUnknown = digestRows(unknownRoot);
+    const paused = repairOperationalDerivedStateOnce(unknownRoot);
+    assert(paused.decision === "operational-derived-state-related-capability-paused" && paused.attemptCount === 1
+      && paused.ordinaryTasksContinue === true && paused.pausedCapabilities.includes("learning-capture")
+      && paused.userReport?.impact.includes("暂时暂停") && paused.userReport?.data_state.includes("保持原样")
+      && paused.userReport?.recoverability && paused.userReport?.still_usable.includes("普通对话")
+      && paused.userReport?.next_step && JSON.stringify(digestRows(unknownRoot)) === JSON.stringify(beforeUnknown),
+    "an unknown candidate field was dropped, globally fatal, silently retried, or missing the five-part user report");
+  } finally {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  }
+}
+
 try {
+  runOperationalDerivedRepairFixture();
   initializeFullFixture();
   writeInitial();
   const rawIdsRejected = createCrossSessionSignalEventChallenge(fixture, {
@@ -771,12 +832,29 @@ try {
   const forgedSuccessResult = buildCrossSessionSignalTransactionPlan(fixture, forgedSuccess.request);
   assert(forgedSuccessResult.decision === "transaction-denied" && forgedSuccessResult.reason === "proposal-or-source-closure-invalid",
     "a host-attested supporting observation inflated validated success counters");
+
+  const unknownIndex = `${currentCandidateIndex.trimEnd()}\nfuture_field = "preserve-current-action"\n`;
+  write("instance/evolution/index.toml", unknownIndex);
+  const pausedCurrentAction = buildCrossSessionSignalTransactionPlan(fixture, request);
+  assert(pausedCurrentAction.decision === "cross-session-signal-related-capability-paused"
+    && pausedCurrentAction.ordinaryTasksContinue === true && pausedCurrentAction.userReport?.next_step
+    && readFileSync(resolve(fixture, "instance/evolution/index.toml"), "utf8") === unknownIndex,
+  "an unclosable derived field consumed the event receipt, changed source bytes, or stopped the whole assistant");
+
+  write("instance/evolution/index.toml", currentCandidateIndex.replace("candidate_count = 1", "candidate_count = 9").replaceAll("\n", "\r\n"));
+  write("instance/maps/time-trigger-map.toml", currentTimeMap.replace("scheduled_count = 1", "scheduled_count = 9").replaceAll("\n", "\r\n"));
+  write("instance/maps/signal-map.toml", currentSignalMap.replace("active_count = 0", "active_count = 9").replaceAll("\n", "\r\n"));
   const plan = buildCrossSessionSignalTransactionPlan(fixture, request);
   assert(plan.decision === "transaction-preview" && plan.executable === false && plan.contentIncluded === false
     && plan.steps.map((step) => step.phase).join(",") === "control-pending,candidate-source,candidate-index,learning-signal-source,time-projection,startup-signal-projection,dashboard-public-snapshot,dashboard-dist-snapshot,control-clean",
   "the transaction plan did not close the required pending-to-clean write order");
   assert(validateCrossSessionSignalTransactionPlan(plan) && plan.preimages.every((item) => !Object.hasOwn(item, "content"))
     && plan.steps.every((item) => !Object.hasOwn(item, "content")), "plan was not digest-bound or exposed proposed contents");
+  const resumedReport = getOperationalDerivedStateReport(plan);
+  assert(resumedReport?.impact.includes("重建") && resumedReport?.data_state.includes("用户数据")
+    && resumedReport?.recoverability && resumedReport?.still_usable.includes("原来的学习动作已继续")
+    && resumedReport?.next_step,
+  "repairable derived drift did not resume the original signal action in the same call with a five-part report");
   const repeatedPlan = buildCrossSessionSignalTransactionPlan(fixture, request);
   assert(repeatedPlan.reason === "event-receipt-already-bound-to-a-plan", "one opaque event receipt minted more than one live plan");
   const tampered = JSON.parse(JSON.stringify(plan));

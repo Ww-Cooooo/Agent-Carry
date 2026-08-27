@@ -2,8 +2,8 @@ import { closeSync, fstatSync, lstatSync, openSync, readSync, readdirSync, realp
 import { createHash } from "node:crypto";
 import { basename, dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseArrayTableDocument, parseMarkdownFrontmatterHead, parseSectionedToml, projectFormalAssetsForSnapshot, loadTrustedDomainEnvelope, stableAssetId, validateInstanceManifestStructure } from "./asset-route-contract.mjs";
-import { projectCandidatesForSnapshot } from "./candidate-index-contract.mjs";
+import { parseArrayTableDocument, parseMarkdownFrontmatterHead, parseSectionedToml, projectFormalAssetsForSnapshot, projectFormalAssetsForOperationalSnapshot, loadTrustedDomainEnvelope, stableAssetId, validateInstanceManifestStructure } from "./asset-route-contract.mjs";
+import { projectCandidatesForSnapshot, projectCandidatesForOperationalSnapshot } from "./candidate-index-contract.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { containsForbiddenLocationReference, containsForbiddenStructuredLocation } from "./safe-output-boundary.mjs";
 import { parseSnapshotEnvelope, serializeSnapshotEnvelope } from "./snapshot-envelope.mjs";
@@ -14,11 +14,31 @@ import { measureModelVisibleStartupContext } from "./query-startup-capsule.mjs";
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const unsafeText = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u;
 const structuredPrivateRefSource = /^instance\/(?:memory|capabilities|sops|experiences|evolution|todo|deferred)\/.+\.md$/u;
+const structuredComponentManifestSource = /^instance\/components\/[a-z0-9][a-z0-9._-]{0,159}\/component\.toml$/u;
 const supportFields = {
   todo: new Set(["id", "kind", "status", "visible", "title", "summary", "triggers", "scope", "excludes", "source_refs", "private_refs", "minimum_level", "approved_by_user", "updated_at"]),
   governance: new Set(["id", "kind", "status", "title", "summary", "triggers", "frequency_days", "background", "minimum_level", "approved_by_user", "schedule_state", "schedule_anchor_at", "last_completed_at", "next_due_at", "snoozed_until", "trigger_revision"]),
   "deferred-work": new Set(["id", "kind", "status", "title", "summary", "required_level", "deferral_reason", "recovery_route", "source_refs", "private_refs", "created_at", "remind_at", "snoozed_until", "trigger_revision", "approved_by_user"]),
 };
+const snapshotModes = new Set(["strict", "operational"]);
+const isolatableSourceAreas = Object.freeze([
+  ["instance/memory/", "memory"],
+  ["instance/capabilities/", "capabilities"],
+  ["instance/sops/", "sops"],
+  ["instance/experiences/", "experiences"],
+  ["instance/todo/", "todo"],
+  ["instance/governance/", "governance"],
+  ["instance/deferred/", "deferred"],
+  ["instance/skills/", "skills"],
+  ["instance/components/", "components"],
+  ["instance/signals/", "signals"],
+  ["instance/evolution/", "evolution"],
+]);
+const nonIsolatableDerivedRefs = new Set([
+  "instance/evolution/index.toml",
+  "instance/signals/control.toml",
+  "instance/startup-capsule.toml",
+]);
 
 function fail(message) { throw new Error(`Snapshot source builder failed: ${message}`); }
 function hash(value) { return createHash("sha256").update(value).digest("hex"); }
@@ -28,6 +48,36 @@ function clean(value, max, allowEmpty = false) {
 }
 function compareOrdinal(left, right) { return left < right ? -1 : left > right ? 1 : 0; }
 function decode(buffer, label) { try { return utf8Decoder.decode(buffer); } catch { fail(`${label} is not UTF-8`); } }
+
+function normalizeRequiredSourceRefs(refs) {
+  if (!Array.isArray(refs) || refs.length > 64) fail("required source refs are not a bounded array");
+  const normalized = new Set();
+  for (const ref of refs) {
+    if (!clean(ref, 240) || ref.includes("\\") || ref.includes(":") || ref.startsWith("/") || ref.split("/").some((part) => !part || part === "." || part === "..")) {
+      fail("required source ref is not a portable repository-relative path");
+    }
+    normalized.add(ref.normalize("NFC"));
+  }
+  return normalized;
+}
+
+function isolatableArea(ref) {
+  if (nonIsolatableDerivedRefs.has(ref) || ref.startsWith("instance/maps/")) return null;
+  return isolatableSourceAreas.find(([prefix]) => ref.startsWith(prefix))?.[1] ?? null;
+}
+
+function recordOperationalIssue(issues, { area, code, sourceRef }) {
+  const key = `${area}\u0000${sourceRef}`;
+  if (issues.some((item) => item.key === key)) return;
+  if (issues.length >= 64) fail("operational isolation exceeds the 64-item bound");
+  issues.push(Object.freeze({ key, area, code, sourceRef }));
+}
+
+function isolateOrFail(mode, requiredSourceRefs, issues, ref, code, message) {
+  const area = isolatableArea(ref);
+  if (mode !== "operational" || !area || requiredSourceRefs.has(ref)) fail(message);
+  recordOperationalIssue(issues, { area, code, sourceRef: ref });
+}
 
 function portablePrivatePathSegment(part) {
   const base = part.replace(/\..*$/u, "").toLowerCase();
@@ -51,14 +101,25 @@ function validStructuredPrivateReference(ref) {
 }
 
 function containsForbiddenSnapshotSourceLocation(ref, text) {
-  if (!structuredPrivateRefSource.test(ref)) return containsForbiddenLocationReference(text);
   const normalized = text.replaceAll("\r\n", "\n");
-  let parsed;
-  try { parsed = parseMarkdownFrontmatterHead(normalized, ref); } catch { return true; }
-  const privateRefs = parsed.values.private_refs ?? [];
-  if (!Array.isArray(privateRefs) || privateRefs.length > 32 || privateRefs.some((item) => !validStructuredPrivateReference(item))) return true;
-  return containsForbiddenStructuredLocation(parsed.values)
-    || containsForbiddenLocationReference(normalized.slice(parsed.bodyOffset));
+  if (structuredPrivateRefSource.test(ref)) {
+    let parsed;
+    try { parsed = parseMarkdownFrontmatterHead(normalized, ref); } catch { return true; }
+    const privateRefs = parsed.values.private_refs ?? [];
+    if (!Array.isArray(privateRefs) || privateRefs.length > 32 || privateRefs.some((item) => !validStructuredPrivateReference(item))) return true;
+    return containsForbiddenStructuredLocation(parsed.values)
+      || containsForbiddenLocationReference(normalized.slice(parsed.bodyOffset));
+  }
+  if (structuredComponentManifestSource.test(ref)) {
+    let parsed;
+    try { parsed = parseSectionedToml(normalized, ref); } catch { return true; }
+    const privateRefs = parsed.ownership?.private_collection_refs ?? [];
+    if (!Array.isArray(privateRefs) || privateRefs.length > 32 || privateRefs.some((item) => !validStructuredPrivateReference(item))) return true;
+    const structured = { ...parsed, ownership: { ...(parsed.ownership ?? {}) } };
+    delete structured.ownership.private_collection_refs;
+    return containsForbiddenStructuredLocation(structured);
+  }
+  return containsForbiddenLocationReference(text);
 }
 
 function stableRead(path, maxBytes, label) {
@@ -101,17 +162,37 @@ function enumerateInstanceSources(repository) {
   return files.sort((left, right) => compareOrdinal(left.ref, right.ref));
 }
 
-export function computeSnapshotSourceDigest(repository) {
+function computeSnapshotSourceDigestWithMode(repository, { mode = "strict", requiredSourceRefs = new Set(), issues = [] } = {}) {
+  if (!snapshotModes.has(mode)) fail("snapshot mode is invalid");
   const files = enumerateInstanceSources(repository); const lines = []; let totalBytes = 0;
   for (const file of files) {
     const bytes = stableRead(file.path, 128 * 1024 * 1024, `source ${file.ref}`);
     totalBytes += bytes.length;
     if (totalBytes > 512 * 1024 * 1024) fail("instance source bytes exceed the 512 MiB snapshot-maintenance bound");
-    const text = decode(bytes, file.ref);
-    if (locateHighConfidenceSecretCandidates(text).blocked || containsForbiddenSnapshotSourceLocation(file.ref, text)) fail(`source ${file.ref} contains a secret candidate or non-portable absolute location`);
     lines.push(`${file.ref}\t${hash(bytes)}\n`);
+    let text;
+    try { text = utf8Decoder.decode(bytes); }
+    catch {
+      isolateOrFail(mode, requiredSourceRefs, issues, file.ref, "source-not-utf8", `source ${file.ref} is not UTF-8`);
+      continue;
+    }
+    if (locateHighConfidenceSecretCandidates(text).blocked || containsForbiddenSnapshotSourceLocation(file.ref, text)) {
+      isolateOrFail(mode, requiredSourceRefs, issues, file.ref, "source-unsafe-or-nonportable",
+        `source ${file.ref} contains a secret candidate or non-portable absolute location`);
+    }
   }
   return Object.freeze({ digest: `sha256:${hash(Buffer.from(lines.join(""), "utf8"))}`, fileCount: files.length, totalBytes });
+}
+
+export function computeSnapshotSourceDigest(repository, { mode = "strict", requiredSourceRefs = [] } = {}) {
+  if (!snapshotModes.has(mode)) fail("snapshot mode is invalid");
+  const issues = [];
+  const result = computeSnapshotSourceDigestWithMode(repository, {
+    mode,
+    requiredSourceRefs: normalizeRequiredSourceRefs(requiredSourceRefs),
+    issues,
+  });
+  return Object.freeze({ ...result, diagnostics: publicDiagnostics(issues), mode });
 }
 
 function readStructured(repository, ref, maxBytes = 128 * 1024) {
@@ -123,43 +204,54 @@ function readStructured(repository, ref, maxBytes = 128 * 1024) {
   return decode(stableRead(path, maxBytes, ref), ref).replaceAll("\r\n", "\n");
 }
 
-function projectSupportDirectory(repository, directory, expectedKind) {
+function projectSupportDirectory(repository, directory, expectedKind, { mode = "strict", requiredSourceRefs = new Set(), issues = [] } = {}) {
   const root = resolve(realpathSync(repository), "instance", directory);
   const results = [];
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isFile() || entry.name === "README.md" || !entry.name.endsWith(".md")) continue;
-    const source = readStructured(repository, `instance/${directory}/${entry.name}`);
-    const parsed = parseMarkdownFrontmatterHead(source, `${directory}/${entry.name}`);
-    const asset = parsed.values; const body = source.slice(parsed.bodyOffset);
-    const allowed = supportFields[expectedKind];
-    if (!allowed || Object.keys(asset).some((field) => !allowed.has(field)) || asset.kind !== expectedKind
-      || !stableAssetId.test(asset.id ?? "") || !clean(asset.title, 160) || !clean(asset.summary, 1000)
-      || locateHighConfidenceSecretCandidates(JSON.stringify(asset)).blocked || containsForbiddenStructuredLocation(asset)
-      || locateHighConfidenceSecretCandidates(body).blocked || containsForbiddenLocationReference(body)) fail(`support asset ${asset.id ?? entry.name} is unsafe or invalid`);
-    if (expectedKind === "todo") {
-      if (asset.visible === false) continue;
-      results.push({ id: asset.id, title: asset.title, summary: asset.summary, status: asset.status, visible: asset.visible !== false });
-    } else if (expectedKind === "deferred-work") {
-      if (![1, 2, 3].includes(asset.required_level)) fail(`deferred asset ${asset.id} has an invalid required level`);
-      results.push({ summary: asset.summary, level: asset.required_level, remind: asset.remind_at ?? "", status: asset.status });
-    } else {
-      if (!Number.isSafeInteger(asset.frequency_days) || asset.frequency_days < 1 || asset.frequency_days > 3650) fail(`governance asset ${asset.id} has an invalid frequency`);
-      const steps = [...body.matchAll(/^\s*\d+\.\s+(.+)$/gmu)].map((match) => match[1].trim()).slice(0, 20);
-      if (steps.length === 0) fail(`governance asset ${asset.id} has no bounded numbered steps`);
-      results.push({ id: asset.id, title: asset.title, summary: asset.summary, frequency: `每 ${asset.frequency_days} 天`, status: asset.schedule_state ?? asset.status,
-        purpose: asset.summary, steps, last_completed_at: asset.last_completed_at ?? "", next_due_at: asset.next_due_at ?? "", schedule_state: asset.schedule_state ?? "uninitialized" });
+    const ref = `instance/${directory}/${entry.name}`;
+    const source = readStructured(repository, ref);
+    try {
+      const parsed = parseMarkdownFrontmatterHead(source, `${directory}/${entry.name}`);
+      const asset = parsed.values; const body = source.slice(parsed.bodyOffset);
+      const allowed = supportFields[expectedKind];
+      if (!allowed || Object.keys(asset).some((field) => !allowed.has(field)) || asset.kind !== expectedKind
+        || !stableAssetId.test(asset.id ?? "") || !clean(asset.title, 160) || !clean(asset.summary, 1000)
+        || locateHighConfidenceSecretCandidates(JSON.stringify(asset)).blocked || containsForbiddenStructuredLocation(asset)
+        || locateHighConfidenceSecretCandidates(body).blocked || containsForbiddenLocationReference(body)) fail(`support asset ${asset.id ?? entry.name} is unsafe or invalid`);
+      if (expectedKind === "todo") {
+        if (asset.visible === false) continue;
+        results.push({ id: asset.id, title: asset.title, summary: asset.summary, status: asset.status, visible: asset.visible !== false });
+      } else if (expectedKind === "deferred-work") {
+        if (![1, 2, 3].includes(asset.required_level)) fail(`deferred asset ${asset.id} has an invalid required level`);
+        results.push({ summary: asset.summary, level: asset.required_level, remind: asset.remind_at ?? "", status: asset.status });
+      } else {
+        if (!Number.isSafeInteger(asset.frequency_days) || asset.frequency_days < 1 || asset.frequency_days > 3650) fail(`governance asset ${asset.id} has an invalid frequency`);
+        const steps = [...body.matchAll(/^\s*\d+\.\s+(.+)$/gmu)].map((match) => match[1].trim()).slice(0, 20);
+        if (steps.length === 0) fail(`governance asset ${asset.id} has no bounded numbered steps`);
+        results.push({ id: asset.id, title: asset.title, summary: asset.summary, frequency: `每 ${asset.frequency_days} 天`, status: asset.schedule_state ?? asset.status,
+          purpose: asset.summary, steps, last_completed_at: asset.last_completed_at ?? "", next_due_at: asset.next_due_at ?? "", schedule_state: asset.schedule_state ?? "uninitialized" });
+      }
+    } catch (error) {
+      isolateOrFail(mode, requiredSourceRefs, issues, ref, "support-item-invalid", error.message);
     }
   }
   return results.sort((left, right) => compareOrdinal(left.id ?? left.summary, right.id ?? right.summary));
 }
 
-function projectSkills(repository, instanceId) {
-  const source = readStructured(repository, "instance/skills/requirements.toml", 32 * 1024);
-  if (locateHighConfidenceSecretCandidates(source).blocked || containsForbiddenLocationReference(source)) fail("skill requirements contain unsafe content");
-  const parsed = parseArrayTableDocument(source, "skills", "skill requirements");
-  if (parsed.root.schema_version !== 1 || parsed.root.instance_id !== instanceId || parsed.entries.length > 256) fail("skill requirements identity or count is invalid");
-  for (const item of parsed.entries) if (!stableAssetId.test(item.id ?? "") || !clean(item.summary, 240) || !["available", "review", "unavailable"].includes(item.state)) fail("skill requirement entry is invalid");
-  return { count: parsed.entries.length, status: parsed.root.status ?? (parsed.entries.length ? "已登记，按任务需要加载" : "尚未登记 Skill"), path: "" };
+function projectSkills(repository, instanceId, { mode = "strict", requiredSourceRefs = new Set(), issues = [] } = {}) {
+  const ref = "instance/skills/requirements.toml";
+  const source = readStructured(repository, ref, 32 * 1024);
+  try {
+    if (locateHighConfidenceSecretCandidates(source).blocked || containsForbiddenLocationReference(source)) fail("skill requirements contain unsafe content");
+    const parsed = parseArrayTableDocument(source, "skills", "skill requirements");
+    if (parsed.root.schema_version !== 1 || parsed.root.instance_id !== instanceId || parsed.entries.length > 256) fail("skill requirements identity or count is invalid");
+    for (const item of parsed.entries) if (!stableAssetId.test(item.id ?? "") || !clean(item.summary, 240) || !["available", "review", "unavailable"].includes(item.state)) fail("skill requirement entry is invalid");
+    return { count: parsed.entries.length, status: parsed.root.status ?? (parsed.entries.length ? "已登记，按任务需要加载" : "尚未登记 Skill"), path: "" };
+  } catch (error) {
+    isolateOrFail(mode, requiredSourceRefs, issues, ref, "skill-index-invalid", error.message);
+    return { count: 0, status: "部分 Skill 登记暂时隔离，其他功能仍可使用", path: "" };
+  }
 }
 
 function withoutGeneratedAt(snapshot) {
@@ -168,7 +260,32 @@ function withoutGeneratedAt(snapshot) {
   return clone;
 }
 
-export function buildSnapshotCandidate(repository, { existingSource = undefined, now = new Date() } = {}) {
+function buildProjectionHealth(issues) {
+  const affectedAreas = [...new Set(issues.map((item) => item.area))].sort(compareOrdinal).slice(0, 12);
+  const count = issues.length;
+  return Object.freeze({
+    state: "degraded",
+    isolated_item_count: count,
+    affected_areas: Object.freeze(affectedAreas),
+    source_data_preserved: true,
+    summary: `有 ${count} 项内容暂未进入看板，源文件仍原样保留，其他有效内容可以继续使用。`,
+    next_step: "让 Agent 只检查受影响类别并给出修复建议；修复前不需要停止其他无关工作。",
+  });
+}
+
+function publicDiagnostics(issues) {
+  return Object.freeze(issues.map(({ area, code }) => Object.freeze({ area, code })));
+}
+
+export function buildSnapshotCandidate(repository, {
+  existingSource = undefined,
+  now = new Date(),
+  mode = "strict",
+  requiredSourceRefs = [],
+} = {}) {
+  if (!snapshotModes.has(mode)) fail("snapshot mode is invalid");
+  const requiredSourceRefSet = normalizeRequiredSourceRefs(requiredSourceRefs);
+  const issues = [];
   const root = realpathSync(repository);
   if (inspectStartupCapsule(root).decision !== "startup-capsule-valid") fail("startup capsule is stale or invalid");
   const assistant = parseSectionedToml(readStructured(root, "assistant.toml", 64 * 1024), "assistant manifest");
@@ -195,7 +312,8 @@ export function buildSnapshotCandidate(repository, { existingSource = undefined,
     validateSnapshotSemantics(template, "generated formal template snapshot");
     const source = serializeSnapshotEnvelope(template);
     const current = typeof existingSource === "string" ? existingSource : readStructured(root, "dashboard/public/snapshot.js", 8 * 1024 * 1024);
-    return Object.freeze({ updated: current !== source, snapshot: template, source, sourceDigest: "template-empty", identityRef: "template" });
+    return Object.freeze({ updated: current !== source, snapshot: template, source, sourceDigest: "template-empty", identityRef: "template",
+      diagnostics: Object.freeze([]), mode });
   }
   if (!["general", "domain"].includes(direction.type) || direction.locked !== true
     || !["step-by-step", "balanced", "direct"].includes(profile.guidance_mode)
@@ -203,14 +321,20 @@ export function buildSnapshotCandidate(repository, { existingSource = undefined,
     || !clean(profile.display_name, 160) || !clean(profile.mission, 512) || !clean(profile.language ?? "zh-CN", 80)) fail("instance profile lacks explicit low-sensitivity dashboard fields");
   const generatedAt = now instanceof Date && Number.isFinite(now.getTime()) ? now.toISOString() : "";
   if (!generatedAt) fail("snapshot generation time is invalid");
-  const sources = computeSnapshotSourceDigest(root);
+  const sources = computeSnapshotSourceDigestWithMode(root, { mode, requiredSourceRefs: requiredSourceRefSet, issues });
   const { context } = loadTrustedDomainEnvelope(root);
-  const formal = projectFormalAssetsForSnapshot(root);
-  const evolution = projectCandidatesForSnapshot(root, { instanceContext: context });
-  const todo = projectSupportDirectory(root, "todo", "todo");
-  const governance = projectSupportDirectory(root, "governance", "governance");
-  const deferred = projectSupportDirectory(root, "deferred", "deferred-work");
-  const skills = projectSkills(root, identity.instance_id);
+  const onProjectionIssue = ({ area, sourceRef, code }) => recordOperationalIssue(issues, { area, sourceRef, code });
+  const formal = mode === "operational"
+    ? projectFormalAssetsForOperationalSnapshot(root, { requiredSourceRefs: requiredSourceRefSet, onIssue: onProjectionIssue })
+    : projectFormalAssetsForSnapshot(root);
+  const evolution = mode === "operational"
+    ? projectCandidatesForOperationalSnapshot(root, { instanceContext: context, requiredSourceRefs: requiredSourceRefSet, onIssue: onProjectionIssue })
+    : projectCandidatesForSnapshot(root, { instanceContext: context });
+  const projectionOptions = { mode, requiredSourceRefs: requiredSourceRefSet, issues };
+  const todo = projectSupportDirectory(root, "todo", "todo", projectionOptions);
+  const governance = projectSupportDirectory(root, "governance", "governance", projectionOptions);
+  const deferred = projectSupportDirectory(root, "deferred", "deferred-work", projectionOptions);
+  const skills = projectSkills(root, identity.instance_id, projectionOptions);
   const startupBudget = assistant.bootstrap?.maximum_characters;
   if (!Number.isSafeInteger(startupBudget) || startupBudget < 1) fail("assistant startup budget is invalid");
   const snapshot = {
@@ -220,6 +344,7 @@ export function buildSnapshotCandidate(repository, { existingSource = undefined,
       startup_chars: measureModelVisibleStartupContext(root).totalCharacters, startup_budget: startupBudget },
     profile: { display_name: profile.display_name, mission: profile.mission, domain_id: direction.type === "general" ? "general" : direction.domain_id,
       guidance_mode: profile.guidance_mode, learning_policy: validatedManifest.learningPolicy, language: profile.language ?? "zh-CN" },
+    ...(issues.length > 0 ? { health: buildProjectionHealth(issues) } : {}),
     assets: { memory: formal.memory.length, sops: formal.sops.length, capabilities: formal.capabilities.length, experiences: formal.experiences.length,
       evolution: evolution.length, todo: todo.length, governance: governance.length, skills: skills.count },
     memories: formal.memory, sops: formal.sops, capabilities: formal.capabilities, experiences: formal.experiences,
@@ -234,11 +359,13 @@ export function buildSnapshotCandidate(repository, { existingSource = undefined,
       validateSnapshotSemantics(existing, "existing instance snapshot");
       if (existing.meta?.source_digest === snapshot.meta.source_digest
         && JSON.stringify(withoutGeneratedAt(existing)) === JSON.stringify(withoutGeneratedAt(snapshot))) {
-        return Object.freeze({ updated: false, snapshot: existing, source: existingSource, sourceDigest: sources.digest, identityRef: snapshot.meta.identity_ref });
+        return Object.freeze({ updated: false, snapshot: existing, source: existingSource, sourceDigest: sources.digest, identityRef: snapshot.meta.identity_ref,
+          diagnostics: publicDiagnostics(issues), mode });
       }
     } catch { /* Invalid old snapshots never suppress a valid rebuild candidate. */ }
   }
-  return Object.freeze({ updated: true, snapshot, source, sourceDigest: sources.digest, identityRef: snapshot.meta.identity_ref });
+  return Object.freeze({ updated: true, snapshot, source, sourceDigest: sources.digest, identityRef: snapshot.meta.identity_ref,
+    diagnostics: publicDiagnostics(issues), mode });
 }
 
 const invoked = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
