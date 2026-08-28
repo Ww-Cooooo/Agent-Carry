@@ -154,7 +154,7 @@ formal_owner = "core/protocols/CONTEXT_ROUTING.md"
 dynamic_state_owner = "current-task-only"
 route = "core/maps/domain-work.toml"
 startup_policy = "assistant-toml-keeps-only-the-ordinary-language-baseline-and-no-asset-list-or-body-is-projected"
-gate = "combine-current-user-language-with-a-few-bounded-work-signals-compare-only-instance-map-metadata-current-user-negation-and-correction-always-win-work-signals-never-authorize-a-high-impact-action-and-each-actually-used-asset-is-reported-in-one-standalone-brief-card-with-human-kind-title-current-trigger-and-practical-effect-without-internals"
+gate = "combine-current-user-language-with-a-few-bounded-work-signals-compare-only-instance-map-metadata-current-user-negation-and-correction-always-win-work-signals-never-authorize-a-high-impact-action-and-each-actually-used-asset-is-reported-in-one-standalone-brief-card-with-fixed-brain-heading-human-kind-title-current-trigger-and-practical-effect-without-internals-before-final-user-action-guidance"
 cleanup = "discard-task-fingerprint-and-unselected-candidates-after-routing"
 failure = "use-one-standalone-brief-no-long-term-asset-used-or-recall-degraded-report-continue-unaffected-work-and-never-require-an-asset-id-path-or-internal-kind"
 
@@ -449,14 +449,14 @@ failure = "preserve-current-data-and-local-safe-copy-quarantine-unknown-input-an
 [[rules]]
 id = "user-decision-guidance"
 class_id = "explicit-event"
-checkpoint = "before-asking-the-user-for-a-multistep-technical-risky-durable-or-user-uncertain-choice-and-after-creating-or-changing-user-visible-durable-files"
+checkpoint = "before-asking-the-user-for-a-multistep-technical-risky-durable-or-user-uncertain-choice-after-creating-or-changing-user-visible-durable-files-and-before-every-task-completion-pause-or-limited-final-reply"
 formal_owner = "core/protocols/USER_GUIDANCE.md"
 dynamic_state_owner = "current-task-only-unless-the-user-explicitly-requests-a-later-reminder-or-approves-a-formal-write"
 route = "core/maps/domain-lifecycle.toml"
 startup_policy = "assistant-toml-compact-interaction-baseline-only-never-load-the-full-protocol-for-every-ordinary-message"
-gate = "reuse-known-facts-explain-context-provide-two-to-four-options-with-consequences-and-recommendation-allow-unsure-before-requesting-the-user-decision"
+gate = "reuse-known-facts-explain-context-provide-two-to-four-options-with-consequences-and-recommendation-allow-unsure-before-requesting-the-user-decision-and-place-receipts-before-one-final-localized-arrow-next-step-with-an-evidence-based-recommendation-or-clear-no-action"
 cleanup = "discard-unpersisted-choice-scaffolding-at-task-end-and-project-only-an-explicitly-deferred-action"
-failure = "do-not-replace-the-missing-guidance-with-a-vague-open-question-state-what-is-known-and-offer-an-unsure-path"
+failure = "do-not-replace-the-missing-guidance-with-a-vague-open-question-state-what-is-known-recommend-the-safest-next-action-or-clear-no-action-and-offer-an-unsure-path-only-when-a-real-choice-remains"
 
 [[rules]]
 id = "preference-reuse-import"

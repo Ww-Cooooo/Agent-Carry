@@ -70,7 +70,7 @@ export function projectRecallUse(selected, state, evidence = selected?.retrieval
     ]),
     userReportRequired: state === "asset-body-loaded",
     userReportContract: state === "asset-body-loaded"
-      ? "standalone-brief-card-name-actual-asset-kind-and-title-explain-current-trigger-and-practical-effect-without-internals"
+      ? "standalone-brief-card-fixed-brain-heading-name-actual-asset-kind-and-title-explain-current-trigger-and-practical-effect-without-internals-before-final-user-action-guidance"
       : "standalone-brief-no-long-term-asset-used-or-recall-degraded",
   });
 }

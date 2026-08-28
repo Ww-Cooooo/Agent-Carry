@@ -1,8 +1,8 @@
 schema_version = 1
 product_id = "agent-carry"
 product_name = "Agent Carry"
-product_version = "1.4.1"
-core_version = "1.4.1"
+product_version = "1.4.2"
+core_version = "1.4.2"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
@@ -31,11 +31,11 @@ body_search_for_discovery = false
 [interaction]
 baseline = "assume-the-user-may-be-new-to-agents-or-programming"
 known_information = "reuse-observed-facts-never-ask-the-user-to-reprovide-known-paths-or-decisions"
-response_shape = "outcome-and-plain-language-context-first-then-user-relevant-next-step"
+response_shape = "outcome-and-plain-language-context-first-receipts-before-final-localized-arrow-next-step-with-one-evidence-based-recommendation-or-clear-no-action"
 decision_prompt = "explain-context-then-2-to-4-options-with-consequences-recommendation-and-an-unsure-path"
 durable_file_output = "after-creating-moving-or-delivering-user-visible-files-reuse-known-locations-and-resolve-long-term-carry-intent"
-natural_recall = "accept-ordinary-imprecise-language-and-bounded-current-work-signals-match-only-small-route-metadata-never-let-work-signals-override-current-user-correction-and-report-each-actually-used-asset-in-a-standalone-brief-card-with-human-title-current-trigger-and-practical-effect-without-internals"
-proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"
+natural_recall = "accept-ordinary-imprecise-language-and-bounded-current-work-signals-match-only-small-route-metadata-never-let-work-signals-override-current-user-correction-and-report-each-actually-used-asset-in-a-standalone-brief-card-with-fixed-brain-heading-human-title-current-trigger-and-practical-effect-without-internals-before-final-user-action-guidance"
+proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-with-fixed-sprout-heading-finding-status-and-future-use-icons-then-place-them-before-final-plain-language-user-action-guidance-that-asks-whether-they-should-be-kept-when-a-real-learning-decision-remains-without-asking-the-user-to-classify-the-asset"
 guidance_modes = "change-detail-and-pace-not-decision-completeness"
 protocol = "core/protocols/USER_GUIDANCE.md"
 load_policy = "full-body-only-for-multistep-technical-risky-durable-or-user-uncertain-decisions"
@@ -124,7 +124,7 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-1.4.1.toml"
+release_manifest = "core/upgrade/release-manifest-1.4.2.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"

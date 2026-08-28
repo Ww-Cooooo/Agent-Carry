@@ -68,6 +68,9 @@ requireFragments("assistant.toml", [
 requireFragments("AGENTS.md", [
   "默认用户可能不熟悉 Agent、编程、路径或内部术语",
   "先给能理解的结果与背景",
+  "最后一个面向用户的区块必须使用带 `👉` 的本地化“接下来”标题",
+  "`🧠` 使用回执和 `🌱` 学习回执都放在它之前",
+  "不得用“还需要什么帮助”这类空泛问题代替具体引导",
   "用户可用“上次那种”之类日常说法召回旧做法",
   "不得要求准确资产名、ID、路径",
   "USER_GUIDANCE.md",
@@ -76,6 +79,8 @@ requireFragments("AGENTS.md", [
 requireFragments("BOOTSTRAP.md", [
   "所有面向用户的交流都遵守",
   "不能用功能名、路径、状态码或技术报告代替引导",
+  "不得成为回复结尾",
+  "本地化“接下来”区块",
   "不得让用户重新提供 Agent 已知路径",
   "user-decision-guidance",
 ]);
@@ -83,12 +88,13 @@ requireFragments("BOOTSTRAP.md", [
 requireFragments("assistant.toml", [
   "[interaction]",
   'baseline = "assume-the-user-may-be-new-to-agents-or-programming"',
+  'response_shape = "outcome-and-plain-language-context-first-receipts-before-final-localized-arrow-next-step-with-one-evidence-based-recommendation-or-clear-no-action"',
   'durable_file_output = "after-creating-moving-or-delivering-user-visible-files-reuse-known-locations-and-resolve-long-term-carry-intent"',
   'guidance_modes = "change-detail-and-pace-not-decision-completeness"',
   'protocol = "core/protocols/USER_GUIDANCE.md"',
   'load_policy = "full-body-only-for-multistep-technical-risky-durable-or-user-uncertain-decisions"',
-  'natural_recall = "accept-ordinary-imprecise-language-and-bounded-current-work-signals-match-only-small-route-metadata-never-let-work-signals-override-current-user-correction-and-report-each-actually-used-asset-in-a-standalone-brief-card-with-human-title-current-trigger-and-practical-effect-without-internals"',
-  'proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"',
+  'natural_recall = "accept-ordinary-imprecise-language-and-bounded-current-work-signals-match-only-small-route-metadata-never-let-work-signals-override-current-user-correction-and-report-each-actually-used-asset-in-a-standalone-brief-card-with-fixed-brain-heading-human-title-current-trigger-and-practical-effect-without-internals-before-final-user-action-guidance"',
+  'proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-with-fixed-sprout-heading-finding-status-and-future-use-icons-then-place-them-before-final-plain-language-user-action-guidance-that-asks-whether-they-should-be-kept-when-a-real-learning-decision-remains-without-asking-the-user-to-classify-the-asset"',
 ]);
 
 requireFragments("core/protocols/USER_GUIDANCE.md", [
@@ -109,9 +115,26 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
   "用户无需选择文件、资产类型或写触发词",
   "看板中的“我的习惯”也会显示可管理入口",
   "使用与学习回执要短、独立、说真话",
-  "> **这次用上了**",
+  "> **🧠 这次用上了**",
   "| 🌱 这一步还在学习 | 内容 |",
   "| 🌱 这一步我学到了 | 内容 |",
+  "| 💡 新发现 |",
+  "| 📌 当前状态 |",
+  "⏳ 还在学习",
+  "✅ 已保存并验证可召回",
+  "| ➡️ 以后会 |",
+  "回复最后必须回到用户下一步",
+  "> **👉 接下来**",
+  "只突出一项首选行动",
+  "不能只问“还需要什么帮助”",
+  "现在不用做额外操作",
+]);
+
+requireOrdered("core/protocols/USER_GUIDANCE.md", [
+  "### 2.2 使用与学习回执要短、独立、说真话",
+  "### 2.3 回复最后必须回到用户下一步",
+  "> **👉 接下来**",
+  "## 3. 复用 Agent 已经知道的信息",
 ]);
 
 const userGuidanceRoute = routeBlock("core/maps/domain-lifecycle.toml", "user-decision-guidance");
@@ -120,6 +143,8 @@ for (const fragment of [
   'state = "on-demand-for-nontrivial-user-decision"',
   "minimum_level = 1",
   'confirmation = "none-the-protocol-prepares-the-real-choice"',
+  "最后告诉我下一步",
+  "接下来做什么",
 ]) {
   if (!userGuidanceRoute.includes(fragment)) fail(`user-decision-guidance route is missing: ${fragment}`);
 }
@@ -236,7 +261,7 @@ requireFragments("core/protocols/CONTEXT_ROUTING.md", [
   "Agent 工作时怎样主动想起",
   "当前目标、下一项有实质影响的行动",
   "用户当次否定、纠正",
-  "标题为“这次用上了”",
+  "标题固定为“🧠 这次用上了”",
   "由什么当前信息触发",
   "没有使用长期资产时用一条独立短句说明",
   "用户不需要记住资产标题、稳定 ID、文件路径",
@@ -341,14 +366,16 @@ requireFragments("core/maps/trigger-registry.toml", [
   "report-each-new-meaningful-substage-observation-in-a-separate-brief-receipt",
   "only-say-learned-after-atomic-write-strict-readback-and-ordinary-language-recall-close",
   'id = "user-decision-guidance"',
-  "after-creating-or-changing-user-visible-durable-files",
+  "before-every-task-completion-pause-or-limited-final-reply",
   'formal_owner = "core/protocols/USER_GUIDANCE.md"',
   "assistant-toml-compact-interaction-baseline-only-never-load-the-full-protocol-for-every-ordinary-message",
-  "reuse-known-facts-explain-context-provide-two-to-four-options-with-consequences-and-recommendation-allow-unsure",
+  "place-receipts-before-one-final-localized-arrow-next-step-with-an-evidence-based-recommendation-or-clear-no-action",
   'id = "natural-language-asset-recall"',
   "next-material-action-verified-state-or-error-change-due-signal-related-asset-or-task-result",
   "current-user-negation-and-correction-always-win",
   "each-actually-used-asset-is-reported-in-one-standalone-brief-card",
+  "fixed-brain-heading",
+  "before-final-user-action-guidance",
   "use-one-standalone-brief-no-long-term-asset-used-or-recall-degraded-report",
   "never-require-an-asset-id-path-or-internal-kind",
   "repeated-habit-or-method-is-observed",
@@ -646,6 +673,21 @@ requireFragments("core/upgrade/release-manifest-1.4.1.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.2.toml", [
+  'release = "1.4.2"',
+  'from_versions = ["1.4.1"]',
+  'id = "receipt-and-guidance-continuity-1.4.2"',
+  '"actual-use-receipt-has-stable-brain-heading-and-requires-body-impact"',
+  '"learning-receipt-has-stable-sprout-heading-finding-status-and-future-use-icons"',
+  '"receipts-precede-the-final-localized-user-action-guidance"',
+  '"current-user-negation-and-correction-override-work-signal-recall"',
+  '"uninstantiated-1.4.1-template-upgrades-to-byte-exact-blank-1.4.2"',
+  '"instantiated-1.4.1-identity-assets-validation-evolution-components-extensions-workspace-local-and-private-state-are-byte-preserved"',
+  'status = "published-release"',
+  'release_ref = "v1.4.2"',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -686,8 +728,14 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.1`",
-  "点击展开：1.4.1 主要改了什么",
+  "当前版本：`1.4.2`",
+  "点击展开：1.4.2 主要改了什么",
+  "🧠 这次用上了",
+  "🌱 这一步我学到了",
+  "💡 新发现",
+  "📌 当前状态",
+  "➡️ 以后会这样用",
+  "👉 接下来",
   "同一次可恢复写入",
   "一个通用实例和一个完全虚构的剪辑领域实例",
   "经过结构校验的 `private_collection_refs`",

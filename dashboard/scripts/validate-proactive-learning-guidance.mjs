@@ -29,7 +29,7 @@ const packageSource = read("dashboard/package.json");
 const componentMap = read("core/maps/component-map.toml");
 
 includesAll(assistant, [
-  'proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-then-ask-in-plain-language-whether-they-should-be-kept-without-asking-the-user-to-classify-the-asset"',
+  'proactive_learning = "at-meaningful-substages-and-task-end-notice-reusable-habits-corrections-and-methods-report-observed-versus-saved-and-recallable-in-separate-brief-receipts-with-fixed-sprout-heading-finding-status-and-future-use-icons-then-place-them-before-final-plain-language-user-action-guidance-that-asks-whether-they-should-be-kept-when-a-real-learning-decision-remains-without-asking-the-user-to-classify-the-asset"',
   'formal_asset_activation = "explicit-user-or-verified-existing-approval-only"',
 ], "assistant product authority");
 
@@ -41,6 +41,7 @@ includesAll(rootInstructions, [
   "不把内部资产分类交给用户",
   "即使用户上一句话已经说“记住”",
   "仍须由当前宿主真实展示精确预览并等待用户选择",
+  "`🧠` 使用回执和 `🌱` 学习回执都放在它之前",
 ], "root progressive guidance");
 
 includesAll(userGuidance, [
@@ -49,12 +50,26 @@ includesAll(userGuidance, [
   "再只问一句“按这个范围留下，可以吗？”",
   "得到这一次真实选择后，才执行授权范围内的写入",
   "使用与学习回执要短、独立、说真话",
-  "> **这次用上了**",
+  "> **🧠 这次用上了**",
   "| 🌱 这一步还在学习 | 内容 |",
   "| 🌱 这一步我学到了 | 内容 |",
+  "| 💡 新发现 |",
+  "| 📌 当前状态 |",
+  "⏳ 还在学习",
+  "✅ 已保存并验证可召回",
+  "| ➡️ 以后会 |",
   "已按你的选择留作观察，暂不自动使用",
   "现场已保留，但召回验证未闭合；暂不说学会",
+  "回复最后必须回到用户下一步",
+  "> **👉 接下来**",
+  "只突出一项首选行动",
+  "不能只问“还需要什么帮助”",
 ], "novice-facing guidance");
+expect(userGuidance.indexOf("### 2.2 使用与学习回执要短、独立、说真话")
+  < userGuidance.indexOf("### 2.3 回复最后必须回到用户下一步")
+  && userGuidance.indexOf("### 2.3 回复最后必须回到用户下一步")
+    < userGuidance.indexOf("## 3. 复用 Agent 已经知道的信息"),
+"learning receipts are not ordered before the final user-action guidance");
 expect(!userGuidance.includes("再执行授权范围内的写入。模型自己推断"), "explicit request still permits a write before the focused preview choice");
 
 includesAll(lifecycle, [
@@ -73,6 +88,7 @@ includesAll(evolutionGuide, [
   "如果有真实价值，Agent 不应等待用户准确说“请形成 SOP”",
   "只有正式资产写入、回读和日常说法召回都通过",
   "不创建候选、正式资产、信号或提醒",
+  "回执不会成为整次回复的结尾",
 ], "public evolution guide");
 
 includesAll(readmeZh, [
@@ -80,17 +96,19 @@ includesAll(readmeZh, [
   "它会在真实任务的自然停点说明发现了什么",
   "你不需要判断“这应该叫记忆、能力、经验还是 SOP”",
   "当前宿主必须真的展示预览并等待你的回复",
-  "这次用上了",
-  "这一步还在学习",
-  "这一步我学到了",
+  "🧠 这次用上了",
+  "🌱 这一步还在学习",
+  "🌱 这一步我学到了",
+  "👉 接下来",
 ], "Chinese README");
 includesAll(readmeEn, [
   "At a natural checkpoint in real work, the Agent explains what it noticed",
   "You do not have to decide whether something is a memory, capability, experience, or SOP",
   "the current host must actually show the preview and wait for your reply",
-  "Used this time",
-  "Still learning",
-  "Learned this step",
+  "🧠 Used this time",
+  "🌱 Still learning",
+  "🌱 Learned this step",
+  "👉 What's next",
 ], "English README");
 
 includesAll(runtime, [

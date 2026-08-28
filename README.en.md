@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.1`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.4.2`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -82,9 +82,9 @@ The kit can include registered local materials such as course files, video files
 
 Agent Carry does not hide “self-improvement” in unexplained background changes.
 
-When an earlier memory, capability, experience, or SOP actually affects the work, the current Agent shows a separate, brief “Used this time” card. A reusable finding at a meaningful substage gets a different “Still learning” receipt. It becomes “Learned this step” only after the content is saved, read back, and reachable again through ordinary language; a preview or candidate is never presented as completed learning.
+When an earlier memory, capability, experience, or SOP actually affects the work, the current Agent shows a separate, brief “🧠 Used this time” card. A reusable finding at a meaningful substage gets a different “🌱 Still learning” receipt. Learning receipts consistently use `💡` for the finding, `📌` for the current status, and `➡️` for future use. It becomes “🌱 Learned this step” only after the content is saved, read back, and reachable again through ordinary language; a preview or candidate is never presented as completed learning. These receipts appear after the result but before the final action guidance; the reply ends with a visible, localized `👉 What's next` section that recommends the most useful next action or clearly says that no action is needed now.
 
-Recall does not wait for the user to repeat an old keyword. At first routing, or when the goal, next material action, verified state, or task result changes, a few bounded work signals may select an already approved, uniquely scoped asset. The user's current correction or “do not reuse that” always wins. The “Used this time” card appears only after the source body was actually loaded and changed the current approach.
+Recall does not wait for the user to repeat an old keyword. At first routing, or when the goal, next material action, verified state, or task result changes, a few bounded work signals may select an already approved, uniquely scoped asset. The user's current correction or “do not reuse that” always wins. The “🧠 Used this time” card appears only after the source body was actually loaded and changed the current approach.
 
 1. You give a real task to the current host Agent; the host and model complete it and verify the result.
 2. If a result is wrong, the host fixes the current task first. A reusable root cause is initially kept only inside the current task; a one-off mistake and its full log do not become permanent memory.
@@ -196,6 +196,19 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.2</strong></summary>
+
+- When the body of a memory, capability, experience, or SOP actually changes the current work, the Agent now reports it in one stable `🧠 Used this time` card. Merely finding a route, reading a title, or seeing a candidate does not count as use.
+- A reusable stage finding stays separate from the use receipt. `🌱 Learned this step` consistently shows `💡 Finding`, `📌 Status`, and `➡️ Future use`, including whether the item was only observed, saved, or strictly read back and recallable through ordinary language.
+- Neither receipt ends the reply. After the outcome and receipts, the final block returns to the user's action with a visible `👉 Next step` and one evidence-based recommendation that can be followed directly. Options appear only when their consequences genuinely differ; no-action is stated plainly when nothing else is needed.
+- Active recall responds to the user's natural language and also checks a small set of approved assets when the Agent starts work or when the goal, next material action, verified state, or result changes. The user's current correction or opt-out always wins, and internal routes, scores, and file locations stay out of the receipt.
+- This patch adds no background scanner, second learning system, extra installation confirmation, or enterprise regression matrix. The public edition contains the general learning and guidance behavior only; maintainer habits, memories, SOPs, dashboard, and publication evidence remain in private Dev.
+- An existing 1.4.1 instance preserves identity, direction, profile, memories, capabilities, SOPs, experiences, validations, candidates, components, extensions, workspaces, device-local bindings, and private state. Only the product version changes before the strict startup capsule and both snapshots are rebuilt from merged instance truth.
+- Version 1.4.2 can authorize an instance replacement only when the fixed `v1.4.2` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action. The public blank template still contains no maintainer data, test instance, or prebuilt learning asset.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.1</strong></summary>

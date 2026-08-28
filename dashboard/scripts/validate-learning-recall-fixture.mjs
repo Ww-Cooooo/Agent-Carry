@@ -273,7 +273,7 @@ try {
     && proactiveHabitBody.recallUse?.assetKind === "memory"
     && proactiveHabitBody.recallUse?.triggerSources.includes("work-context")
     && proactiveHabitBody.recallUse?.userReportRequired === true
-    && proactiveHabitBody.recallUse?.userReportContract === "standalone-brief-card-name-actual-asset-kind-and-title-explain-current-trigger-and-practical-effect-without-internals",
+    && proactiveHabitBody.recallUse?.userReportContract === "standalone-brief-card-fixed-brain-heading-name-actual-asset-kind-and-title-explain-current-trigger-and-practical-effect-without-internals-before-final-user-action-guidance",
     "a proactive habit selection did not read the exact verified body");
   const policyHabit = route({ ...habit, id: "memory.habit.policy", title: "未获明确授权的习惯", target: "instance/memory/habit-policy.md" });
   write(policyHabit.target, assetDocument(policyHabit, "不应加载", { approval_state: "policy-authorized", activation_basis: "low-risk-evidence-policy", approved_by_user: false }));

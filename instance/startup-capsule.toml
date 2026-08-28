@@ -1,7 +1,7 @@
 schema_version = 1
 capsule_id = "agent-carry-startup"
-source_manifest_digest = "sha256:1706a4f21a2d0ea89bea86613933c1e78ae084dce60de36df7ed41dd984d66ab"
-product_version = "1.4.1"
+source_manifest_digest = "sha256:9c46e1ca23de0e2cefe485de297e6fdcaa3e3a18dc683ed02db8e652981f8c41"
+product_version = "1.4.2"
 instance_id = "template"
 state = "template"
 direction_type = "unselected"

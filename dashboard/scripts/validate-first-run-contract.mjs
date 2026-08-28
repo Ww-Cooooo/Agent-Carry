@@ -376,6 +376,13 @@ requireFragments("core/upgrade/release-manifest-1.4.1.toml", [
   "validation_overlap_note",
   "component_overlap_note",
 ]);
+requireFragments("core/upgrade/release-manifest-1.4.2.toml", [
+  'migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/components/registry.toml"',
+  '"instance/evolution/index.toml", "instance/validations/index.toml"]',
+  "validation_overlap_note",
+  "component_overlap_note",
+  '"one-canonical-blank-template-completes-general-and-video-editing-first-instantiation"',
+]);
 requireFragments("core/upgrade/release-manifest-1.2.0.toml", [
   "replace_instance_guides",
   "instance/profile/README.md",

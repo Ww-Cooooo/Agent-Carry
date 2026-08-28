@@ -30,8 +30,8 @@ confirmation = "before-write"
 
 [[routes]]
 id = "user-decision-guidance"
-summary = "当用户需要作出多步骤、技术性、风险性、长期性选择，或表示不知道怎样选时，用普通语言解释背景，给出完整选项、后果、推荐和可继续求助的入口。"
-triggers = ["需要用户选择", "用户不确定", "不知道怎么选", "小白引导", "解释选项与后果", "长期文件怎样保存", "任务产出文件去向"]
+summary = "当用户需要作出多步骤、技术性、风险性、长期性选择，表示不知道怎样选，或明确询问任务结束后做什么时，用普通语言解释背景，给出有依据的推荐、必要选项和明确下一步。"
+triggers = ["需要用户选择", "用户不确定", "不知道怎么选", "小白引导", "解释选项与后果", "长期文件怎样保存", "任务产出文件去向", "最后告诉我下一步", "接下来做什么"]
 target = "core/protocols/USER_GUIDANCE.md"
 state = "on-demand-for-nontrivial-user-decision"
 minimum_level = 1
