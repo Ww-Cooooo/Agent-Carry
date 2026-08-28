@@ -69,6 +69,7 @@ const archivePrivateDirectoryPrefixes = [
   '.git/',
   '.agents/',
   '.claude/',
+  '.planning/',
   'maintainer-private/',
   'workspace/',
   'dashboard/test-fixtures/',

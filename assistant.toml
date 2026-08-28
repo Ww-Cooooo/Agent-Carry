@@ -1,8 +1,8 @@
 schema_version = 1
 product_id = "agent-carry"
 product_name = "Agent Carry"
-product_version = "1.4.4"
-core_version = "1.4.4"
+product_version = "1.4.5"
+core_version = "1.4.5"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
@@ -107,7 +107,7 @@ wakeup_prompt = "core/templates/integration/host-wakeup.md"
 host_registry = "instance/hosts/registry.toml"
 profile_load_policy = "only-on-handshake-change-refresh-or-relevant-use"
 session_resume_policy = "post-route-registry-and-at-most-one-profile"
-upgrade_activation_policy = "file-install-does-not-prove-running-session-adoption-use-fresh-session-or-verified-host-rebootstrap-and-target-behavior-acceptance"
+upgrade_activation_policy = "file-install-does-not-prove-current-conversation-adoption; prefer-bounded-safe-boundary-current-session-reentry-and-agent-run-representative-behavior; new-run-is-last-host-compatibility-fallback"
 maximum_registry_bytes = 8192
 maximum_profile_bytes = 16384
 
@@ -126,7 +126,7 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-1.4.4.toml"
+release_manifest = "core/upgrade/release-manifest-1.4.5.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"

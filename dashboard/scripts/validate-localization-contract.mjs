@@ -36,14 +36,15 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
   read('dashboard/src/components/dashboard/SkillWorkshop.tsx'),
 ])
 
-requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.4`', '点击展开：1.4.4 主要改了什么', 'Agent 推荐整理的 Skill', '本地隔离草稿', '固定 `v1.4.4` 标签', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
+requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.5`', '点击展开：1.4.5 主要改了什么', '自动验证一项真实、无破坏的代表行为', 'Agent 推荐整理的 Skill', '本地隔离草稿', '固定 `v1.4.5` 标签', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `1.4.4`',
-  'What changed in 1.4.4',
+  'Current version: `1.4.5`',
+  'What changed in 1.4.5',
+  'automatically validates one non-destructive representative behavior',
   'Skills the Agent recommends creating',
   'isolated local draft',
-  'fixed `v1.4.4` tag',
+  'fixed `v1.4.5` tag',
   '🧠 Used this time',
   '🌱 Learned this step',
   '👉 Next step',

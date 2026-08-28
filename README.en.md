@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.4`.** This release adds the Skill Workshop. Only a method the user explicitly selects is copied into a local draft for Agent-led sanitization and generalization; a shared Skill is inspected read-only before any installation, without automatic rewriting or script execution. The English README, installer, first-use flow, and dashboard remain reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.4.5`.** This release fixes upgrade continuity in a long-running conversation. After files switch, the Agent waits for the current atomic action to reach a safe boundary, compares the Agent Carry startup baseline, adopts the minimum new product rules, and automatically validates one non-destructive representative behavior. The user does not need to create a test task or run an acceptance prompt. A new task is only the final compatibility route when immutable host rules genuinely prevent in-place adoption.
 
 ## Where Agent Carry fits
 
@@ -121,7 +121,7 @@ You do not need Git, a terminal, Node.js, npm, or a project build. You need a ho
 
 > **Current platform-validation boundary:** the link route, ZIP route, visible system entry, and offline opening have been tested end to end on Windows. macOS and Linux are supported protocol targets, but have not received the same level of real-environment validation. On those systems, the host must verify the visible entry and actual open result in the current environment, and report **limited completion** instead of claiming full success when it cannot.
 
-> **These options are for a fresh installation.** If you already have an Agent Carry instance, do not overwrite it with a ZIP. Tell the current Agent: “Check whether my Agent Carry has an official update.” It must identify the instance, explain conflicts and preservation, rehearse the upgrade in an isolated copy, and wait for approval. Installing the new files does not by itself prove that an already-running host session adopted the new behavior. If the host cannot verify a real instruction-chain reload, start one new task from the same instance so it can run normal startup and one representative behavior check. The valid installed instance remains usable while activation is pending.
+> **These options are for a fresh installation.** If you already have an Agent Carry instance, do not overwrite it with a ZIP. Tell the current Agent: “Check whether my Agent Carry has an official update.” It must identify the instance, explain conflicts and preservation, rehearse the upgrade in an isolated copy, and wait for approval. Installing the new files does not by itself prove that an already-running conversation adopted the new behavior. After the verified file switch reaches a safe boundary, the Agent first performs a bounded current-conversation reentry, loads only the relevant new rules, and automatically checks one non-destructive representative behavior. You do not need to create a test task, inspect files, or judge internal state. If immutable host rules block in-place adoption, the valid instance and unaffected capabilities remain usable; the Agent reports that the new behavior will apply on the next natural start, and offers a new run only as the last route when you need the affected behavior immediately.
 
 ### Option 1: send the installation page to your Agent
 
@@ -196,6 +196,19 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.5</strong></summary>
+
+- Before each new substantive goal in a long-running conversation, the Agent performs one tiny Agent Carry startup-baseline comparison. Consecutive replies for the same goal do not repeat it, and an unchanged version, instance ID, and manifest digest load no upgrade body.
+- When files change during the current conversation, the default is no longer to ask the user to create a test task. At the safe boundary after the current atomic action, the Agent reruns the strict startup entry, adopts only the target version's minimum relevant rules, and automatically checks one real, non-destructive representative behavior.
+- A version string, hash, capsule, snapshot, or ordinary file reread still cannot impersonate adoption. The current conversation reports adoption only after strict baseline comparison, bounded rule reentry, immutable-host conflict checking, and automatic behavior acceptance all close.
+- If immutable host rules genuinely block in-place adoption, only the affected new behavior remains pending. The valid instance, user content, conversation, and unrelated capabilities stay available. A new task is the final compatibility route only when the user wants that behavior immediately.
+- The completion receipt separately explains source, files, preserved instance state, current-conversation adoption, and automatic behavior acceptance. The user does not need to type a test prompt, inspect files, or judge internal state.
+- A blank 1.4.4 template stays blank. An existing 1.4.4 instance preserves identity, assets, SOPs, capabilities, Skills, components, extensions, workspaces, device-local bindings, private state, and unknown fields path by path and byte for byte; only the product version and derived strict capsule and dual snapshots advance.
+- Version 1.4.5 can replace an instance only when the fixed `v1.4.5` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.4</strong></summary>

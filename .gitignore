@@ -48,6 +48,7 @@ dashboard/preview.log
 # 根目录的 AGENTS.md 是正式入口，不受这些目录规则影响。
 .agents/
 .claude/
+.planning/
 skills-lock.json
 
 # 编辑器与系统垃圾

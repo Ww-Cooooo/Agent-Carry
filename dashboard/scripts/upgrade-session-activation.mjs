@@ -1,6 +1,7 @@
 const ACTIVATION_EVIDENCE = new Set([
   "fresh-session-startup",
   "verified-host-rebootstrap",
+  "validated-current-session-reentry",
   "manual-file-reread",
   "unknown",
 ]);
@@ -110,7 +111,8 @@ export function evaluateUpgradeSessionActivation(facts = {}) {
   const freshSession = facts.activationEvidence === "fresh-session-startup"
     && facts.sessionBaselineVersion === facts.targetVersion;
   const verifiedRebootstrap = facts.activationEvidence === "verified-host-rebootstrap";
-  if (!freshSession && !verifiedRebootstrap) {
+  const validatedCurrentSessionReentry = facts.activationEvidence === "validated-current-session-reentry";
+  if (!freshSession && !verifiedRebootstrap && !validatedCurrentSessionReentry) {
     return result("upgrade-session-activation-required", {
       files_state: "installed-and-switched",
       session_state: "activation-required",
@@ -119,10 +121,10 @@ export function evaluateUpgradeSessionActivation(facts = {}) {
       rollback_required: false,
       can_continue_unaffected_work: true,
       userReport: report(
-        "新版文件已经安装，但当前运行会话还没有可验证地采用新版指令。",
+        "新版文件已经安装，但当前对话还没有完成可验证的新版产品规则接续。",
         "实例身份、用户资产和已验证的新文件保持不变，不需要因为会话待激活而回滚。",
         "普通对话、只读检查和不依赖新版语义的能力仍可使用。",
-        "在同一实例根目录开启一个新任务，按 BOOTSTRAP 启动后完成一项真实行为验收。",
+        "由 Agent 在当前原子操作结束后的安全节点自动运行严格启动入口并尝试有界接续；宿主确实阻止时，在下一次自然打开时采用新版，不要求用户亲自测试。",
       ),
     });
   }
@@ -137,10 +139,10 @@ export function evaluateUpgradeSessionActivation(facts = {}) {
       rollback_required: false,
       can_continue_unaffected_work: true,
       userReport: report(
-        failed ? "新会话已经采用目标版本，但本次代表行为没有通过验收。" : "新会话已经采用目标版本，但代表行为尚未实际验收。",
+        failed ? "当前对话已经采用目标版本，但本次自动代表行为没有通过验收。" : "当前对话已经采用目标版本，但 Agent 尚未完成自动代表行为验收。",
         "已验证的实例文件和用户数据保持不变；失败只限制升级完成结论。",
         "不依赖该项新行为的普通能力仍可继续使用。",
-        failed ? "保留本次证据，定向修复或重试这一项行为，不要重做整个升级。" : "从目标发布说明选择一项真实变化完成最小验收。",
+        failed ? "由 Agent 保留本次证据，定向修复或重试这一项行为，不要重做整个升级。" : "由 Agent 从目标发布说明自动选择一项真实、无破坏的变化完成最小验收，不把测试交给用户。",
       ),
     });
   }
@@ -154,10 +156,10 @@ export function evaluateUpgradeSessionActivation(facts = {}) {
       rollback_required: false,
       can_continue_unaffected_work: true,
       userReport: report(
-        "新会话已采用目标版本，但额外执行的行为检查失败。",
+        "当前对话已采用目标版本，但额外执行的自动行为检查失败。",
         "文件与用户数据保持不变，失败没有扩散到整个 Agent。",
         "其他独立能力仍可继续。",
-        "只核对这项行为检查的前提和结果，不要重做整个升级。",
+        "由 Agent 只核对这项行为检查的前提和结果，不要重做整个升级。",
       ),
     });
   }
@@ -169,6 +171,11 @@ export function evaluateUpgradeSessionActivation(facts = {}) {
     upgrade_complete: true,
     rollback_required: false,
     can_continue_unaffected_work: true,
-    userReport: null,
+    userReport: report(
+      `Agent Carry ${facts.targetVersion} 的来源、文件、实例切换、当前对话接续和代表行为已经自动验收通过。`,
+      "升级判断没有修改用户资产；升级事务已经验证的实例身份和用户内容保持不变。",
+      "当前对话已经采用新版产品规则，可以继续原来的工作。",
+      "用户无需亲自执行额外测试；继续总体目标中的下一项真实工作即可。",
+    ),
   });
 }

@@ -401,6 +401,16 @@ requireFragments("core/upgrade/release-manifest-1.4.4.toml", [
   '"blank-1.4.4-template-has-zero-export-index-zero-generated-packages-and-zero-installed-skills"',
   '"uninstantiated-1.4.3-template-upgrades-to-byte-exact-blank-1.4.4"',
 ]);
+requireFragments("core/upgrade/release-manifest-1.4.5.toml", [
+  'migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/components/registry.toml"',
+  '"instance/evolution/index.toml", "instance/validations/index.toml"]',
+  "validation_overlap_note",
+  "component_overlap_note",
+  "skill_overlap_note",
+  '"blank-1.4.5-template-remains-byte-exact-empty"',
+  '"uninstantiated-1.4.4-template-upgrades-to-byte-exact-blank-1.4.5"',
+  '"instantiated-1.4.4-identity-assets-validation-evolution-components-extensions-workspace-local-private-skill-requirements-exports-and-unknown-fields-are-byte-preserved"',
+]);
 requireFragments("core/upgrade/release-manifest-1.2.0.toml", [
   "replace_instance_guides",
   "instance/profile/README.md",
