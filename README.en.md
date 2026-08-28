@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.3`.** This patch fixes upgrades that installed new files but incorrectly reported completion while the already-running host session still used its old instruction chain. The English README, installer, first-use flow, and dashboard remain reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.4.4`.** This release adds the Skill Workshop. Only a method the user explicitly selects is copied into a local draft for Agent-led sanitization and generalization; a shared Skill is inspected read-only before any installation, without automatic rewriting or script execution. The English README, installer, first-use flow, and dashboard remain reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -196,6 +196,19 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.4</strong></summary>
+
+- The dashboard now separates Skills the Agent recommends creating, generated Skills, installed Skills, and shared-Skill intake. A recommendation is advisory: it does not convert an asset, create a task, or change the original SOP or capability.
+- Only after the user selects one formal SOP or a capability with a repeatable workflow does the Agent copy that item into an isolated local draft, remove instance-specific and private details, parameterize variable inputs, and generate a local Skill. The source method stays unchanged, and generation does not mean upload, publication, or sharing.
+- A generated Skill has a plain-language detail view for purpose, state, sharing status, and next action. Its button only copies a bounded request; the Agent rereads the real local export index before continuing review, preparing a share preview, or explaining a problem.
+- A shared Skill can come from a local folder, ZIP, GitHub, or another link. The Agent first inspects it read-only in isolation and reports scripts, dependencies, permissions, conflicts, and privacy boundaries. Inspection executes no script, installs no dependency, logs into no account, and never silently rewrites the package to make it pass.
+- A fault in one Skill stays with that Skill. `ready`, `review`, and `isolated` mean that the package may enter an installation preview, needs the user to understand an extra item, or cannot safely continue. Agent Carry, conversation, and unrelated Skills remain available.
+- A blank 1.4.3 template stays blank after upgrade: no export index, Skill draft, or demo asset is invented. An existing 1.4.3 instance preserves its identity, SOPs, capabilities, installed Skills, local exports, and all other user-owned content path by path and byte for byte. The upgrade converts, shares, installs, and executes nothing automatically.
+- Version 1.4.4 can replace an instance only when the fixed `v1.4.4` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.3</strong></summary>

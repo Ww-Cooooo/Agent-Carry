@@ -13,6 +13,8 @@ const todoStatuses = new Set(["pending", "done", "paused", "cancelled", "history
 const rootKeys = new Set(["meta", "overview", "profile", "model", "health", "assets", "memories", "sops", "capabilities", "experiences", "evolution", "governance", "todo", "deferred", "skills", "changes", "advanced"]);
 const formalItemKeys = new Set(["id", "title", "summary", "subtype", "triggers", "scope_summary", "source_summary", "evidence_summary", "reliability", "status", "approval_state", "activation_basis", "risk_tier", "approved_by_user", "maturity"]);
 const candidateItemKeys = new Set(["id", "title", "summary", "status", "source_summary", "target_kind", "target_subtype", "next_step", "observation_state", "observation_basis"]);
+const skillItemKeys = new Set(["id", "title", "summary", "triggers", "platform", "state"]);
+const skillExportKeys = new Set(["id", "title", "summary", "state"]);
 
 function fail(label, message) {
   throw new Error(`${label} semantic validation failed: ${message}`);
@@ -270,11 +272,43 @@ export function validateSnapshotSemantics(snapshot, label = "snapshot") {
   }
 
   const skills = object(snapshot.skills, label, "$.skills");
-  exactKeys(skills, new Set(["count", "status", "path"]), ["count", "status", "path"], label, "$.skills");
+  exactKeys(skills, new Set(["count", "status", "path", "items", "exports"]), ["count", "status", "path"], label, "$.skills");
   const skillCount = count(skills.count, label, "$.skills.count");
   text(skills.status, label, "$.skills.status", { max: 160 });
   text(skills.path, label, "$.skills.path", { max: 512, allowEmpty: true });
   if (count(assets.skills, label, "$.assets.skills") !== skillCount) fail(label, "$.assets.skills does not equal $.skills.count");
+  if (Object.hasOwn(skills, "items")) {
+    if (!Array.isArray(skills.items) || skills.items.length > 256 || skills.items.length !== skillCount) fail(label, "$.skills.items must be bounded and equal $.skills.count");
+    const skillIds = new Set();
+    skills.items.forEach((item, index) => {
+      const path = `$.skills.items[${index}]`;
+      exactKeys(item, skillItemKeys, ["id", "title", "summary", "triggers", "platform", "state"], label, path);
+      text(item.id, label, `${path}.id`, { max: 160 });
+      if (!stableId.test(item.id) || skillIds.has(item.id)) fail(label, `${path}.id is invalid or duplicated`);
+      skillIds.add(item.id);
+      text(item.title, label, `${path}.title`, { max: 160 });
+      text(item.summary, label, `${path}.summary`, { max: 240 });
+      textList(item.triggers, label, `${path}.triggers`, { maxItems: 8, maxText: 80, allowEmpty: false });
+      text(item.platform, label, `${path}.platform`, { max: 80, allowEmpty: true });
+      text(item.state, label, `${path}.state`, { max: 32 });
+      if (!["available", "review", "unavailable"].includes(item.state)) fail(label, `${path}.state is invalid`);
+    });
+  }
+  if (Object.hasOwn(skills, "exports")) {
+    if (!Array.isArray(skills.exports) || skills.exports.length > 128) fail(label, "$.skills.exports must be a bounded array");
+    const exportIds = new Set();
+    skills.exports.forEach((item, index) => {
+      const path = `$.skills.exports[${index}]`;
+      exactKeys(item, skillExportKeys, ["id", "title", "summary", "state"], label, path);
+      text(item.id, label, `${path}.id`, { max: 160 });
+      if (!stableId.test(item.id) || exportIds.has(item.id)) fail(label, `${path}.id is invalid or duplicated`);
+      exportIds.add(item.id);
+      text(item.title, label, `${path}.title`, { max: 160 });
+      text(item.summary, label, `${path}.summary`, { max: 500 });
+      text(item.state, label, `${path}.state`, { max: 32 });
+      if (!["draft", "ready", "review"].includes(item.state)) fail(label, `${path}.state is invalid`);
+    });
+  }
 
   if (!Array.isArray(snapshot.deferred) || snapshot.deferred.length > 256) fail(label, "$.deferred must be a bounded array");
   snapshot.deferred.forEach((item, index) => {
@@ -301,7 +335,7 @@ export function validateSnapshotSemantics(snapshot, label = "snapshot") {
     for (const [assetKind, value] of Object.entries(arrays)) {
       if (value.length !== 0 || assets[assetKind] !== 0) fail(label, `formal template contains nonempty ${assetKind} data`);
     }
-    if (skillCount !== 0) fail(label, "formal template contains nonempty skills data");
+    if (skillCount !== 0 || (skills.items?.length ?? 0) !== 0 || (skills.exports?.length ?? 0) !== 0) fail(label, "formal template contains nonempty skills data");
   }
   return snapshot;
 }

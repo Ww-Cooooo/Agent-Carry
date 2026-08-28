@@ -1,4 +1,5 @@
-import { createElement, useId, useRef, type ElementType, type ReactNode } from "react";
+import { createElement, useCallback, useEffect, useId, useRef, useState, type ElementType, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Check, CircleHelp, CircleSlash2, ClipboardCopy, Copy, PencilLine, RefreshCw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,10 @@ const STATUS_LABELS: Record<string, string> = {
   deferred: "稍后处理",
   candidate: "待观察",
   active: "进行中",
+  available: "可使用",
+  unavailable: "暂不可用",
+  draft: "本地草稿",
+  ready: "可以分享",
   "habit-enabled": "已启用",
   "habit-trial": "试用中",
   "habit-pending": "等待确认",
@@ -165,6 +170,9 @@ const STATUS_HELP: Record<string, string> = {
   "稍后处理": "现在不处理，之后仍可回来继续。",
   "待观察": "目前证据还不够，先保留观察。",
   "进行中": "这项内容正在处理。",
+  "暂不可用": "这个 Skill 当前不能使用，但其他 Skill 和 Agent Carry 主体不受影响。",
+  "本地草稿": "这个 Skill 仍是本地草稿，没有自动上传、发送或公开。",
+  "可以分享": "这个本地 Skill 已通过当前检查；发送或公开仍需要你指定目标并授权。",
   "已启用": "这项习惯已经由你确认，并会在适用任务命中时按需沿用。",
   "试用中": "你已经确认先试用；只在正式记录声明的范围内按需采用，随时可以停止。",
   "等待确认": "内容或适用范围还没有得到你的确认，因此暂不自动沿用。",
@@ -184,27 +192,95 @@ function normalizeStatus(value: string): string {
   return STATUS_LABELS[value] ?? value;
 }
 
-export function StatusBadge({ value, showHelp = true }: { value?: string; showHelp?: boolean }) {
+interface StatusTooltipPosition {
+  left: number;
+  top: number;
+  placement: "top" | "bottom";
+}
+
+function StatusHelp({ id, label, help }: { id: string; label: string; help: string }) {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<StatusTooltipPosition | null>(null);
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const edge = Math.min(170, Math.max(24, window.innerWidth / 2 - 12));
+    const placement = rect.top >= 150 ? "top" : "bottom";
+    setPosition({
+      left: Math.min(Math.max(rect.left + rect.width / 2, edge), window.innerWidth - edge),
+      top: placement === "top" ? rect.top - 10 : rect.bottom + 10,
+      placement,
+    });
+  }, []);
+
+  const show = () => {
+    updatePosition();
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const sync = () => updatePosition();
+    window.addEventListener("resize", sync);
+    document.addEventListener("scroll", sync, true);
+    return () => {
+      window.removeEventListener("resize", sync);
+      document.removeEventListener("scroll", sync, true);
+    };
+  }, [open, updatePosition]);
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        className="status-help"
+        tabIndex={0}
+        aria-label={`了解“${label}”`}
+        aria-describedby={open ? id : undefined}
+        onMouseEnter={show}
+        onMouseLeave={(event) => { if (!event.currentTarget.matches(":focus")) setOpen(false); }}
+        onFocus={show}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}
+      >
+        <CircleHelp aria-hidden="true" />
+      </span>
+      {open && position && typeof document !== "undefined" ? createPortal(
+        <span
+          id={id}
+          role="tooltip"
+          className="status-help-tooltip"
+          data-placement={position.placement}
+          style={{ left: position.left, top: position.top }}
+        >
+          {help}
+        </span>,
+        document.body,
+      ) : null}
+    </>
+  );
+}
+
+export function StatusBadge({ value, showHelp = true, helpText }: { value?: string; showHelp?: boolean; helpText?: string }) {
   const tooltipId = useId();
   if (!value) return null;
   const label = normalizeStatus(value);
-  const help = STATUS_HELP[label] ?? `这条内容当前处于“${label}”状态。`;
+  const help = helpText ?? STATUS_HELP[label] ?? `这条内容当前处于“${label}”状态。`;
   const tone =
-    label.includes("未确认") || label.includes("待") || label.includes("复核") || label.includes("稍后")
+    ["本地草稿", "尚未检查完成"].includes(label)
+      ? "info"
+      : label.includes("未确认") || label.includes("待") || label.includes("复核") || label.includes("稍后")
       ? "warm"
        : label.includes("完成") || label.includes("可使用") || label.includes("确认") || label.includes("启用")
-          || ["已实践", "可靠", "可迁移"].includes(label)
-        ? "success"
-        : "neutral";
+           || ["已实践", "可靠", "可迁移", "可以分享", "适合整理"].includes(label)
+         ? "success"
+         : "neutral";
   return (
     <span className="status-with-help">
       <Badge className={`status-badge status-badge--${tone}`}>{label}</Badge>
-      {showHelp ? (
-        <span className="status-help" tabIndex={0} aria-label={`了解“${label}”`} aria-describedby={tooltipId}>
-          <CircleHelp aria-hidden="true" />
-          <span id={tooltipId} role="tooltip">{help}</span>
-        </span>
-      ) : null}
+      {showHelp ? <StatusHelp id={tooltipId} label={label} help={help} /> : null}
     </span>
   );
 }

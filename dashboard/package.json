@@ -1,7 +1,7 @@
 {
   "name": "agent-carry-dashboard",
   "private": true,
-  "version": "1.4.3",
+  "version": "1.4.4",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
     "check:startup-capsule": "node scripts/validate-startup-capsule-contract.mjs && node scripts/validate-startup-capsule-sync.mjs",
     "check:secret-boundary": "node scripts/validate-secret-content-boundary.mjs",
     "check:snapshot-source": "node scripts/validate-snapshot-source-builder.mjs",
+    "check:skill-workshop": "node scripts/validate-skill-workshop-contract.mjs",
     "check:learning-recall": "node scripts/validate-learning-recall-contract.mjs",
     "check:learning-fixture": "node scripts/validate-learning-recall-fixture.mjs",
     "check:learning-promotion": "node scripts/validate-learning-promotion-contract.mjs && node scripts/validate-learning-promotion-transaction.mjs",
@@ -38,7 +39,7 @@
     "check:offline": "node scripts/validate-offline-assets.mjs",
     "check:snapshots": "node scripts/validate-formal-template-snapshots.mjs --self-test",
     "check:snapshot-sync": "node scripts/validate-snapshot-sync-transaction.mjs",
-    "build": "npm run check:actions && npm run check:first-run && npm run check:change-quality && npm run check:startup-budget && npm run check:startup-capsule && npm run check:secret-boundary && npm run check:learning-recall && npm run check:learning-fixture && npm run check:learning-promotion && npm run check:learning-capture && npm run check:proactive-learning && npm run check:upgrade-session && npm run check:instance-components && npm run check:release-authority && npm run check:signal-transaction && npm run check:fault-tolerance && npm run check:asset-query && npm run check:snapshot-source && npm run check:localization && npm run check:territory && npm run check:snapshots && npm run check:snapshot-sync && npm run check:licenses && npm run check:compliance && tsc -b && vite build && node scripts/make-offline.mjs && npm run check:territory:dist && npm run check:offline && npm run check:snapshots",
+    "build": "npm run check:actions && npm run check:first-run && npm run check:change-quality && npm run check:startup-budget && npm run check:startup-capsule && npm run check:secret-boundary && npm run check:learning-recall && npm run check:learning-fixture && npm run check:learning-promotion && npm run check:learning-capture && npm run check:proactive-learning && npm run check:upgrade-session && npm run check:instance-components && npm run check:release-authority && npm run check:signal-transaction && npm run check:fault-tolerance && npm run check:asset-query && npm run check:snapshot-source && npm run check:skill-workshop && npm run check:localization && npm run check:territory && npm run check:snapshots && npm run check:snapshot-sync && npm run check:licenses && npm run check:compliance && tsc -b && vite build && node scripts/make-offline.mjs && npm run check:territory:dist && npm run check:offline && npm run check:snapshots",
     "analyze": "vite build --mode analyze",
     "preview": "vite preview"
   },

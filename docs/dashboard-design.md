@@ -27,12 +27,13 @@ Agent Carry 看板是本地、离线、只读的产品界面。它帮助不熟�
 
 ## 3. 信息架构
 
-旧结构按内部资产类型逐层展开，用户首先看到的是系统分类和统计图。新版按用户意图组织为五个入口：
+旧结构按内部资产类型逐层展开，用户首先看到的是系统分类和统计图。新版按用户意图组织为六个入口：
 
 | 入口 | 用户问题 | 主要内容 |
 | --- | --- | --- |
 | 总览 | 我现在应该做什么 | 自然语言开场、助手核心、第一次设置或下一待办、资产概览、最近变化 |
 | 随身资产 | 有什么会跟着我走 | 记忆、固定流程（SOP）、能力、经验；记忆页从正式记忆中单独分组显示“我的习惯”，支持查看适用范围、纠正和停止沿用；其余内容支持分类、搜索、详情和复制调用请求；页面先用紧凑小流程概括形成或使用路线，点击后再打开完整验证／复核或经验说明 |
+| Skill 工坊 | 哪些好方法适合整理，别人的 Skill 怎样安全接入 | “我的方法 → 可分享 Skill”和“别人的 Skill → 我的助手”两条装订轨；推荐不触发转换，用户指定方法后由 Agent 复制该方法并只在本地草稿中自动脱敏、通用化，原方法不变；共享 Skill 只读检查且不静默改写，说明影响并得到确认后才安装；本地草稿与已安装 Skill 只显示低敏摘要 |
 | 待办与成长 | 还有什么要做，助手如何变好 | 普通待办、学习建议、长期改进；三者不混为一种任务 |
 | 迁移与安全 | 怎样登记要带走的资料、换 Agent、换电脑或做远程脱敏备份 | 独立区分同机换本地 Agent 与整套换机迁移；先说明登记范围与覆盖保证，再提供主体包／私密分卷迁移、GitHub 私有仓库脱敏备份、单独导出／导入和安全提醒 |
 | 当前状态 | 现在是否正常、该用哪个等级 | 看板数据、当前模型、Level 1／2／3 用途、随身内容、按需读取、实例身份与维护者信息 |
@@ -86,6 +87,8 @@ Agent Carry 看板是本地、离线、只读的产品界面。它帮助不熟�
 - 把页面自己的 60 秒读取倒计时当作长期治理调度器；
 - 在 GitHub 私有仓库脱敏备份的本地检查和仓库预览完成前创建仓库、提交或推送，或自动改为公开仓库、添加协作者；
 - 把 API 密钥、密码、令牌、Cookie、私钥、恢复码或登录态放进快照、复制请求或模型上下文。
+
+Skill 工坊不改变这条边界。推荐由当前快照中的正式状态、授权和成熟度即时计算，只供用户选择；它不接受脱敏处理、不触发转换、不回写资产，也不制造待办。用户明确指定一个方法并把整理请求交给 Agent 后，Agent 才复制该方法，并只在这份隔离草稿中自动完成隐私检查、脱敏、通用化和参数化；用户不用先手工处理，推荐列表和来源资产保持不变，生成本地草稿也不表示已经分享。共享 Skill 走另一条路线：按钮明确只复制起始请求，用户发给 Agent 后，若尚无唯一来源，Agent 引导其提供本地文件夹、ZIP 或链接，再进行只读检查；不为通过检查而自动脱敏或静默改写，说明影响并得到确认后才安装。`skills.items` 只显示标题、用途、触发、平台和状态；`skills.exports` 只显示本地导出的标题、用途和状态。每条已生成 Skill 可打开低敏详情，只解释用途、当前状态、分享边界和下一步；入口、来源地址、本机路径、来源资产 ID 与正文永不投影。详情页恰好提供一个与当前状态相符的“交给 Agent”动作：草稿继续检查、就绪项准备分享预览、复核项先解释问题；按钮只复制带稳定 ID 的受控请求，网页不直接检查、修改、上传、发送或发布，复制也不构成外部分享授权。状态颜色只作辅助：“可以分享”“本地草稿”“需要复核”和方法成熟度都必须带可访问的问号说明，回答状态含义、常见原因和下一步。工坊按钮只复制 `skill.create-from-asset`、`skill.continue-export` 或 `skill.install-shared` 完整请求，网页不转换、不下载、不执行脚本、不安装。
 
 创建助手向导必须维持只读边界：网页可以把用户刚刚选择的交流方式和方向意向附加到受控 `instance.instantiate` 请求，但不能写 `instance/manifest.toml`。“先帮我判断”只能让 Agent 了解情况和提供比较，在用户明确选择 `general` 或 `domain` 前不得锁定。调整交流方式使用独立的 `profile.adjust-guidance-mode` 动作，只允许更新 `profile.guidance_mode` 和重建快照；不得重做实例化、改变 `direction` 或改写长期资产。
 
@@ -145,16 +148,20 @@ Agent Carry 自身采用根目录 `LICENSE` 中的 Apache License 2.0；根目�
 
 - `dashboard/src/Dashboard.tsx`：应用外壳、导航、快照热更新、路由和全局对话框；
 - `dashboard/src/dashboard-config.tsx`：稳定分类、卫星、导航和 Hash 路由映射；
-- `dashboard/src/components/dashboard/Views.tsx`：五个面向用户的视图；
+- `dashboard/src/components/dashboard/Views.tsx`：总览、随身资产、待办与成长、迁移与安全、当前状态五个既有视图；
+- `dashboard/src/components/dashboard/SkillWorkshop.tsx`：独立 Skill 工坊视图，使用“Agent 推荐整理的 Skill、已生成但未分享的 Skill、已安装 Skill、接入 Skill”四个桌面页签分开承载不同任务；页签过长时允许省略号截断，但悬浮显示完整的当前语言标签；每条已生成 Skill 可打开低敏详情，并按状态只显示一个复制给 Agent 的继续处理动作；每个自动步骤都在标题中明确由 Agent 执行，接入路线明确指向页面复制按钮；来源选择使用带说明的卡片，状态问号通过页面顶层提示层显示，避免被卡片或滚动容器遮挡；
 - `dashboard/src/components/dashboard/AssetGuides.tsx`：固定流程／能力与经验的紧凑四步入口，以及点击后出现的来源、验证、复核、资产对比和经验使用详情弹窗；
 - `dashboard/src/components/dashboard/GrowthGuide.tsx`：待办、学习建议和长期改进的只读关系图，以及电脑窗口过窄时的等价文字流程；
 - `dashboard/src/components/dashboard/Shared.tsx`：共享状态、空态、详情和复制对话框；
 - `dashboard/src/components/three/Core.tsx`：独立的 Three.js 场景与生命周期；
 - `dashboard/src/lib/data.ts`：快照投影、完整自然语言请求生成，以及正式动作登记的离线编译镜像；它不是动作真源，也不接受快照覆盖动作；
+- `dashboard/src/lib/skill-workshop.ts`：只计算非持久化的分享建议，不授予转换或分享权限；
 - `dashboard/src/lib/i18n.tsx`、`i18n-catalog.ts` 与 `localized-jsx/`：中文默认语言状态、受控英文产品词库和 JSX 产品文案适配；未知用户内容不翻译；
 - `dashboard/src/index.css`：设计令牌、电脑窗口布局、状态和减少动画规则；
 - `dashboard/scripts/make-offline.mjs`：把生产脚本与样式内联，保留可替换的外部快照与本地字体。
 - `dashboard/scripts/validate-action-mirror.mjs`：构建前核对正式动作登记与离线镜像，并保证快照动作覆盖保持关闭。
+- `dashboard/scripts/skill-workshop-contract.mjs`：对本地 Skill 包做有界、只读、不执行脚本的结构和安全检查；结果只影响当前包。
+- `dashboard/scripts/validate-skill-workshop-contract.mjs`：用空模板、推荐、干净导出和危险包隔离四个代表性场景验收工坊。
 - `dashboard/scripts/generate-third-party-notices.mjs`：从锁文件和已安装包元数据生成／核对随离线产物分发的生产依赖许可证包；上游 npm 包漏装许可证时只允许使用有固定官方来源的补充文件。
 - `dashboard/scripts/validate-offline-assets.mjs`：构建后核对字体哈希、OFL、生产依赖声明、根入口及所有运行资源均为本地文件。
 - `dashboard/scripts/validate-localization-contract.mjs`：构建前核对中文／英文 README、安装入口、根看板入口、离线语言状态、正式请求保留和受控词库边界。

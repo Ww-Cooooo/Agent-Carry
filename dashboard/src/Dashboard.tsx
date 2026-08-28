@@ -36,6 +36,7 @@ import {
   SystemView,
   TransferView,
 } from "@/components/dashboard/Views";
+import { SkillWorkshop } from "@/components/dashboard/SkillWorkshop";
 import {
   applyDashboardSnapshot,
   getGlobalActions,
@@ -387,6 +388,7 @@ export default function Dashboard() {
                       onInspect={setDetail}
                     />
                   ) : null}
+                  {route.page === "workshop" ? <SkillWorkshop onCopy={requestCopy} /> : null}
                   {route.page === "growth" ? (
                     <GrowthView
                       kind={(route.kind as GrowthKind | undefined) ?? "todos"}

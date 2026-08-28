@@ -22,7 +22,7 @@ window.AGENT_CARRY_SNAPSHOT = { /* 这里只能是 JSON.stringify 生成的严�
 - `todo` 与 `governance`：普通待办和长期治理必须分开显示。每个待办必须有非空 `id`、`title`、`summary` 和 `status`，并可带 `visible`；`visible=false` 表示保留本机记录但不投影到看板。每个长期治理项目必须有非空 `id`、`title`、`summary`、`frequency`、`status`、`purpose`，以及至少一条 `steps`；可投影 `last_completed_at`、`next_due_at` 和 `schedule_state`，但看板不得据此执行任务。
 - 新生成的 `evolution` 条目还必须投影 `observation_state` 与 `observation_basis`。只有 `explicit + explicit-user/existing-approved-migration` 可显示为“已允许继续观察”；缺失、`pending`、`revoked`、`unknown` 或不一致时显示“授权待核对”，看板动作只能核对状态，不能把候选晋升。观察授权不等于正式资产使用授权。
 - `deferred`：只显示有界摘要、等级、状态和提醒日期，不加载延期任务正文；到期判断仍由统一触发真源与时间索引负责。
-- `skills`、`changes`、`advanced`：Skill 小地图状态、最近变化和入口文件摘要。
+- `skills`、`changes`、`advanced`：Skill 小地图状态、最近变化和入口文件摘要。`skills` 必须含 `count`、`status`、兼容空字段 `path`，并可增加 `items` 与 `exports`。`items` 只从 `instance/skills/requirements.toml` 投影 `id`、用户可理解的 `title`、`summary`、`triggers`、`platform`、`state`；不得投影实际入口、来源地址、本机路径或正文，且条目数必须等于 `count`。`exports` 只在实例真实存在导出索引时投影 `id`、`title`、`summary`、`state`；其中 `summary` 必须说明这个 Skill 的实际用途和结果，不能用“已生成”“待检查”等状态句代替；不得投影 `source_asset_id`、入口或实例身份。旧 Schema 1.1 快照没有这两个数组时按空数组展示；新模板快照若包含它们必须为空。
 - `actions`：保留兼容字段，正式生成器应省略；前端必须忽略其中全部内容。全局动作来自正式动作登记表及同步构建的离线镜像，资产级动作由界面按稳定 ID 与正式规则生成，展示快照不能提供可执行请求。
 
 生成规则：

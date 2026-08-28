@@ -8,6 +8,7 @@ import {
   Library,
   ListTodo,
   PackageOpen,
+  PanelsTopLeft,
   Settings2,
   ShieldCheck,
   Sparkles,
@@ -16,7 +17,7 @@ import {
 import type { Planet } from "@/components/three/Core";
 import type { DashboardActionKind } from "@/lib/data";
 
-export type Page = "home" | "library" | "growth" | "transfer" | "system";
+export type Page = "home" | "library" | "workshop" | "growth" | "transfer" | "system";
 export type LibraryKind = "memories" | "sops" | "capabilities" | "experiences";
 export type GrowthKind = "todos" | "evolution" | "governance";
 export type OrbitKey = DashboardActionKind | "model";
@@ -126,6 +127,7 @@ export const NAV_ITEMS: Array<{
 }> = [
   { page: "home", label: "总览", shortLabel: "总览", description: "待办、资产和最近变化", icon: Home },
   { page: "library", label: "随身资产", shortLabel: "资产", description: "记忆、流程、能力和经验", icon: Library },
+  { page: "workshop", label: "Skill 工坊", shortLabel: "工坊", description: "整理方法和检查 Skill", icon: PanelsTopLeft },
   { page: "growth", label: "待办与成长", shortLabel: "待办", description: "待办、学习建议和长期改进", icon: Sparkles },
   { page: "transfer", label: "迁移与安全", shortLabel: "迁移", description: "换 Agent、换电脑和安全备份", icon: PackageOpen },
   { page: "system", label: "当前状态", shortLabel: "状态", description: "模型等级和读取方式", icon: Settings2 },

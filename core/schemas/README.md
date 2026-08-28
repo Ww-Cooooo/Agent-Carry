@@ -13,6 +13,7 @@
 - `host-integration.schema.md`：跨 Agent 接入胶囊、回执、宿主档案、任务胶囊和回传包。
 - `dashboard-action.schema.md`：看板复制给 Agent 的完整动作请求。
 - `dashboard-snapshot.schema.md`：只读看板快照。
+- `skill-export-index.schema.md`：只在实例真正生成共享 Skill 后创建的本地导出索引；共享包不携带来源资产 ID，空模板不预创建。
 - `release-manifest.schema.md`：模板升级发布清单。
 - `private-asset-catalog.schema.md`：用户明确登记要随助手携带的本地资料、当前设备路径绑定、渐进加载和导出前无静默遗漏对账。
 - `migration-kit.schema.md`：完整换机迁移套件 2.0；主体包与一个或多个私密分卷分离，支持超大文件分块、覆盖证明、摘要和 1.0 旧套件兼容恢复。

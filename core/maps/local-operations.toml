@@ -72,3 +72,12 @@ target = "core/guides/skill-init-guide.md"
 state = "on-demand"
 minimum_level = 1
 confirmation = "before-install"
+
+[[routes]]
+id = "skill-workshop"
+summary = "推荐只供用户选择，不会触发转换。用户明确指定一个方法后，Agent 只对该方法复制出的隔离草稿自动脱敏、通用化并生成本地 Skill，原方法不变。已生成的本地 Skill 按真实状态继续检查、解释复核项或准备分享预览；按钮不授权外部分享。别人分享的 Skill 只读审查且不静默改写，说明影响并得到确认后才安装；异常只隔离当前 Skill。"
+triggers = ["Skill工坊", "把SOP转成Skill", "把这个方法转成Skill", "分享这个流程", "导出为Skill", "继续检查这个Skill", "准备分享这个Skill", "这个Skill为什么需要复核", "安装别人分享的Skill", "导入Skill", "判断这个Skill能不能装"]
+target = "core/guides/skill-workshop-guide.md"
+state = "on-demand"
+minimum_level = 1
+confirmation = "local-draft-and-bounded-review-can-follow-the-explicit-request-any-review-chosen-modification-sharing-or-installation-needs-the-relevant-current-authorization"

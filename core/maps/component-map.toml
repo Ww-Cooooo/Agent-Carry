@@ -33,7 +33,7 @@ projects_to = ["asset-memory", "host-integration", "dashboard-actions", "privacy
 [[components]]
 id = "asset-memory"
 owner = "template-core"
-paths = ["core/protocols/ASSET_LIFECYCLE.md", "core/maps/asset-confirmation-gates.toml", "core/schemas/asset-frontmatter.schema.md", "core/schemas/asset-confirmation-gates.schema.md", "core/schemas/evolution-candidate-index.schema.md", "core/templates/memory/**", "core/templates/capability/**", "core/templates/sop/**", "core/templates/experience/**", "core/templates/evolution/**", "core/templates/todo/**", "core/templates/deferred/**", "core/templates/governance/**"]
+paths = ["core/protocols/ASSET_LIFECYCLE.md", "core/guides/skill-workshop-guide.md", "core/maps/asset-confirmation-gates.toml", "core/schemas/asset-frontmatter.schema.md", "core/schemas/asset-confirmation-gates.schema.md", "core/schemas/evolution-candidate-index.schema.md", "core/schemas/skill-export-index.schema.md", "core/templates/memory/**", "core/templates/capability/**", "core/templates/sop/**", "core/templates/experience/**", "core/templates/evolution/**", "core/templates/todo/**", "core/templates/deferred/**", "core/templates/governance/**"]
 depends_on = ["context-routing", "user-guidance", "model-orchestration", "result-validation"]
 projects_to = ["host-integration", "cross-session-signals", "privacy-migration", "dashboard-snapshot-contract", "upgrade-system", "architecture-documentation"]
 
@@ -190,7 +190,7 @@ projects_to = ["dashboard-ui", "upgrade-system", "architecture-documentation"]
 [[components]]
 id = "dashboard-build-tooling"
 owner = "dashboard-runtime"
-paths = ["dashboard/scripts/generate-dashboard-actions.mjs", "dashboard/scripts/generate-third-party-notices.mjs", "dashboard/scripts/make-offline.mjs", "dashboard/scripts/validate-action-mirror.mjs", "dashboard/scripts/validate-change-quality-contract.mjs", "dashboard/scripts/validate-first-run-contract.mjs", "dashboard/scripts/validate-offline-assets.mjs", "dashboard/scripts/validate-open-source-compliance.mjs", "dashboard/scripts/validate-startup-budget.mjs"]
+paths = ["dashboard/scripts/generate-dashboard-actions.mjs", "dashboard/scripts/generate-third-party-notices.mjs", "dashboard/scripts/make-offline.mjs", "dashboard/scripts/skill-workshop-contract.mjs", "dashboard/scripts/validate-action-mirror.mjs", "dashboard/scripts/validate-change-quality-contract.mjs", "dashboard/scripts/validate-first-run-contract.mjs", "dashboard/scripts/validate-offline-assets.mjs", "dashboard/scripts/validate-open-source-compliance.mjs", "dashboard/scripts/validate-skill-workshop-contract.mjs", "dashboard/scripts/validate-startup-budget.mjs"]
 depends_on = ["dashboard-actions", "dashboard-ui", "project-licensing", "identity-lifecycle", "instance-validation-evidence", "instance-components", "instance-governance", "host-integration", "cross-session-signals", "startup-capsule-runtime", "snapshot-runtime", "dashboard-snapshot-projection"]
 projects_to = ["installation-experience", "upgrade-system", "architecture-documentation"]
 

@@ -712,6 +712,27 @@ requireFragments("core/upgrade/release-manifest-1.4.3.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.4.toml", [
+  'release = "1.4.4"',
+  'from_versions = ["1.4.3"]',
+  'id = "skill-workshop-1.4.4"',
+  'skill_overlap_note = "instance/skills/** is instance-owned and preserved.',
+  '"skill-workshop-recommendations-are-advisory-and-non-persistent"',
+  '"only-the-user-selected-formal-method-enters-an-isolated-local-draft"',
+  '"source-asset-remains-byte-unchanged-during-export"',
+  '"shared-skill-inspection-is-read-only-and-never-executes-scripts-or-installs-dependencies"',
+  '"ready-review-and-isolated-results-are-contained-to-the-current-package"',
+  '"blank-1.4.4-template-has-zero-export-index-zero-generated-packages-and-zero-installed-skills"',
+  '"uninstantiated-1.4.3-template-upgrades-to-byte-exact-blank-1.4.4"',
+  '"instantiated-1.4.3-identity-assets-validation-evolution-components-extensions-workspace-local-private-skill-requirements-and-exports-are-byte-preserved"',
+  'status = "published-release"',
+  'release_ref = "v1.4.4"',
+  'publication_authorized = true',
+  'repository_operation_authorized = true',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -752,9 +773,14 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.3`",
-  "点击展开：1.4.3 主要改了什么",
-  "固定 `v1.4.3` 标签",
+  "当前版本：`1.4.4`",
+  "点击展开：1.4.4 主要改了什么",
+  "Agent 推荐整理的 Skill、已生成的 Skill、已安装 Skill、接入 Skill",
+  "本地隔离草稿",
+  "原方法始终保持不变",
+  "检查期间不执行脚本、不安装依赖、不登录账号",
+  "一个包失败不会让整个 Agent 停止",
+  "固定 `v1.4.4` 标签",
   "🧠 这次用上了",
   "🌱 这一步我学到了",
   "💡 新发现",

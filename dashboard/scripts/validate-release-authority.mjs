@@ -9,6 +9,7 @@ const immutable131Digest = "00950088bc548592c5faaffe022f1022989a1ca1bd7ed4e60b04
 const immutable140Digest = "a8ee3f4a113c0f958f6979e3d2abd14e8c087f3b919b6f76118203b9015fde91";
 const immutable141Digest = "92e8254f94da230cfca8ab4c18e0ef1a047e056d44c8be5f0433e05bf344c56d";
 const immutable142Digest = "c123edf004b30a819a9c68b01452c8c7a166efb77dbe851388ad4b4c5a66fce4";
+const immutable143Digest = "e069e33e86d5485e7a12f13651bba3de88ff5453966e3795206e726c24233f71";
 const exactPlaceholders = [
   ".assistant-local/.gitkeep",
   ".assistant-local/dashboard/.gitkeep",
@@ -235,7 +236,9 @@ includesAll(section(release142, "release_boundary"), [
 ], "1.4.2 release boundary");
 expect(!release142.includes('status = "local-unreleased-candidate"'), "1.4.2 still declares itself a local unreleased candidate");
 
-const release143 = read("core/upgrade/release-manifest-1.4.3.toml");
+const release143Bytes = bytes("core/upgrade/release-manifest-1.4.3.toml");
+expect(sha256(release143Bytes) === immutable143Digest, "published 1.4.3 manifest was rewritten by the 1.4.4 release");
+const release143 = release143Bytes.toString("utf8").replaceAll("\r\n", "\n");
 includesAll(release143, [
   "schema_version = 2",
   'release = "1.4.3"',
@@ -277,6 +280,50 @@ includesAll(section(release143, "release_boundary"), [
 ], "1.4.3 release boundary");
 expect(!release143.includes('status = "local-unreleased-candidate"'), "1.4.3 still declares itself a local unreleased candidate");
 
+const release144 = read("core/upgrade/release-manifest-1.4.4.toml");
+includesAll(release144, [
+  "schema_version = 2",
+  'release = "1.4.4"',
+  'core = "1.4.4"',
+  'from_versions = ["1.4.3"]',
+  'id = "skill-workshop-1.4.4"',
+  'skill_overlap_note = "instance/skills/** is instance-owned and preserved.',
+  '"skill-workshop-recommendations-are-advisory-and-non-persistent"',
+  '"only-the-user-selected-formal-method-enters-an-isolated-local-draft"',
+  '"source-asset-remains-byte-unchanged-during-export"',
+  '"shared-skill-inspection-is-read-only-and-never-executes-scripts-or-installs-dependencies"',
+  '"ready-review-and-isolated-results-are-contained-to-the-current-package"',
+  '"blank-1.4.4-template-has-zero-export-index-zero-generated-packages-and-zero-installed-skills"',
+  '"uninstantiated-1.4.3-template-upgrades-to-byte-exact-blank-1.4.4"',
+  '"instantiated-1.4.3-identity-assets-validation-evolution-components-extensions-workspace-local-private-skill-requirements-and-exports-are-byte-preserved"',
+], "1.4.4 published manifest");
+const release144TargetSelection = section(release144, "target_selection");
+includesAll(release144TargetSelection, [
+  'forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]',
+  'exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"',
+], "1.4.4 target selection");
+const release144OverrideMatch = release144TargetSelection.match(/^allow_overrides_deny_for_exact_paths\s*=\s*(\[[^\n]*\])$/mu);
+expect(release144OverrideMatch, "1.4.4 exact placeholder override list is missing");
+expect(JSON.stringify(JSON.parse(release144OverrideMatch[1])) === JSON.stringify(exactPlaceholders), "1.4.4 exact placeholder override list drifted");
+includesAll(section(release144, "instance_component_changes"), [
+  'schema = "1.0"',
+  'target_interfaces = ["agent-carry.instance-component@1"]',
+  'optional_incompatible_action = "disable-and-preserve"',
+  'required_incompatible_action = "stop-and-preserve"',
+  'ordinary_startup = "never-read-registry-enumerate-components-or-load-component-bodies"',
+], "1.4.4 instance component continuity");
+includesAll(section(release144, "release_boundary"), [
+  'status = "published-release"',
+  'release_ref = "v1.4.4"',
+  "publication_authorized = true",
+  "repository_operation_authorized = true",
+  "instance_replacement_authorized = true",
+  "future_publication_or_repository_operation_authorized = false",
+  'authority_requires = ["official-fixed-tag-v1.4.4", "official-release-object-v1.4.4", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]',
+  'authority_scope = "this-fixed-release-may-be-used-for-instance-replacement; never-authorizes-future-repository-release-or-publication-actions"',
+], "1.4.4 release boundary");
+expect(!release144.includes('status = "local-unreleased-candidate"'), "1.4.4 still declares itself a local unreleased candidate");
+
 const schema = read("core/schemas/release-manifest.schema.md");
 includesAll(schema, [
   "`allow_overrides_deny_for_exact_paths`",
@@ -299,19 +346,21 @@ const guide142 = read("core/upgrade/upgrade-1.4.1-to-1.4.2.md");
 includesAll(guide142, ["1.4.1 → 1.4.2", "固定 `v1.4.2`", "使用回执", "学习回执", "用户行动建议", "不改变 Asset Schema", "保持空白", "逐路径逐字节保留", "第二次执行零变化", "恢复完整 1.4.1 前像"], "1.4.2 patch upgrade guide");
 const guide143 = read("core/upgrade/upgrade-1.4.2-to-1.4.3.md");
 includesAll(guide143, ["1.4.2 → 1.4.3", "正式发布", "固定 `v1.4.3`", "来源已经核对", "文件已经安装", "当前宿主会话", "代表行为", "不回滚已经验证", "普通对话、只读能力", "总体目标中的下一项未完成工作"], "1.4.3 patch upgrade guide");
-includesAll(read("core/guides/upgrade-guide.md"), ["当前官方正式目标是 1.4.3", "固定 `v1.4.3`", "release-manifest-1.3.1.toml", "upgrade-1.2.1-to-1.3.1.md", "upgrade-1.3.0-to-1.3.1.md", "release-manifest-1.4.0.toml", "upgrade-1.3.1-to-1.4.0.md", "release-manifest-1.4.1.toml", "upgrade-1.4.0-to-1.4.1.md", "release-manifest-1.4.2.toml", "upgrade-1.4.1-to-1.4.2.md", "release-manifest-1.4.3.toml", "upgrade-1.4.2-to-1.4.3.md", "不授权任何未来提交"], "current upgrade guide");
+const guide144 = read("core/upgrade/upgrade-1.4.3-to-1.4.4.md");
+includesAll(guide144, ["1.4.3 → 1.4.4", "Skill 工坊", "固定 `v1.4.4`", "本地隔离草稿", "来源资产不修改", "不执行脚本", "不安装依赖", "逐路径、逐字节", "不打开工坊，不转换资产，不检查或安装外来 Skill", "单个 Skill", "普通对话、只读能力"], "1.4.4 patch upgrade guide");
+includesAll(read("core/guides/upgrade-guide.md"), ["当前官方正式目标是 1.4.4", "固定 `v1.4.4`", "release-manifest-1.3.1.toml", "upgrade-1.2.1-to-1.3.1.md", "upgrade-1.3.0-to-1.3.1.md", "release-manifest-1.4.0.toml", "upgrade-1.3.1-to-1.4.0.md", "release-manifest-1.4.1.toml", "upgrade-1.4.0-to-1.4.1.md", "release-manifest-1.4.2.toml", "upgrade-1.4.1-to-1.4.2.md", "release-manifest-1.4.3.toml", "upgrade-1.4.2-to-1.4.3.md", "release-manifest-1.4.4.toml", "upgrade-1.4.3-to-1.4.4.md", "不授权任何未来提交"], "current upgrade guide");
 
-includesAll(read("assistant.toml"), ['product_version = "1.4.3"', 'core_version = "1.4.3"', 'release_manifest = "core/upgrade/release-manifest-1.4.3.toml"'], "assistant authority");
-includesAll(read("core/manifest.toml"), ['version = "1.4.3"', 'instance_component_schema = "1.0"'], "core authority");
-includesAll(read("instance/manifest.toml"), ['created_from = "agent-carry@1.4.3"', 'product = "1.4.3"'], "template instance authority");
-includesAll(read("dashboard/package.json"), ['"version": "1.4.3"', '"check:upgrade-session": "node scripts/validate-upgrade-session-activation.mjs"', '"check:instance-components": "node scripts/validate-instance-component-contract.mjs"', '"check:release-authority": "node scripts/validate-release-authority.mjs"', "npm run check:upgrade-session", "npm run check:instance-components", "npm run check:release-authority"], "Dashboard package authority");
-includesAll(read("dashboard/package-lock.json"), ['"version": "1.4.3"'], "Dashboard lock authority");
+includesAll(read("assistant.toml"), ['product_version = "1.4.4"', 'core_version = "1.4.4"', 'release_manifest = "core/upgrade/release-manifest-1.4.4.toml"'], "assistant authority");
+includesAll(read("core/manifest.toml"), ['version = "1.4.4"', 'instance_component_schema = "1.0"'], "core authority");
+includesAll(read("instance/manifest.toml"), ['created_from = "agent-carry@1.4.4"', 'product = "1.4.4"'], "template instance authority");
+includesAll(read("dashboard/package.json"), ['"version": "1.4.4"', '"check:upgrade-session": "node scripts/validate-upgrade-session-activation.mjs"', '"check:instance-components": "node scripts/validate-instance-component-contract.mjs"', '"check:release-authority": "node scripts/validate-release-authority.mjs"', '"check:skill-workshop": "node scripts/validate-skill-workshop-contract.mjs"', "npm run check:upgrade-session", "npm run check:instance-components", "npm run check:release-authority", "npm run check:skill-workshop"], "Dashboard package authority");
+includesAll(read("dashboard/package-lock.json"), ['"version": "1.4.4"'], "Dashboard lock authority");
 
 const instanceManifestBytes = bytes("instance/manifest.toml");
 const startupCapsule = read("instance/startup-capsule.toml");
 includesAll(startupCapsule, [
   `source_manifest_digest = "sha256:${sha256(instanceManifestBytes)}"`,
-  'product_version = "1.4.3"',
+  'product_version = "1.4.4"',
 ], "template startup capsule");
 
-console.log("Release authority validation passed for immutable published history through 1.4.3.");
+console.log("Release authority validation passed for immutable published history through 1.4.4.");

@@ -1,4 +1,4 @@
-import { closeSync, fstatSync, lstatSync, openSync, readSync, readdirSync, realpathSync } from "node:fs";
+import { closeSync, existsSync, fstatSync, lstatSync, openSync, readSync, readdirSync, realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { basename, dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -239,19 +239,63 @@ function projectSupportDirectory(repository, directory, expectedKind, { mode = "
   return results.sort((left, right) => compareOrdinal(left.id ?? left.summary, right.id ?? right.summary));
 }
 
+function titleFromSkillId(id) {
+  return id.split(/[.:_-]+/u).filter(Boolean).map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join(" ") || "未命名 Skill";
+}
+
+function projectSkillExports(repository, instanceId, { mode = "strict", requiredSourceRefs = new Set(), issues = [] } = {}) {
+  const ref = "instance/skills/exports/index.toml";
+  if (!existsSync(resolve(repository, ...ref.split("/")))) return [];
+  try {
+    const source = readStructured(repository, ref, 128 * 1024);
+    if (locateHighConfidenceSecretCandidates(source).blocked || containsForbiddenLocationReference(source)) fail("skill export index contains unsafe content");
+    const parsed = parseArrayTableDocument(source, "exports", "skill export index");
+    const generatedAt = Date.parse(parsed.root.generated_at ?? "");
+    if (parsed.root.schema_version !== 1 || parsed.root.index_id !== "skill-exports" || parsed.root.instance_id !== instanceId
+      || parsed.entries.length > 128 || parsed.root.export_count !== parsed.entries.length
+      || !Number.isFinite(generatedAt) || !/[zZ]|[+-]\d{2}:\d{2}$/u.test(parsed.root.generated_at ?? "")) fail("skill export index identity, count, or timestamp is invalid");
+    const ids = new Set();
+    return parsed.entries.map((item) => {
+      if (!stableAssetId.test(item.id ?? "") || ids.has(item.id) || !clean(item.title, 160) || !clean(item.summary, 500)
+        || !stableAssetId.test(item.source_asset_id ?? "") || !["sop", "capability"].includes(item.source_kind)
+        || !["draft", "ready", "review"].includes(item.state)
+        || item.entry !== `instance/skills/exports/${item.id}/SKILL.md`
+        || !Number.isFinite(Date.parse(item.generated_at ?? "")) || !/[zZ]|[+-]\d{2}:\d{2}$/u.test(item.generated_at ?? "")) fail("skill export entry is invalid");
+      ids.add(item.id);
+      return { id: item.id, title: item.title, summary: item.summary, state: item.state };
+    }).sort((left, right) => compareOrdinal(left.id, right.id));
+  } catch (error) {
+    isolateOrFail(mode, requiredSourceRefs, issues, ref, "skill-export-index-invalid", error.message);
+    return [];
+  }
+}
+
 function projectSkills(repository, instanceId, { mode = "strict", requiredSourceRefs = new Set(), issues = [] } = {}) {
   const ref = "instance/skills/requirements.toml";
-  const source = readStructured(repository, ref, 32 * 1024);
+  let items = [];
+  let status = "尚未登记 Skill";
   try {
+    const source = readStructured(repository, ref, 32 * 1024);
     if (locateHighConfidenceSecretCandidates(source).blocked || containsForbiddenLocationReference(source)) fail("skill requirements contain unsafe content");
     const parsed = parseArrayTableDocument(source, "skills", "skill requirements");
     if (parsed.root.schema_version !== 1 || parsed.root.instance_id !== instanceId || parsed.entries.length > 256) fail("skill requirements identity or count is invalid");
-    for (const item of parsed.entries) if (!stableAssetId.test(item.id ?? "") || !clean(item.summary, 240) || !["available", "review", "unavailable"].includes(item.state)) fail("skill requirement entry is invalid");
-    return { count: parsed.entries.length, status: parsed.root.status ?? (parsed.entries.length ? "已登记，按任务需要加载" : "尚未登记 Skill"), path: "" };
+    const ids = new Set();
+    items = parsed.entries.map((item) => {
+      if (!stableAssetId.test(item.id ?? "") || ids.has(item.id) || !clean(item.summary, 240) || !["available", "review", "unavailable"].includes(item.state)
+        || (Object.hasOwn(item, "title") && !clean(item.title, 160))
+        || (Object.hasOwn(item, "platform") && !clean(item.platform, 80, true))
+        || (Object.hasOwn(item, "triggers") && (!Array.isArray(item.triggers) || item.triggers.length > 8 || item.triggers.some((trigger) => !clean(trigger, 80))))) fail("skill requirement entry is invalid");
+      ids.add(item.id);
+      return { id: item.id, title: item.title ?? titleFromSkillId(item.id), summary: item.summary,
+        triggers: Array.isArray(item.triggers) ? item.triggers : [], platform: item.platform ?? "", state: item.state };
+    }).sort((left, right) => compareOrdinal(left.id, right.id));
+    status = parsed.root.status ?? (items.length ? "已登记，按任务需要加载" : "尚未登记 Skill");
   } catch (error) {
     isolateOrFail(mode, requiredSourceRefs, issues, ref, "skill-index-invalid", error.message);
-    return { count: 0, status: "部分 Skill 登记暂时隔离，其他功能仍可使用", path: "" };
+    status = "部分 Skill 登记暂时隔离，其他功能仍可使用";
   }
+  const exports = projectSkillExports(repository, instanceId, { mode, requiredSourceRefs, issues });
+  return { count: items.length, status, path: "", items, exports };
 }
 
 function withoutGeneratedAt(snapshot) {

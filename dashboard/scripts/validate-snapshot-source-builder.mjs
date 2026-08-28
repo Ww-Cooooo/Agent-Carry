@@ -118,6 +118,40 @@ record_count = 0
 instance_id = "ac-snapshot-fixture"
 generated_at = "2026-08-24T00:00:00+08:00"
 status = "current"
+
+[[skills]]
+id = "skill.grade-review"
+title = "成绩复核 Skill"
+summary = "按需复核成绩汇总结果。"
+triggers = ["帮我复核成绩"]
+platform = "fixture"
+entry = "skills/grade-review/SKILL.md"
+source = "https://example.invalid/grade-review"
+state = "available"
+confirmed_at = "2026-08-24T00:00:00+08:00"
+`);
+  write("instance/skills/exports/index.toml", `schema_version = 1
+index_id = "skill-exports"
+instance_id = "ac-snapshot-fixture"
+generated_at = "2026-08-24T00:00:00+08:00"
+export_count = 1
+
+[[exports]]
+id = "grade-summary-share"
+title = "成绩汇总方法"
+summary = "把通用成绩汇总步骤整理为可复用方法。"
+source_asset_id = "sop.grade-summary"
+source_kind = "sop"
+state = "ready"
+entry = "instance/skills/exports/grade-summary-share/SKILL.md"
+generated_at = "2026-08-24T00:00:00+08:00"
+`);
+  write("instance/skills/exports/grade-summary-share/SKILL.md", `---
+name: grade-summary-share
+description: Summarize and review tabular results when the user asks.
+---
+# Workflow
+Confirm the input columns, produce a summary, and review the result.
 `);
   write("instance/evolution/index.toml", `schema_version = 1
 index_id = "evolution-candidates"
@@ -243,11 +277,45 @@ confirmation = "none"
   const expectedIdentity = `ac-${createHash("sha256").update("ac-snapshot-fixture", "utf8").digest("hex").slice(0, 12)}`;
   assert(first.updated && first.identityRef === expectedIdentity && snapshot.meta.identity_ref === expectedIdentity, "instance identity was not derived from instance_id");
   assert(snapshot.assets.sops === 1 && snapshot.sops[0]?.id === "sop.grade-summary" && snapshot.sops[0]?.maturity === "unvalidated", "formal source was not projected from the trusted map/body pair");
+  assert(snapshot.assets.skills === 1 && snapshot.skills.items?.[0]?.id === "skill.grade-review"
+    && snapshot.skills.items[0].title === "成绩复核 Skill" && snapshot.skills.items[0].entry === undefined
+    && snapshot.skills.items[0].source === undefined && snapshot.skills.exports?.[0]?.id === "grade-summary-share"
+    && snapshot.skills.exports[0].source_asset_id === undefined && snapshot.skills.exports[0].entry === undefined,
+  "Skill workshop projection did not expose exactly the low-sensitivity installed/export metadata");
   assert(!first.source.includes("private://") && !first.source.includes("private.collection.grade-workflow"), "a validated private locator leaked into the snapshot projection");
   assert(!first.source.includes("audio-transcriber") && !first.source.includes(".assistant-local"), "component-local or private locator metadata leaked into the snapshot projection");
   assert(snapshot.meta.source_digest === computeSnapshotSourceDigest(root).digest, "source digest did not match an independent deterministic rebuild");
   const repeated = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:00:00+08:00") });
   assert(!repeated.updated && repeated.source === first.source, "unchanged formal truth refreshed generated_at or bytes");
+
+  const skillRequirementsPath = resolve(root, "instance/skills/requirements.toml");
+  const skillRequirementsBytes = readFileSync(skillRequirementsPath);
+  write("instance/skills/requirements.toml", `${skillRequirementsBytes.toString("utf8")}
+[[skills]]
+id = "skill.grade-review"
+title = "重复的成绩复核 Skill"
+summary = "用于验证重复 ID 只隔离 Skill 区域。"
+triggers = ["重复测试"]
+platform = "fixture"
+state = "review"
+`);
+  const duplicateSkillBytes = readFileSync(skillRequirementsPath);
+  let strictDuplicateSkillBlocked = false;
+  try { buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:05:00+08:00") }); }
+  catch { strictDuplicateSkillBlocked = true; }
+  assert(strictDuplicateSkillBlocked, "strict snapshot mode accepted duplicate installed Skill IDs");
+  const operationalSkills = buildSnapshotCandidate(root, { existingSource: first.source,
+    now: new Date("2026-08-24T05:05:00+08:00"), mode: "operational" });
+  validateSnapshotSemantics(operationalSkills.snapshot, "operational duplicate-Skill fixture");
+  assert(operationalSkills.snapshot.assets.sops === 1 && operationalSkills.snapshot.sops[0]?.id === "sop.grade-summary"
+    && operationalSkills.snapshot.assets.skills === 0 && operationalSkills.snapshot.skills.count === 0
+    && operationalSkills.snapshot.skills.items?.length === 0
+    && operationalSkills.diagnostics.some((item) => item.area === "skills" && item.code === "skill-index-invalid")
+    && operationalSkills.snapshot.health?.state === "degraded",
+  "operational snapshot did not isolate duplicate installed Skill IDs while preserving unrelated assets");
+  assert(readFileSync(skillRequirementsPath).equals(duplicateSkillBytes),
+    "operational duplicate-Skill isolation changed the source bytes");
+  writeFileSync(skillRequirementsPath, skillRequirementsBytes);
 
   const brokenTodoRef = "instance/todo/broken-unrelated.md";
   const brokenTodoSource = `+++
@@ -359,7 +427,7 @@ unexpected_field = "must-survive-byte-for-byte"
   assert(locationBlocked, "an absolute local location hidden in the instance source set was accepted");
   rmSync(resolve(root, "instance/profile/local-note.md"), { force: true });
 
-  console.log("Snapshot source builder passed strict source truth, operational unrelated-item isolation, current-target denial, bounded health, idempotence, forged-digest rejection, and whole-instance safety checks.");
+  console.log("Snapshot source builder passed strict source truth, duplicate-Skill area isolation, operational unrelated-item isolation, current-target denial, bounded health, idempotence, forged-digest rejection, and whole-instance safety checks.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

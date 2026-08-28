@@ -15,7 +15,7 @@ function requireFragments(text, label, fragments) {
   }
 }
 
-const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, dashboard, shared, jsxRuntime, jsxDevRuntime, views, viteConfig, tsconfig, localization, territoryPolicy] = await Promise.all([
+const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, dashboard, shared, jsxRuntime, jsxDevRuntime, views, viteConfig, tsconfig, localization, territoryPolicy, workshop] = await Promise.all([
   read('README.md'),
   read('README.en.md'),
   read('INSTALL.en.md'),
@@ -33,14 +33,17 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
   read('dashboard/tsconfig.app.json'),
   read('docs/localization.md'),
   read('core/protocols/TERRITORY_TERMINOLOGY.md'),
+  read('dashboard/src/components/dashboard/SkillWorkshop.tsx'),
 ])
 
-requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.3`', '点击展开：1.4.3 主要改了什么', '固定 `v1.4.3` 标签', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
+requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.4`', '点击展开：1.4.4 主要改了什么', 'Agent 推荐整理的 Skill', '本地隔离草稿', '固定 `v1.4.4` 标签', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `1.4.3`',
-  'What changed in 1.4.3',
-  'fixed `v1.4.3` tag',
+  'Current version: `1.4.4`',
+  'What changed in 1.4.4',
+  'Skills the Agent recommends creating',
+  'isolated local draft',
+  'fixed `v1.4.4` tag',
   '🧠 Used this time',
   '🌱 Learned this step',
   '👉 Next step',
@@ -103,6 +106,49 @@ requireFragments(views, 'Source-text projections', [
   '<SourceText as="h2">{pending[0].title}</SourceText>',
   '<SourceText className="content-card__title">{item.title}</SourceText>',
   '<SourceText className="growth-row__title">{item.title}</SourceText>',
+])
+requireFragments(workshop, 'Skill workshop localization and source boundary', [
+  'Skill 工坊',
+  'role="tablist"',
+  'Agent 推荐整理的 Skill',
+  '已生成的 Skill（未分享）',
+  '已安装 Skill',
+  '接入 Skill',
+  '<SourceText as="h3">{asset.item.title}</SourceText>',
+  '<SourceText as="strong">{item.title}</SourceText>',
+  '<SourceText as="p">{item.summary}</SourceText>',
+  'title={label}',
+  '查看详情',
+  '这个 Skill 是做什么的',
+  'buildSkillExportAction',
+  '点击下方按钮只会复制一段请求',
+  'skill.install-shared',
+  '点击下方“复制检查请求”按钮，再把复制的内容发给 Agent',
+  '复制检查请求',
+])
+requireFragments(catalog, 'Skill workshop source guidance localization', [
+  '"Skill 工坊内容分类": "Skill Workshop sections"',
+  '"Agent 推荐整理的 Skill": "Skills the Agent recommends creating"',
+  '"已生成的 Skill（未分享）": "Generated Skills (not shared)"',
+  '"接入 Skill": "Add a Skill"',
+  '"点击下方“复制检查请求”按钮，再把复制的内容发给 Agent"',
+  '"Agent 自动处理本地副本"',
+  '"Agent 自动完成生成前检查"',
+  '"尚未检查完成": "Review not complete"',
+  '"查看详情": "View details"',
+  '"这个 Skill 是做什么的": "What this Skill does"',
+  '"接下来可以做什么": "What you can do next"',
+  '"让 Agent 继续检查": "Ask the Agent to continue the review"',
+  '"让 Agent 准备分享": "Ask the Agent to prepare sharing"',
+  '"让 Agent 说明并处理问题": "Ask the Agent to explain and address the issue"',
+  '"点击下方按钮只会复制一段请求。把它发给 Agent 后才会继续；网页不会直接检查、修改或分享这份 Skill。"',
+  '"你可以给 Agent 下面任意一种来源": "Give the Agent any one of these sources"',
+  '"ZIP 文件": "ZIP file"',
+  '"Skill 链接": "Skill link"',
+  '"告诉 Agent 你现在拿到的文件、页面或描述，它会先帮你判断。"',
+  '"复制检查请求": "Copy review request"',
+  '"需要判断是否有流程": "Check whether it contains a workflow"',
+  '"这份本地 Skill 已通过当前检查，可以进入分享预览。它不会自动发送或公开；你仍需指定接收方并授权。"',
 ])
 requireFragments(localization, 'Localization policy', [
   'Simplified Chinese is the default',
