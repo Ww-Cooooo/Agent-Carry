@@ -10,9 +10,9 @@
   "includedInReleaseArchive": false,
   "source": {
     "dashboardIndexSha256": "39219f620075ba9a02b9746e867ecd2d0424aab7c5f3a0ffc87eabb4a5a4bc6f",
-    "formalEmptySnapshotSha256": "6b2330eba761193d4c7dff338d3a6b91962f4cbd9e49c167a7c39e664697f136",
-    "syntheticDemoSnapshotSha256": "ebd5c9f757f59d0c7eec43cd8c3dfd09849bbb28775eaf353932a8da438f616c",
-    "englishSyntheticDemoSnapshotSha256": "95521d1ec0ddc88ef9dc885052e68e182a8147e929a495fdb6968a8f6cacc384",
+    "formalEmptySnapshotSha256": "f4fb9c4f683575771fa91bdbff473a531dba1894525361f56900375c48cee635",
+    "syntheticDemoSnapshotSha256": "0b3e894f054443000b21c8edf262fcbf7e452cde6b77581f2b861395f26ef337",
+    "englishSyntheticDemoSnapshotSha256": "911bd7ad2d2254742e8e9d548eecf6dddf450cc73e1373349c068982a3cb3b15",
     "englishDashboardIndexSha256": "84cce7b796b487ad4cb0bf37a8eac0caf1cb634021261d0c3c8439a96ac286a3"
   }
 }
