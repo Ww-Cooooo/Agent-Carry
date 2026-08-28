@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.2`.** You can install and use Agent Carry in English. Its internal protocols and schemas keep one maintained source in Simplified Chinese; the host Agent reads those rules completely and communicates with you in English. The English README, installer, first-use flow, and dashboard are reviewed parts of the same product, not a separate translated fork.
+> **Current version: `1.4.3`.** This patch fixes upgrades that installed new files but incorrectly reported completion while the already-running host session still used its old instruction chain. The English README, installer, first-use flow, and dashboard remain reviewed parts of the same product, not a separate translated fork.
 
 ## Where Agent Carry fits
 
@@ -121,7 +121,7 @@ You do not need Git, a terminal, Node.js, npm, or a project build. You need a ho
 
 > **Current platform-validation boundary:** the link route, ZIP route, visible system entry, and offline opening have been tested end to end on Windows. macOS and Linux are supported protocol targets, but have not received the same level of real-environment validation. On those systems, the host must verify the visible entry and actual open result in the current environment, and report **limited completion** instead of claiming full success when it cannot.
 
-> **These options are for a fresh installation.** If you already have an Agent Carry instance, do not overwrite it with a ZIP. Tell the current Agent: “Check whether my Agent Carry has an official update.” It must identify the instance, explain conflicts and preservation, rehearse the upgrade in an isolated copy, and wait for approval.
+> **These options are for a fresh installation.** If you already have an Agent Carry instance, do not overwrite it with a ZIP. Tell the current Agent: “Check whether my Agent Carry has an official update.” It must identify the instance, explain conflicts and preservation, rehearse the upgrade in an isolated copy, and wait for approval. Installing the new files does not by itself prove that an already-running host session adopted the new behavior. If the host cannot verify a real instruction-chain reload, start one new task from the same instance so it can run normal startup and one representative behavior check. The valid installed instance remains usable while activation is pending.
 
 ### Option 1: send the installation page to your Agent
 
@@ -196,6 +196,18 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.3</strong></summary>
+
+- An upgrade no longer treats “new files are installed” as proof that the current Agent has fully adopted them. Source verification, file installation, instance switching, session activation, and real behavior acceptance are reported separately.
+- If product files change after the current run starts, manually rereading the new entry files, seeing a new version number, hash, capsule, or snapshot cannot impersonate a rebuilt host instruction chain. The normal lightweight path is a new task in the same instance; same-run closure is allowed only when the host can prove a real rebootstrap.
+- A session waiting for activation or one failed representative behavior does not roll back a valid installed instance or stop the whole Agent. Only that completion claim stays pending, while conversation, read-only checks, and unrelated capabilities remain usable. Invalid switched files or startup truth still restore the file transaction.
+- Errors, automatic repairs, retries, local isolation, and rollback are reported in plain language with their impact, data state, remaining usable scope, and recommended next step.
+- The final `👉 Next step` returns to the next unfinished action in the user's overall goal. Completing one substep or saying that no extra confirmation is needed cannot make unfinished work look complete.
+- This patch changes no public Schema, component interface, instance asset, or evolution agreement, and adds no background session database or enterprise regression matrix. Version 1.4.3 can replace an instance only when the fixed `v1.4.3` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.2</strong></summary>

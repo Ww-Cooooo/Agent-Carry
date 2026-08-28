@@ -20,6 +20,15 @@ minimum_level = 1
 confirmation = "none-unless-full-handshake-reaches-a-gate"
 
 [[routes]]
+id = "upgrade-session-activation"
+summary = "升级文件切换后，区分磁盘安装、当前宿主会话采用和真实行为验收；旧会话默认交给新任务轻量续接，已验证文件不因会话待激活而回滚。"
+triggers = ["升级后会话激活", "继续完成升级验收", "文件已升级但行为没生效", "新会话验证新版", "升级后重新接入"]
+target = "core/protocols/UPGRADE_SESSION_ACTIVATION.md"
+state = "on-demand-after-version-switch-or-explicit-resume"
+minimum_level = 1
+confirmation = "none-for-read-only-activation-check-existing-upgrade-authorization-does-not-expand"
+
+[[routes]]
 id = "host-integration"
 summary = "用平台无关提示词接入、恢复或更换宿主，开放式发现能力，渐进迁移宿主协作记忆，并在使用时复核宿主执行经验。"
 triggers = ["接入Agent Carry", "连接宿主", "换Agent", "恢复接入", "能力发现", "宿主记忆迁移", "宿主执行经验失效", "任务回传"]

@@ -35,11 +35,12 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
   read('core/protocols/TERRITORY_TERMINOLOGY.md'),
 ])
 
-requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.2`', '点击展开：1.4.2 主要改了什么', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
+requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.3`', '点击展开：1.4.3 主要改了什么', '固定 `v1.4.3` 标签', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `1.4.2`',
-  'What changed in 1.4.2',
+  'Current version: `1.4.3`',
+  'What changed in 1.4.3',
+  'fixed `v1.4.3` tag',
   '🧠 Used this time',
   '🌱 Learned this step',
   '👉 Next step',

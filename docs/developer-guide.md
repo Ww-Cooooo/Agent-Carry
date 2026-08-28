@@ -27,6 +27,7 @@ Agent Carry 的默认体验面向普通用户；开发者可以在不破坏升�
 - 实例软件、Skill、模型、独立功能或正式学习变化时，按需读取 `core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md`：原生资产与专业扩展复用现有所有者，只有独立组件进入小注册表；不得直接修改母版核心、把本机路径放入便携层，或为兼容登记增加第二次用户确认。旧实例只在隔离升级候选中一次性纳管。
 - 修改跨会话运行行为时，以 `core/protocols/CROSS_SESSION_SIGNALS.md` 为执行真源，以 `core/schemas/cross-session-signal.schema.md` 为结构真源；设计说明不能代替二者。
 - 修改跨宿主接入、能力发现、宿主协作记忆、任务胶囊或回传来源时，以 `HOST_SESSION_RESUME.md` 和 `HOST_INTEGRATION.md` 分别作为轻量恢复与完整接入的执行真源，以 `core/schemas/host-integration.schema.md` 为结构真源，并同步检查安全边界和 `instance/hosts/` 的按需加载约束。
+- 修改升级后的运行行为、完成口径或宿主重载时，以 `core/protocols/UPGRADE_SESSION_ACTIVATION.md` 为会话真源。固定检查只覆盖旧会话待激活、新会话闭合、宿主真实重载、单项行为失败局部隔离和无效启动回滚；不能用静态字符串、手工重读或庞大宿主矩阵代替真实行为验收。
 - 修改记忆学习、候选匹配、风险分级、候选复核、正式采用、成熟度、证据压缩或宿主执行经验时，以 `core/protocols/ASSET_LIFECYCLE.md` 为执行真源、`core/schemas/asset-frontmatter.schema.md` 为结构真源，并同步检查 [资产学习、能力进化与 SOP 成熟](asset-evolution.md)、验证证据索引、触发注册表、宿主回传和看板快照兼容投影。风险分级只排序候选，不能单独授权正式资产。
 - 修改来源约束交付、正式多文件验收、学习证据资格或任务内修正口径时，以 `core/protocols/RESULT_VALIDATION.md` 为执行真源，并同步检查 [任务结果验证说明](result-validation.md)、资产生命周期、任务交接 SOP、组件变更协议、触发注册表和升级清单。不要按宿主复制验证规则。
 - 讨论确认但尚未实现的内容必须标为“已确认设计”或“待落地”，不能写成当前能力。

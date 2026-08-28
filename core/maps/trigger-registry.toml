@@ -99,6 +99,18 @@ cleanup = "discard-session-receipt-after-session-and-write-nothing-when-observat
 failure = "mark-uncertain-and-route-to-full-host-integration"
 
 [[rules]]
+id = "upgrade-session-activation"
+class_id = "validity-on-use"
+checkpoint = "after-agent-carry-product-files-switch-in-the-current-run-or-a-new-run-explicitly-resumes-post-upgrade-acceptance"
+formal_owner = "core/protocols/UPGRADE_SESSION_ACTIVATION.md"
+dynamic_state_owner = "current-upgrade-task-and-current-session-receipt-only"
+route = "core/maps/local-operations.toml"
+startup_policy = "never-scan-for-upgrades-at-ordinary-startup-enter-only-from-the-current-version-switch-or-an-explicit-post-upgrade-handoff"
+gate = "files-installed-and-instance-switched-do-not-equal-session-activated-a-fresh-target-version-session-or-verified-host-rebootstrap-and-one-real-target-behavior-acceptance-are-required-before-full-completion"
+cleanup = "discard-session-local-activation-facts-after-acceptance-and-write-no-new-instance-asset-or-background-state"
+failure = "keep-valid-installed-files-and-user-data-limit-the-failure-to-session-activation-or-the-target-behavior-and-continue-unaffected-capabilities-rollback-only-when-the-installed-startup-or-file-transaction-is-invalid"
+
+[[rules]]
 id = "host-integration-handshake"
 class_id = "explicit-event"
 checkpoint = "first-connection-user-explicitly-connects-changes-or-restores-host-profile-match-is-uncertain-or-relevant-capability-changed"
@@ -454,9 +466,9 @@ formal_owner = "core/protocols/USER_GUIDANCE.md"
 dynamic_state_owner = "current-task-only-unless-the-user-explicitly-requests-a-later-reminder-or-approves-a-formal-write"
 route = "core/maps/domain-lifecycle.toml"
 startup_policy = "assistant-toml-compact-interaction-baseline-only-never-load-the-full-protocol-for-every-ordinary-message"
-gate = "reuse-known-facts-explain-context-provide-two-to-four-options-with-consequences-and-recommendation-allow-unsure-before-requesting-the-user-decision-and-place-receipts-before-one-final-localized-arrow-next-step-with-an-evidence-based-recommendation-or-clear-no-action"
+gate = "reuse-known-facts-explain-context-provide-two-to-four-options-with-consequences-and-recommendation-allow-unsure-before-requesting-the-user-decision-and-place-receipts-before-one-final-localized-arrow-next-step-that-returns-to-the-current-overall-goal-and-names-the-next-unfinished-action-or-clear-no-action-only-when-no-relevant-work-remains"
 cleanup = "discard-unpersisted-choice-scaffolding-at-task-end-and-project-only-an-explicitly-deferred-action"
-failure = "do-not-replace-the-missing-guidance-with-a-vague-open-question-state-what-is-known-recommend-the-safest-next-action-or-clear-no-action-and-offer-an-unsure-path-only-when-a-real-choice-remains"
+failure = "do-not-let-a-closed-substep-or-no-action-note-hide-unfinished-parent-work-state-what-is-known-recommend-the-safest-real-next-action-and-offer-an-unsure-path-only-when-a-real-choice-remains"
 
 [[rules]]
 id = "preference-reuse-import"

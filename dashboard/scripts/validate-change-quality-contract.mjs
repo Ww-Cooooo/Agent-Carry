@@ -88,7 +88,7 @@ requireFragments("BOOTSTRAP.md", [
 requireFragments("assistant.toml", [
   "[interaction]",
   'baseline = "assume-the-user-may-be-new-to-agents-or-programming"',
-  'response_shape = "outcome-and-plain-language-context-first-receipts-before-final-localized-arrow-next-step-with-one-evidence-based-recommendation-or-clear-no-action"',
+  'response_shape = "outcome-and-plain-language-context-first-receipts-before-final-localized-arrow-next-step-that-returns-to-the-current-overall-goal-and-names-one-evidence-based-next-unfinished-action-or-clear-no-action-only-when-no-relevant-work-remains"',
   'durable_file_output = "after-creating-moving-or-delivering-user-visible-files-reuse-known-locations-and-resolve-long-term-carry-intent"',
   'guidance_modes = "change-detail-and-pace-not-decision-completeness"',
   'protocol = "core/protocols/USER_GUIDANCE.md"',
@@ -125,6 +125,10 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
   "| ➡️ 以后会 |",
   "回复最后必须回到用户下一步",
   "> **👉 接下来**",
+  "先回到用户当前的总体目标",
+  "小步骤完成",
+  "不能把子步骤的完成状态当成总体完成状态",
+  "某一项不用再确认",
   "只突出一项首选行动",
   "不能只问“还需要什么帮助”",
   "现在不用做额外操作",
@@ -369,7 +373,8 @@ requireFragments("core/maps/trigger-registry.toml", [
   "before-every-task-completion-pause-or-limited-final-reply",
   'formal_owner = "core/protocols/USER_GUIDANCE.md"',
   "assistant-toml-compact-interaction-baseline-only-never-load-the-full-protocol-for-every-ordinary-message",
-  "place-receipts-before-one-final-localized-arrow-next-step-with-an-evidence-based-recommendation-or-clear-no-action",
+  "place-receipts-before-one-final-localized-arrow-next-step-that-returns-to-the-current-overall-goal-and-names-the-next-unfinished-action-or-clear-no-action-only-when-no-relevant-work-remains",
+  "do-not-let-a-closed-substep-or-no-action-note-hide-unfinished-parent-work",
   'id = "natural-language-asset-recall"',
   "next-material-action-verified-state-or-error-change-due-signal-related-asset-or-task-result",
   "current-user-negation-and-correction-always-win",
@@ -688,6 +693,25 @@ requireFragments("core/upgrade/release-manifest-1.4.2.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.3.toml", [
+  'release = "1.4.3"',
+  'from_versions = ["1.4.2"]',
+  'id = "upgrade-session-activation-1.4.3"',
+  '"source-files-switch-session-and-behavior-states-are-distinct"',
+  '"old-running-session-cannot-report-complete-after-only-file-change"',
+  '"one-behavior-failure-keeps-valid-instance-and-unrelated-capabilities-usable"',
+  '"invalid-switched-startup-requires-only-the-existing-file-transaction-rollback"',
+  '"final-user-guidance-returns-to-the-next-unfinished-overall-goal-action"',
+  '"uninstantiated-1.4.2-template-upgrades-to-byte-exact-blank-1.4.3"',
+  '"instantiated-1.4.2-identity-assets-validation-evolution-components-extensions-workspace-local-and-private-state-are-byte-preserved"',
+  'status = "published-release"',
+  'release_ref = "v1.4.3"',
+  'publication_authorized = true',
+  'repository_operation_authorized = true',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -728,8 +752,9 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.2`",
-  "点击展开：1.4.2 主要改了什么",
+  "当前版本：`1.4.3`",
+  "点击展开：1.4.3 主要改了什么",
+  "固定 `v1.4.3` 标签",
   "🧠 这次用上了",
   "🌱 这一步我学到了",
   "💡 新发现",

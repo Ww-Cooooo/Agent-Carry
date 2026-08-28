@@ -21,7 +21,7 @@ confirmation = "before-map-flag-or-public-content-change"
 
 [[routes]]
 id = "template-upgrade"
-summary = "把模板更新安全应用到实例，保护实例资产并提供回退。"
+summary = "把模板更新安全应用到实例，保护实例资产并提供回退；文件切换后还要由新会话或宿主可验证重载完成真实行为验收，不能把磁盘版本当成当前会话已采用。"
 triggers = ["升级模板", "导入升级包", "检查新版本", "检查更新", "官方新版本"]
 target = "core/guides/upgrade-guide.md"
 state = "on-demand"

@@ -1,0 +1,83 @@
+schema_version = 2
+release = "1.4.3"
+core = "1.4.3"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.3"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+extension_manifest_schema = "1.0"
+instance_component_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"
+from_versions = ["1.4.2"]
+notes = "Published 1.4.3 session-activation patch. It separates verified source, installed files, switched instance, activated host session and accepted target behavior so a running session cannot report a complete upgrade merely because new files are on disk. A valid switched instance remains usable while activation or one behavior check is pending or failed; only invalid switched files or startup truth require the existing file-transaction rollback. Final user guidance also returns to the next unfinished action in the user's overall goal. The patch adds no background session database, public Schema, component interface, extra confirmation or enterprise regression matrix. This fixed release can authorize an instance replacement only when the official v1.4.3 tag, Release object, manifest and extracted tree agree and the user authorizes that exact upgrade; it never authorizes future repository or publication actions."
+asset_changes = "Asset Schema remains 1.3. No memory, capability, SOP, experience, candidate, validation record, component, Skill, workspace, local binding or private reference is created, promoted, reset or removed by this patch."
+dashboard_changes = "Dashboard Snapshot Schema remains 1.1. Blank and instantiated projections retain their existing identity and counts; only the product version and source digest advance when the strict capsule and both snapshots are rebuilt from merged formal truth."
+extension_changes = "Extension API, Extension Manifest Schema and Instance Component Schema remain unchanged. Existing components, extensions, workspaces and device-local bindings are preserved byte-for-byte; this patch installs or executes none of them."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md", "instance/components/README.md"]
+migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/components/registry.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**", "instance/evolution/index.toml", "instance/validations/index.toml"]
+preserve = ["workspace/**", "instance/components/**", "instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", "instance/validations/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "Only the exact README files in replace_instance_guides are target-template guides. Sibling user files, component bodies, validation records and migrated profiles remain instance-owned."
+validation_overlap_note = "instance/validations/index.toml is migrated before the broad instance/validations/** preserve rule. A template stays the target template empty index; an instance keeps its identity and every real validation record, and no record may be invented by this patch."
+evolution_overlap_note = "instance/evolution/index.toml is migrated before the broad instance/evolution/** preserve rule. A template stays blank; an instance keeps candidate sources and its existing generated_at unless the indexed business projection actually changes."
+component_overlap_note = "instance/components/registry.toml is migrated before the broad instance/components/** preserve rule. A template keeps the inert template registry; an instance keeps its identity, adoption state, revision, entries and component bodies."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+allow_overrides_deny_for_exact_paths = [".assistant-local/.gitkeep", ".assistant-local/dashboard/.gitkeep", ".assistant-local/indexes/.gitkeep", ".assistant-local/skills/.gitkeep", ".assistant-local/task-handoffs/.gitkeep", ".assistant-local/upgrade-inbox/.gitkeep", ".assistant-private/.gitkeep", ".assistant-private/assets/.gitkeep", ".assistant-private/inbox/.gitkeep"]
+exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"
+broad_globs_are_copy_commands = false
+
+[instance_component_changes]
+schema = "1.0"
+registry = "instance/components/registry.toml"
+target_interfaces = ["agent-carry.instance-component@1"]
+migration_ids = ["instance-component-adoption-1.4", "instance-component-interface-1.0"]
+native_asset_policy = "reuse-existing-formal-owners-never-create-duplicate-component-manifests"
+professional_extension_policy = "reuse-extension-toml-never-duplicate-in-generic-registry"
+unregistered_policy = "preserve-and-stop-with-preview"
+optional_incompatible_action = "disable-and-preserve"
+required_incompatible_action = "stop-and-preserve"
+device_local_policy = "preserve-in-place-on-same-device-never-copy-to-public-or-complete-migration-reverify-before-use"
+ordinary_startup = "never-read-registry-enumerate-components-or-load-component-bodies"
+authorization = "reuse-the-current-durable-action-authorization-never-add-a-compatibility-only-user-confirmation"
+
+[[migration_rules]]
+id = "upgrade-session-activation-1.4.3"
+from_versions = ["1.4.2"]
+when_all = ["source reports product 1.4.2", "the official fixed v1.4.3 tag Release object manifest and extracted tree agree and the user authorized that exact upgrade", "upgrade runs in a new isolated candidate against a verified 1.4.2 template or instance"]
+source = "the complete 1.4.2 tree plus its strictly parsed manifest identity-bound indexes component registry startup capsule snapshots preserved instance-owned content and the running session baseline recorded before a future switch"
+destination = "an isolated 1.4.3 template or instance candidate with unchanged user-owned content a strict rebuilt capsule byte-identical snapshots and an explicit pending or accepted host-session activation state"
+operation_order = ["freeze the complete source-tree identity rollback point and current running-session product baseline before any candidate write", "strictly distinguish an uninstantiated template from an instantiated assistant before selecting the branch", "for a template use the fixed 1.4.3 blank template identity files together and keep instance_id=template state=template zero records zero candidates zero components and no approved profile", "for an instance preserve instance_id created_from direction profile learning policy maps signals governance hosts Skills assets validation records candidate sources extensions components local bindings private references workspace and unknown fields", "update only the instantiated manifest product version from 1.4.2 to 1.4.3", "do not rerun first instantiation refresh an unchanged candidate timestamp or invent an asset validation candidate todo component approval or session fact", "rebuild the strict startup capsule from exact merged manifest bytes", "rebuild dashboard/public/snapshot.js and dashboard/dist/snapshot.js from merged formal truth and require byte identity", "compare every preserved path byte-for-byte and require a zero-change second file pass before any future switch", "after a future switch classify source verification file installation instance switching session activation and target behavior acceptance separately", "if the running-session baseline predates 1.4.3 keep the valid instance installed and require a fresh task in the same instance unless the host proves a real instruction-chain rebootstrap", "accept completion only after one representative 1.4.3 behavior is observed in the activated session"]
+forbidden = ["upgrading from an unfixed branch archive or a tag without the matching official Release object", "re-running first instantiation against an existing instance", "changing instance identity created_from direction profile learning policy or user-owned fields", "inventing or promoting an asset validation candidate task result component approval session baseline activation fact or behavior result", "resetting an instance index registry signal host governance card extension workspace local binding or private reference to template state", "treating a version string hash capsule snapshot static text or manual file reread as proof of host-session activation", "rolling back a valid installed instance only because the running session is stale or one representative behavior failed", "weakening startup capsule snapshot candidate component result-validation privacy or secret checks", "modifying the source tree or a real installed instance during rehearsal"]
+unknown_or_ambiguous = "preserve the complete 1.4.2 source candidate and failure scene; report the exact file identity ownership session or behavior fact that is missing; isolate only the unsafe switch or completion claim and keep unrelated capabilities usable"
+idempotence = "same-source-second-file-run-makes-no-file-record-timestamp-or-snapshot-byte-change; a completed session acceptance is not inferred or rewritten without new host evidence"
+
+[verification]
+checks = ["manifest-parses", "version-1.4.3-and-existing-schema-versions-aligned", "only-1.4.2-is-a-direct-source-and-older-versions-chain-through-published-manifests", "published-1.4.2-manifest-remains-byte-immutable", "published-1.4.3-authority-requires-fixed-tag-release-object-matching-tree-and-user-authorization", "source-files-switch-session-and-behavior-states-are-distinct", "old-running-session-cannot-report-complete-after-only-file-change", "fresh-target-version-session-can-close-one-real-behavior-acceptance", "verified-host-rebootstrap-can-close-same-session-activation", "one-behavior-failure-keeps-valid-instance-and-unrelated-capabilities-usable", "invalid-switched-startup-requires-only-the-existing-file-transaction-rollback", "missing-session-facts-degrade-without-crash-or-guessed-success", "final-user-guidance-returns-to-the-next-unfinished-overall-goal-action", "blank-1.4.3-template-startup-capsule-valid", "one-canonical-blank-template-completes-general-and-video-editing-first-instantiation", "first-instantiation-business-and-learning-assets-remain-zero-while-governance-is-three", "uninstantiated-1.4.2-template-upgrades-to-byte-exact-blank-1.4.3", "instantiated-1.4.2-identity-assets-validation-evolution-components-extensions-workspace-local-and-private-state-are-byte-preserved", "startup-capsule-is-rebuilt-after-version-migration-and-its-source-digest-closes", "merged-instance-truth-rebuilds-public-and-dist-snapshots-byte-identically", "patch-upgrade-faults-restore-complete-source-and-second-file-run-makes-no-change", "public-distribution-excludes-private-maintainer-assets-real-components-bindings-user-data-and-local-acceptance-evidence", "complete-tree-platform-identity-and-preserved-path-bytes-close-before-switch"]
+risk_policy = "reuse the blank-startup and two-scenario first-instantiation lifelines plus the six change-targeted session-activation cases one final-guidance contract and one lightweight 1.4.2 preservation rehearsal; do not add a host matrix or full-product regression"
+
+[release_boundary]
+status = "published-release"
+release_ref = "v1.4.3"
+publication_authorized = true
+repository_operation_authorized = true
+instance_replacement_authorized = true
+future_publication_or_repository_operation_authorized = false
+authority_requires = ["official-fixed-tag-v1.4.3", "official-release-object-v1.4.3", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]
+authority_scope = "this-fixed-release-may-be-used-for-instance-replacement; never-authorizes-future-repository-release-or-publication-actions"
+maintainer_private_paths = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**", "workspace/**"]
