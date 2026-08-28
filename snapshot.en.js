@@ -5,10 +5,10 @@ window.AGENT_CARRY_SNAPSHOT = {
   "meta": {
     "schema_version": "1.1",
     "generated_at": "2026-08-23T17:25:16.271Z",
-    "product_version": "1.4.2",
+    "product_version": "1.4.3",
     "state": "instance",
     "freshness_seconds": 86400,
-    "source_digest": "github-pages-synthetic-demo-en-v1",
+    "source_digest": "github-pages-synthetic-demo-en-v2",
     "identity_ref": "public-demo"
   },
   "overview": {
