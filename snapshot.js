@@ -5,7 +5,7 @@ window.AGENT_CARRY_SNAPSHOT = {
   "meta": {
     "schema_version": "1.1",
     "generated_at": "2026-08-23T17:25:16.267Z",
-    "product_version": "1.4.1",
+    "product_version": "1.4.2",
     "state": "instance",
     "freshness_seconds": 86400,
     "source_digest": "github-pages-synthetic-demo-v4",
