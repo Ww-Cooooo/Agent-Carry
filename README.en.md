@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.6`.** This release closes the Skill Workshop sharing and intake workflow. Before generating a Skill, the Agent asks whether you want a ZIP, a standalone folder, link delivery, or a local-only copy. It then works only on an isolated copy of the selected method, removes instance-specific and private details, and checks the result. A sharing choice creates the corresponding local file; local-only keeps the editable Skill without inventing a delivery carrier. To receive somebody else's Skill, give the Agent a folder, ZIP, or link; it inspects the package in isolation and keeps only one necessary installation confirmation. A problem in one Skill does not stop the conversation, other Skills, or Agent Carry itself.
+> **Current version: `1.4.7`.** This release fixes a complex-task closeout gap: completed work could still lose the explanation of what was actually used, what was learned, where user-visible files went, or what the real next action is. Before a complex final reply is sent, one local check reviews bounded current-task facts and the draft. It repairs only missing reply sections, never accesses the network, creates no background task store, and never reruns completed work. If the checker, its metadata, or local Node support is unavailable, the Agent reports that local degradation and applies the same four-fact check directly. Completed results, files, conversation, and unrelated capabilities remain available. Simple tasks gain no empty receipts or extra ceremony.
 
 ## Where Agent Carry fits
 
@@ -214,6 +214,20 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.7</strong></summary>
+
+- Before a long or complex task completes, pauses, or returns because of a limit, the Agent checks four practical closeout facts: whether actually used long-term content is still reported, whether meaningful learning is still reported, whether user-visible file location and disposition are clear, and whether the final action returns to the next unfinished part of the overall goal.
+- The check is one-shot and local. It receives only bounded, confirmed current-task facts and the final draft. It reads no full chat history, accesses no network, executes no business task, writes no file, and creates no persistent task database.
+- A missing section repairs only the current reply. Malformed or oversized input, an unavailable checker, or missing local Node support degrades transparently to the same four-fact manual check. Completed work, files, conversation, and unrelated capabilities remain deliverable.
+- **🧠 Used this time** reports only a memory, capability, SOP, experience, Skill, or preference whose body was actually loaded and changed the work. A **🌱** receipt appears only for real reusable learning. A start-of-task plan, candidate list, or folded progress note cannot impersonate a receipt that remains visible at handoff.
+- When user-visible files exist, the Agent reuses the known exact location and explains whether they are durable, temporary, or still need a disposition choice. An undecided disposition does not withhold a completed file or result.
+- **👉 What's next** remains the final visible block and names the overall goal, recommended action, reason, owner, and whether the user must decide. A simple task with no learning, long-term use, or file question keeps only a concise next action.
+- A blank 1.4.6 template remains blank after upgrade. An existing 1.4.6 instance preserves identity, profile, assets, evidence, candidates, components, extensions, workspaces, device-local bindings, private content, Skills, delivery carriers, task handoffs, and unknown fields path by path and byte for byte. Upgrade scans no old conversation and invents no receipt or formal asset.
+- Version 1.4.7 can replace an instance only when the fixed `v1.4.7` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.6</strong></summary>

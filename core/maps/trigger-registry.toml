@@ -471,6 +471,18 @@ cleanup = "discard-unpersisted-choice-scaffolding-at-task-end-and-project-only-a
 failure = "do-not-let-a-closed-substep-or-no-action-note-hide-unfinished-parent-work-state-what-is-known-recommend-the-safest-real-next-action-and-offer-an-unsure-path-only-when-a-real-choice-remains"
 
 [[rules]]
+id = "task-closeout-integrity"
+class_id = "explicit-event"
+checkpoint = "after-drafting-and-before-sending-a-complex-complete-paused-or-limited-reply-especially-after-context-compaction-actual-long-term-content-use-learning-value-or-user-visible-file-delivery"
+formal_owner = "core/protocols/USER_GUIDANCE.md"
+dynamic_state_owner = "current-task-bounded-facts-only-never-a-new-persistent-task-database"
+route = "core/maps/domain-lifecycle.toml"
+startup_policy = "no-startup-read-load-the-guidance-and-local-contract-only-when-the-closeout-event-matches"
+gate = "run-the-local-task-closeout-contract-on-bounded-facts-and-the-draft-require-only-unreported-actual-use-real-learning-file-disposition-and-one-final-overall-goal-next-action-never-create-empty-receipts"
+cleanup = "discard-the-one-shot-closeout-input-and-result-after-the-reply-no-index-log-signal-or-formal-asset"
+failure = "business-result-remains-deliverable-report-closeout-degradation-rebuild-only-missing-closeout-from-current-task-evidence-and-never-rerun-or-stop-the-completed-task"
+
+[[rules]]
 id = "preference-reuse-import"
 class_id = "action-gate"
 checkpoint = "before-importing-preferences-from-another-instance"

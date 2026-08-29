@@ -25,6 +25,8 @@ const readmeZh = read("README.md");
 const readmeEn = read("README.en.md");
 const runtime = read("dashboard/scripts/learning-capture-transaction.mjs");
 const runtimeValidator = read("dashboard/scripts/validate-learning-capture-transaction.mjs");
+const closeoutRuntime = read("dashboard/scripts/task-closeout-contract.mjs");
+const closeoutValidator = read("dashboard/scripts/validate-task-closeout-contract.mjs");
 const packageSource = read("dashboard/package.json");
 const componentMap = read("core/maps/component-map.toml");
 
@@ -42,6 +44,10 @@ includesAll(rootInstructions, [
   "即使用户上一句话已经说“记住”",
   "仍须由当前宿主真实展示精确预览并等待用户选择",
   "`🧠` 使用回执和 `🌱` 学习回执都放在它之前",
+  "task-closeout-contract.mjs",
+  "--template",
+  "宿主不能运行脚本时按同四项事实透明降级自检",
+  "绝不能扣住已经完成的业务结果或迫使任务重跑",
 ], "root progressive guidance");
 
 includesAll(userGuidance, [
@@ -67,6 +73,11 @@ includesAll(userGuidance, [
   "某一项不用再确认",
   "只突出一项首选行动",
   "不能只问“还需要什么帮助”",
+  "复杂任务在发送前闭合一次收尾",
+  "task-closeout-repair-required",
+  "task-closeout-degraded",
+  "不能阻止已确认的业务结果交付",
+  "宿主确实不能运行本地 Node 脚本时",
 ], "novice-facing guidance");
 expect(userGuidance.indexOf("### 2.2 使用与学习回执要短、独立、说真话")
   < userGuidance.indexOf("### 2.3 回复最后必须回到用户下一步")
@@ -131,10 +142,33 @@ includesAll(runtimeValidator, [
   "testInterruptedWriteRecoveryAndRollback();",
 ], "learning capture regression scenarios");
 
+includesAll(closeoutRuntime, [
+  "export function evaluateTaskCloseout",
+  "export function degradedTaskCloseout",
+  "export function taskCloseoutInputTemplate",
+  'decision: "task-closeout-degraded"',
+  "businessDeliveryAllowed: true",
+  "receipt_visible_at_handoff",
+  "next-is-not-final-visible-block",
+], "task closeout runtime");
+includesAll(closeoutValidator, [
+  "the incident-shaped omission was accepted",
+  "serialized context-compaction facts changed the closeout result",
+  "a simple task was burdened with empty use, learning, or file receipts",
+  "invalid closeout metadata did not degrade locally while preserving the business result",
+  "the real stdin CLI path did not accept the corrected closeout",
+  "the local CLI did not expose a bounded fill-in template",
+], "task closeout focused regression scenarios");
+
 includesAll(packageSource, [
   '"check:proactive-learning": "node scripts/validate-proactive-learning-guidance.mjs"',
+  '"check:task-closeout": "node scripts/validate-task-closeout-contract.mjs"',
   "npm run check:proactive-learning",
+  "npm run check:task-closeout",
 ], "dashboard build gate");
 expect(componentMap.includes("dashboard/scripts/validate-proactive-learning-guidance.mjs"), "component registry does not own the proactive-learning gate");
+expect(componentMap.includes("dashboard/scripts/task-closeout-contract.mjs")
+  && componentMap.includes("dashboard/scripts/validate-task-closeout-contract.mjs"),
+"component registry does not own the task-closeout runtime and focused gate");
 
 console.log("Proactive learning guidance validation passed.");

@@ -38,6 +38,15 @@ minimum_level = 1
 confirmation = "none-the-protocol-prepares-the-real-choice"
 
 [[routes]]
+id = "task-closeout-guidance"
+summary = "复杂任务、压缩续接、实际使用长期内容、出现学习价值或交付用户可见文件时，在发送最终回复前用本地非致命检查闭合回执、文件去向和总体下一步；只修收尾，不重跑业务任务。"
+triggers = ["复杂任务准备交付", "上下文压缩后准备交付", "续接任务准备收尾", "实际使用长期内容后交付", "出现学习价值后交付", "用户可见文件交付", "检查最终回复收尾"]
+target = "core/protocols/USER_GUIDANCE.md"
+state = "on-demand-before-complex-task-closeout"
+minimum_level = 1
+confirmation = "none-local-check-never-executes-the-task"
+
+[[routes]]
 id = "preference-reuse"
 summary = "从已有实例安全复用个人偏好，不复制领域身份和任务资产。"
 triggers = ["复用偏好", "从另一个实例复制习惯"]

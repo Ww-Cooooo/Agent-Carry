@@ -74,6 +74,10 @@ requireFragments("AGENTS.md", [
   "用户可用“上次那种”之类日常说法召回旧做法",
   "不得要求准确资产名、ID、路径",
   "USER_GUIDANCE.md",
+  "task-closeout-contract.mjs",
+  "--template",
+  "元数据无效或宿主不能运行脚本时按同四项事实透明降级自检",
+  "绝不能扣住已经完成的业务结果或迫使任务重跑",
 ]);
 
 requireFragments("BOOTSTRAP.md", [
@@ -132,12 +136,17 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
   "只突出一项首选行动",
   "不能只问“还需要什么帮助”",
   "现在不用做额外操作",
+  "复杂任务在发送前闭合一次收尾",
+  "只补齐或移动缺失的收尾区块",
+  "不能阻止已确认的业务结果交付",
+  "宿主确实不能运行本地 Node 脚本时",
 ]);
 
 requireOrdered("core/protocols/USER_GUIDANCE.md", [
   "### 2.2 使用与学习回执要短、独立、说真话",
   "### 2.3 回复最后必须回到用户下一步",
   "> **👉 接下来**",
+  "### 2.4 复杂任务在发送前闭合一次收尾",
   "## 3. 复用 Agent 已经知道的信息",
 ]);
 
@@ -151,6 +160,18 @@ for (const fragment of [
   "接下来做什么",
 ]) {
   if (!userGuidanceRoute.includes(fragment)) fail(`user-decision-guidance route is missing: ${fragment}`);
+}
+
+const taskCloseoutRoute = routeBlock("core/maps/domain-lifecycle.toml", "task-closeout-guidance");
+for (const fragment of [
+  'target = "core/protocols/USER_GUIDANCE.md"',
+  'state = "on-demand-before-complex-task-closeout"',
+  "minimum_level = 1",
+  'confirmation = "none-local-check-never-executes-the-task"',
+  "上下文压缩后准备交付",
+  "用户可见文件交付",
+]) {
+  if (!taskCloseoutRoute.includes(fragment)) fail(`task-closeout-guidance route is missing: ${fragment}`);
 }
 
 requireFragments("core/templates/integration/manual-host-entry.md", [
@@ -375,6 +396,11 @@ requireFragments("core/maps/trigger-registry.toml", [
   "assistant-toml-compact-interaction-baseline-only-never-load-the-full-protocol-for-every-ordinary-message",
   "place-receipts-before-one-final-localized-arrow-next-step-that-returns-to-the-current-overall-goal-and-names-the-next-unfinished-action-or-clear-no-action-only-when-no-relevant-work-remains",
   "do-not-let-a-closed-substep-or-no-action-note-hide-unfinished-parent-work",
+  'id = "task-closeout-integrity"',
+  "after-drafting-and-before-sending-a-complex-complete-paused-or-limited-reply",
+  "current-task-bounded-facts-only-never-a-new-persistent-task-database",
+  "run-the-local-task-closeout-contract-on-bounded-facts-and-the-draft",
+  "business-result-remains-deliverable-report-closeout-degradation",
   'id = "natural-language-asset-recall"',
   "next-material-action-verified-state-or-error-change-due-signal-related-asset-or-task-result",
   "current-user-negation-and-correction-always-win",
@@ -770,6 +796,22 @@ requireFragments("core/upgrade/release-manifest-1.4.6.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.7.toml", [
+  'release = "1.4.7"',
+  'from_versions = ["1.4.6"]',
+  'id = "task-closeout-continuity-1.4.7"',
+  '"task-closeout-incident-omission-repairs-only-the-final-reply"',
+  '"simple-task-adds-no-empty-use-learning-or-file-receipts"',
+  '"malformed-or-oversized-closeout-input-degrades-locally-and-business-result-remains-deliverable"',
+  '"instantiated-1.4.6-identity-assets-validation-evolution-components-extensions-workspace-local-private-skills-exports-carriers-task-handoffs-and-unknown-fields-are-byte-preserved"',
+  'status = "published-release"',
+  'release_ref = "v1.4.7"',
+  'publication_authorized = true',
+  'repository_operation_authorized = true',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -810,7 +852,13 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.6`",
+  "当前版本：`1.4.7`",
+  "点击展开：1.4.7 主要改了什么",
+  "一次性本地动作",
+  "缺少一块，只修当前回复",
+  "业务结果、文件、对话和无关能力继续可用",
+  "`👉 接下来` 仍是最后一个用户可见区块",
+  "固定 `v1.4.7` 标签",
   "点击展开：1.4.6 主要改了什么",
   "可编辑 Skill 文件夹是唯一内容真源",
   "分享方式待选择",
@@ -840,4 +888,4 @@ requireFragments("README.md", [
   "复用当前动作已经获得的授权，不额外再问一次",
 ]);
 
-console.log("Formal change-quality contract validated: hit/non-hit routing, Level 3 ownership, root-cause priority, novice-safe guidance, instance evolution compatibility without a second confirmation, one-time isolated adoption, visually distinct explanation/choice/review steps, continuous private export/import guidance, progressive offscreen rendering, visible card entry rooted to the main scroll container, one scroll owner, adaptive Three.js cadence, known-file handoff, cross-host propagation, instance-asset reachability, template distribution sync, migration safety, startup budget, and idempotence.");
+console.log("Formal change-quality contract validated: hit/non-hit routing, Level 3 ownership, root-cause priority, novice-safe guidance, non-blocking complex-task closeout, instance evolution compatibility without a second confirmation, one-time isolated adoption, visually distinct explanation/choice/review steps, continuous private export/import guidance, progressive offscreen rendering, visible card entry rooted to the main scroll container, one scroll owner, adaptive Three.js cadence, known-file handoff, cross-host propagation, instance-asset reachability, template distribution sync, migration safety, startup budget, and idempotence.");

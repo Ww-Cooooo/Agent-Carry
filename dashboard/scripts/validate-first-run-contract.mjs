@@ -421,6 +421,16 @@ requireFragments("core/upgrade/release-manifest-1.4.6.toml", [
   '"uninstantiated-1.4.5-template-upgrades-to-byte-exact-blank-1.4.6"',
   '"instantiated-1.4.5-identity-assets-validation-evolution-components-extensions-workspace-local-private-skill-requirements-export-index-editable-sources-existing-packages-delivery-carriers-and-unknown-fields-are-byte-preserved"',
 ]);
+requireFragments("core/upgrade/release-manifest-1.4.7.toml", [
+  'migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/components/registry.toml"',
+  '"instance/evolution/index.toml", "instance/validations/index.toml"]',
+  "validation_overlap_note",
+  "component_overlap_note",
+  "skill_overlap_note",
+  '"blank-1.4.7-template-remains-byte-exact-empty"',
+  '"uninstantiated-1.4.6-template-upgrades-to-byte-exact-blank-1.4.7"',
+  '"instantiated-1.4.6-identity-assets-validation-evolution-components-extensions-workspace-local-private-skills-exports-carriers-task-handoffs-and-unknown-fields-are-byte-preserved"',
+]);
 requireFragments("core/upgrade/release-manifest-1.2.0.toml", [
   "replace_instance_guides",
   "instance/profile/README.md",

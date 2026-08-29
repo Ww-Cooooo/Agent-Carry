@@ -36,15 +36,18 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
   read('dashboard/src/components/dashboard/SkillWorkshop.tsx'),
 ])
 
-requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.6`', '点击展开：1.4.6 主要改了什么', '可编辑 Skill 文件夹是唯一内容真源', '分享方式待选择', 'ZIP 先安全解压到新的隔离目录', '固定 `v1.4.6` 标签', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
+requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.7`', '点击展开：1.4.7 主要改了什么', '一次性本地动作', '缺少一块，只修当前回复', '固定 `v1.4.7` 标签', '点击展开：1.4.6 主要改了什么', '可编辑 Skill 文件夹是唯一内容真源', '分享方式待选择', 'ZIP 先安全解压到新的隔离目录', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `1.4.6`',
+  'Current version: `1.4.7`',
+  'What changed in 1.4.7',
+  'one-shot and local',
+  'repairs only the current reply',
+  'fixed `v1.4.7` tag',
   'What changed in 1.4.6',
   'only content source of truth',
   'sharing method needed',
   'safely extracted into a new isolation directory',
-  'fixed `v1.4.6` tag',
   '🧠 Used this time',
   '🌱 Learned this step',
   '👉 Next step',
