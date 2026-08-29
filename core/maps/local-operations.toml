@@ -75,8 +75,8 @@ confirmation = "before-install"
 
 [[routes]]
 id = "skill-workshop"
-summary = "推荐只供用户选择，不会触发转换。用户明确指定一个方法后，Agent 只对该方法复制出的隔离草稿自动脱敏、通用化并生成本地 Skill，原方法不变。已生成的本地 Skill 按真实状态继续检查、解释复核项或准备分享预览；按钮不授权外部分享。别人分享的 Skill 只读审查且不静默改写，说明影响并得到确认后才安装；异常只隔离当前 Skill。"
-triggers = ["Skill工坊", "把SOP转成Skill", "把这个方法转成Skill", "分享这个流程", "导出为Skill", "继续检查这个Skill", "准备分享这个Skill", "这个Skill为什么需要复核", "安装别人分享的Skill", "导入Skill", "判断这个Skill能不能装"]
+summary = "推荐只供用户选择。用户明确指定方法后，Agent 在生成前询问一次 ZIP、独立文件夹、链接或本机保留，再只对该方法复制出的唯一可编辑真源自动脱敏、通用化、检查并生成真实交付载体；原方法不变。旧导出无需预迁移，第一次相关动作再补选方式。别人分享的文件夹、ZIP 或链接先隔离只读审查，说明影响并得到一次安装确认后接入；异常只隔离当前 Skill。"
+triggers = ["Skill工坊", "把SOP转成Skill", "把这个方法转成Skill", "分享这个流程", "导出为Skill", "把Skill打成ZIP", "生成Skill文件夹", "用链接分享Skill", "继续检查这个Skill", "准备分享这个Skill", "重新导出这个Skill", "这个Skill为什么需要复核", "安装别人分享的Skill", "导入Skill", "检查Skill压缩包", "从链接安装Skill", "判断这个Skill能不能装"]
 target = "core/guides/skill-workshop-guide.md"
 state = "on-demand"
 minimum_level = 1

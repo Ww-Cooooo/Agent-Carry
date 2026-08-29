@@ -31,25 +31,84 @@ interface WorkshopAsset {
   item: AssetItem;
 }
 
-type WorkshopTab = "methods" | "drafts" | "installed" | "import";
+type WorkshopTab = "methods" | "mine" | "installed" | "import";
 
-const EXPORTED_SKILL_HELP: Record<string, string> = {
-  draft: "这份 Skill 只保存在本机，还没有完成当前检查，也没有上传、发送或公开。可以让 Agent 继续检查；原方法不会因此改变。",
-  ready: "这份本地 Skill 已通过当前检查，可以进入分享预览。它不会自动发送或公开；你仍需指定接收方并授权。",
-  review: "检查发现二进制或不透明资源、额外权限、兼容项等需要理解的内容。让 Agent 打开这条草稿的检查结果，它会说明具体命中项和处理选择；复核前不会分享。",
-};
+interface ExportedSkillView {
+  label: string;
+  help: string;
+  deliveryTitle: string;
+  deliveryCopy: string;
+  nextStep: string;
+}
 
-const EXPORTED_SKILL_LABEL: Record<string, string> = {
-  draft: "尚未检查完成",
-  ready: "可以分享",
-  review: "需要复核",
-};
-
-const EXPORTED_SKILL_NEXT_STEP: Record<ExportedSkillItem["state"], string> = {
-  draft: "可以让 Agent 继续完成这份草稿的触发、隐私和使用边界检查。检查完成后会更新状态，但不会自动分享。",
-  ready: "如果你想分享，可以让 Agent 先生成分享预览，并告诉它准备分享给谁或放到哪里。真正发送或发布前，Agent 仍会向你确认。",
-  review: "可以让 Agent 打开这份 Skill 的检查结果，说明具体问题和可选处理方式。复核完成前，它会继续留在本机。",
-};
+function exportedSkillView(item: ExportedSkillItem): ExportedSkillView {
+  if (item.state === "draft") return {
+    label: "待完善",
+    help: "这份 Skill 的可编辑真源已经保存在本机，但检查还没完成。原方法不受影响，其他 Skill 和助手能力照常使用。",
+    deliveryTitle: "还没有生成分享文件",
+    deliveryCopy: "继续完成触发、隐私和使用边界检查后，Agent 会请你选择 ZIP、独立文件夹、链接或只保留在本机。",
+    nextStep: "让 Agent 继续完善这一份 Skill；检查通过后，它会接着询问一次分享方式并生成你选择的本地载体。",
+  };
+  if (item.state === "review") return {
+    label: "需要复核",
+    help: "这份 Skill 的内容或依赖有一项需要理解。它会原样保留并只暂停这一份，其他 Skill 和助手能力不受影响。",
+    deliveryTitle: "复核完成前不生成新载体",
+    deliveryCopy: "已有文件不会被删除或覆盖。Agent 会先说明具体命中项，再按你的决定继续。",
+    nextStep: "让 Agent 打开检查结果，用自然语言说明问题、影响和可选处理方式。",
+  };
+  const views: Record<ExportedSkillItem["deliveryState"], ExportedSkillView> = {
+    unselected: {
+      label: "分享方式待选择",
+      help: "Skill 本身已经通过检查，只是还没有选择怎样交给别人。旧版生成的 Skill 会自然进入这个状态，不需要先迁移。",
+      deliveryTitle: "可编辑 Skill 已就绪",
+      deliveryCopy: "选择 ZIP、独立文件夹、链接或只保留在本机后，Agent 会直接生成相应载体。",
+      nextStep: "让 Agent 问你一次分享方式；如果你不确定，它会推荐最合适的一种。",
+    },
+    "local-only": {
+      label: "仅本机保留",
+      help: "你之前选择先不分享。可编辑 Skill 仍安全保留，随时可以改选 ZIP、文件夹或链接。",
+      deliveryTitle: "当前没有额外分享文件",
+      deliveryCopy: "这是主动选择，不是错误，也不会影响 Skill 继续完善或以后分享。",
+      nextStep: "如果现在想分享，让 Agent 重新询问交付方式并生成相应载体。",
+    },
+    "artifact-ready": {
+      label: item.deliveryMethod === "folder" ? "分享文件夹已准备" : "ZIP 已准备",
+      help: item.deliveryMethod === "folder" ? "一个独立 Skill 文件夹已经在本机生成，可以复制给别人；可编辑真源仍是原来的那一份。" : "一个可直接发送的 Skill ZIP 已经在本机生成；可编辑真源仍是原来的那一份。",
+      deliveryTitle: item.deliveryMethod === "folder" ? "独立文件夹可以交付" : "ZIP 可以直接交付",
+      deliveryCopy: "看板不公开本机路径。点击下方按钮后，Agent 会告诉你准确位置，并可按你的目标继续处理。",
+      nextStep: "让 Agent 打开实际位置；你可以自己发送，也可以明确接收方后让 Agent 继续。",
+    },
+    "target-needed": {
+      label: "分享链接尚未完成",
+      help: "用于链接分享的本地 ZIP 已准备好，但还没有成功登记可用链接：可能尚未给出目标，也可能上次外部操作没有完成。",
+      deliveryTitle: "本地 ZIP 已准备",
+      deliveryCopy: "Agent 会先复用当前对话里仍然有效的目标与授权；无法回读时才请你补充，不会把失败说成你从未给过目标。",
+      nextStep: "让 Agent 继续准备链接；有有效目标就直接重试，没有时再告诉它放到哪里、谁可以看到。",
+    },
+    "link-ready": {
+      label: "分享链接已准备",
+      help: "本地载体和实际链接都已登记。这里不展示地址，避免把来源或私密位置暴露到看板。",
+      deliveryTitle: "链接已经可以使用",
+      deliveryCopy: "点击下方按钮后，Agent 会回读当前记录并告诉你实际链接和适用范围。",
+      nextStep: "让 Agent 打开分享信息，或在内容变化后重新生成一个新版本。",
+    },
+    stale: {
+      label: "分享文件需要更新",
+      help: "可编辑 Skill 后来发生了变化，或原来的分享载体已缺失。旧载体会保留，但不再冒充最新版本。",
+      deliveryTitle: "当前载体不是最新内容",
+      deliveryCopy: "Agent 会从现在的可编辑真源生成一个新的、不覆盖旧文件的载体。",
+      nextStep: "让 Agent 重新生成分享文件；完成后它会报告新位置和摘要核对结果。",
+    },
+    review: {
+      label: "分享信息需复核",
+      help: "Skill 内容仍可保留，但分享方式、载体记录或链接信息有一项不闭合。问题只影响这一份交付信息。",
+      deliveryTitle: "先核对这一份分享记录",
+      deliveryCopy: "Agent 会根据实际真源和已有载体修复可推导的信息，不删除或覆盖用户文件。",
+      nextStep: "让 Agent 说明并复核分享信息；能安全修复的会修复，仍需决定的只问一个问题。",
+    },
+  };
+  return views[item.deliveryState];
+}
 
 const INSTALLED_SKILL_HELP: Record<string, string> = {
   available: "这个 Skill 已登记并可在相关任务命中时按需读取；仍只会加载完成当前任务所需的内容。",
@@ -77,7 +136,7 @@ function MethodTicket({ asset, onCopy }: { asset: WorkshopAsset; onCopy: CopyReq
         {recommendation.state !== "refine" ? (
           <Button variant="outline" onClick={() => onCopy(action.text, action.buttonLabel)}>
             <ClipboardCopy aria-hidden="true" />
-            {recommendation.state === "ready" ? "整理成 Skill" : "让 Agent 判断"}
+            {recommendation.state === "ready" ? "整理并选择分享方式" : "让 Agent 判断"}
           </Button>
         ) : null}
       </div>
@@ -97,7 +156,7 @@ function ExportedSkillDetailDialog({
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   if (!item) return null;
-  const statusLabel = EXPORTED_SKILL_LABEL[item.state] ?? item.state;
+  const view = exportedSkillView(item);
   const action = buildSkillExportAction(item);
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -115,7 +174,7 @@ function ExportedSkillDetailDialog({
         }}
       >
         <DialogHeader>
-          <div className="skill-export-dialog__eyebrow"><PackageOpen aria-hidden="true" />已生成但尚未分享</div>
+          <div className="skill-export-dialog__eyebrow"><PackageOpen aria-hidden="true" />我的 Skill</div>
           <DialogTitle ref={titleRef} tabIndex={-1} className="skill-export-dialog__title"><SourceText>{item.title}</SourceText></DialogTitle>
           <DialogDescription>这里显示的是这份 Skill 的低敏说明，不包含来源路径或私密内容。</DialogDescription>
         </DialogHeader>
@@ -127,17 +186,17 @@ function ExportedSkillDetailDialog({
           </section>
           <section>
             <span>现在是什么状态</span>
-            <StatusBadge value={statusLabel} helpText={EXPORTED_SKILL_HELP[item.state]} />
-            <p>{EXPORTED_SKILL_HELP[item.state]}</p>
+            <StatusBadge value={view.label} helpText={view.help} />
+            <p>{view.help}</p>
           </section>
           <section>
-            <span>分享情况</span>
-            <strong>仍只保存在本机</strong>
-            <p>这份 Skill 没有上传、发送或公开。</p>
+            <span>分享方式与文件</span>
+            <strong>{view.deliveryTitle}</strong>
+            <p>{view.deliveryCopy}</p>
           </section>
           <section className="skill-export-dialog__next">
             <span>接下来可以做什么</span>
-            <p>{EXPORTED_SKILL_NEXT_STEP[item.state]}</p>
+            <p>{view.nextStep}</p>
           </section>
         </div>
 
@@ -147,7 +206,7 @@ function ExportedSkillDetailDialog({
         </div>
         <div className="skill-export-dialog__action-note" role="note">
           <ClipboardCopy aria-hidden="true" />
-          <span>点击下方按钮只会复制一段请求。把它发给 Agent 后才会继续；网页不会直接检查、修改或分享这份 Skill。</span>
+          <span>点击下方按钮只会复制一段请求。把它发给 Agent 后才会继续；网页不会直接改文件、联网或替你发送。</span>
         </div>
         <DialogFooter className="skill-export-dialog__footer">
           <Button variant="outline" onClick={onClose}>关闭</Button>
@@ -184,7 +243,7 @@ export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
   const instanceReady = profile.state === "instance";
   const tabs: Array<{ id: WorkshopTab; label: string; count?: number; icon: typeof Workflow; tone: "teal" | "violet" }> = [
     { id: "methods", label: "Agent 推荐整理的 Skill", count: ranked.length, icon: Workflow, tone: "teal" },
-    { id: "drafts", label: "已生成的 Skill（未分享）", count: skills.exports.length, icon: PackageOpen, tone: "teal" },
+    { id: "mine", label: "我的 Skill", count: skills.exports.length, icon: PackageOpen, tone: "teal" },
     { id: "installed", label: "已安装 Skill", count: skills.items.length, icon: Download, tone: "violet" },
     { id: "import", label: "接入 Skill", icon: Upload, tone: "violet" },
   ];
@@ -199,12 +258,12 @@ export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
       >
         <div>
           <SectionEyebrow icon={Sparkles}>Skill 工坊</SectionEyebrow>
-          <h1>把好方法整理成 Skill<br />是否分享，由你决定</h1>
-          <p>这里会推荐可能适合整理的方法，也能检查别人分享的 Skill。推荐只是建议，不会自动转换任何内容。只有你把某个方法的“整理成 Skill”请求交给 Agent 后，转换才会开始；安装也会在检查和确认后进行。</p>
+          <h1>把好方法整理成 Skill<br />生成后就能交给别人</h1>
+          <p>这里会推荐可能适合整理的方法，也能检查别人分享的 Skill。推荐只是建议，不会自动转换任何内容。开始整理前，Agent 会先问你想要 ZIP、独立文件夹、分享链接，还是先只保存在本机；选好后由它完成生成和检查。</p>
         </div>
         <div className="workshop-hero__promise" role="note">
           <ShieldCheck aria-hidden="true" />
-          <div><strong>整理你选中的方法时，Agent 会自动处理隐私</strong><span>Agent 只处理这个方法复制出的本地草稿：去掉身份、路径和私密内容，再整理成 Skill。推荐列表和原来的 SOP／能力都不会被修改，草稿也不会自动上传或公开。</span></div>
+          <div><strong>Agent 自动处理隐私，并生成你选择的分享文件</strong><span>Agent 只处理这个方法复制出的本地草稿：去掉身份、路径和私密内容，再生成 Skill。推荐列表和原来的 SOP／能力都不会被修改；选择链接时，也只有目标和可见范围明确后才会联网发布。</span></div>
         </div>
       </motion.section>
 
@@ -254,9 +313,9 @@ export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
                 <div><small>Agent 的建议</small><h2>把适合的方法整理成 Skill</h2></div>
               </div>
               <ol className="binding-lane__steps">
-                <li><b>01</b><span><strong>选择一个方法</strong>你可以选择一个正式 SOP；成熟能力会先由 Agent 判断是否包含可复用流程。</span></li>
+                <li><b>01</b><span><strong>选择方法和分享方式</strong>你选一个正式 SOP；Agent 再问一次要 ZIP、独立文件夹、链接还是先保存在本机。</span></li>
                 <li><b>02</b><span><strong>Agent 自动处理本地副本</strong>你不需要自己复制或处理隐私。Agent 会把选中的方法复制到隔离草稿，只在草稿中去掉身份、路径和私密内容，并把专用值改成参数。</span></li>
-                <li><b>03</b><span><strong>Agent 自动完成生成前检查</strong>你不需要自己检查。Agent 会核对草稿的触发、非触发和隐私边界；原方法保持不变，也不会执行包内脚本。</span></li>
+                <li><b>03</b><span><strong>Agent 自动检查并生成载体</strong>它会核对触发、非触发和隐私边界，再生成真实 ZIP／文件夹；链接方式先准备本地 ZIP。原方法保持不变，也不会执行包内脚本。</span></li>
               </ol>
             </div>
             <section className="method-shelf">
@@ -279,23 +338,26 @@ export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
           </>
         ) : null}
 
-        {activeTab === "drafts" ? (
-          <aside className="skill-ledger skill-ledger--single" aria-label="已生成但尚未分享的 Skill">
+        {activeTab === "mine" ? (
+          <aside className="skill-ledger skill-ledger--single" aria-label="我的 Skill">
             <div className="ledger-block">
-              <div className="ledger-block__title"><span><PackageOpen aria-hidden="true" /></span><div><small>只保存在本机</small><h2>已生成但尚未分享的 Skill</h2></div><b>{skills.exports.length}</b></div>
+              <div className="ledger-block__title"><span><PackageOpen aria-hidden="true" /></span><div><small>真源、分享文件和当前状态</small><h2>我的 Skill</h2></div><b>{skills.exports.length}</b></div>
               {skills.exports.length ? (
-                <ul>{skills.exports.map((item) => (
-                  <li key={item.id}>
-                    <button type="button" className="skill-ledger-row__open" onClick={() => setSelectedExport(item)}>
-                      <span className="skill-ledger-row__copy"><SourceText as="strong">{item.title}</SourceText><SourceText as="span">{item.summary}</SourceText></span>
-                      <span className="skill-ledger-row__hint">查看详情<ChevronRight aria-hidden="true" /></span>
-                    </button>
-                    <StatusBadge value={EXPORTED_SKILL_LABEL[item.state] ?? item.state} helpText={EXPORTED_SKILL_HELP[item.state]} />
-                  </li>
-                ))}</ul>
-              ) : <p>第一次生成 Skill 后才会在这里出现。这里的内容都只保存在本机，不等于已经分享。</p>}
+                <ul>{skills.exports.map((item) => {
+                  const view = exportedSkillView(item);
+                  return (
+                    <li key={item.id}>
+                      <button type="button" className="skill-ledger-row__open" onClick={() => setSelectedExport(item)}>
+                        <span className="skill-ledger-row__copy"><SourceText as="strong">{item.title}</SourceText><SourceText as="span">{item.summary}</SourceText></span>
+                        <span className="skill-ledger-row__hint">查看详情<ChevronRight aria-hidden="true" /></span>
+                      </button>
+                      <StatusBadge value={view.label} helpText={view.help} />
+                    </li>
+                  );
+                })}</ul>
+              ) : <p>第一次整理 Skill 后才会在这里出现。生成时可以直接得到 ZIP、独立文件夹或链接所需的本地载体；空模板不会预造记录。</p>}
             </div>
-            <div className="ledger-footnote"><ShieldCheck aria-hidden="true" /><span>工坊不展示来源地址、本机路径或原始资产 ID。</span></div>
+            <div className="ledger-footnote"><ShieldCheck aria-hidden="true" /><span>工坊只展示低敏状态，不展示来源地址、本机路径、分享链接或原始资产 ID。</span></div>
           </aside>
         ) : null}
 

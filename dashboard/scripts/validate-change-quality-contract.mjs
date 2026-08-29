@@ -754,6 +754,22 @@ requireFragments("core/upgrade/release-manifest-1.4.5.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.6.toml", [
+  'release = "1.4.6"',
+  'from_versions = ["1.4.5"]',
+  'id = "skill-workshop-delivery-1.4.6"',
+  'skill_overlap_note = "instance/skills/** is instance-owned and preserved.',
+  '"legacy-draft-review-and-ready-without-delivery-fields-project-as-needs-finishing-review-and-sharing-method-needed-without-source-writes"',
+  '"new-zip-and-folder-carriers-round-trip-through-the-bounded-inspector"',
+  '"changed-editable-source-or-missing-carrier-projects-stale-without-deleting-old-artifacts-or-blocking-snapshot"',
+  'status = "published-release"',
+  'release_ref = "v1.4.6"',
+  'publication_authorized = true',
+  'repository_operation_authorized = true',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -794,10 +810,15 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.5`",
-  "点击展开：1.4.5 主要改了什么",
+  "当前版本：`1.4.6`",
+  "点击展开：1.4.6 主要改了什么",
+  "可编辑 Skill 文件夹是唯一内容真源",
+  "分享方式待选择",
+  "ZIP 先安全解压到新的隔离目录",
+  "旧实例里的 `draft`、`review` 和 `ready` 原样保留",
+  "一个载体缺失、过期、损坏或字段不完整",
   "每个新的实质目标开始前",
-  "当前原子操作结束的安全节点",
+  "当前原子操作安全结束",
   "自动验证一项真实、无破坏的代表行为",
   "新任务只是用户希望立即使用该行为时的最后兼容路线",
   "Agent 推荐整理的 Skill、已生成的 Skill、已安装 Skill、接入 Skill",
@@ -805,7 +826,7 @@ requireFragments("README.md", [
   "原方法始终保持不变",
   "检查期间不执行脚本、不安装依赖、不登录账号",
   "一个包失败不会让整个 Agent 停止",
-  "固定 `v1.4.5` 标签",
+  "固定 `v1.4.6` 标签",
   "🧠 这次用上了",
   "🌱 这一步我学到了",
   "💡 新发现",

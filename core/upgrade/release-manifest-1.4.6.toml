@@ -1,0 +1,84 @@
+schema_version = 2
+release = "1.4.6"
+core = "1.4.6"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.3"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+extension_manifest_schema = "1.0"
+instance_component_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"
+from_versions = ["1.4.5"]
+notes = "Published 1.4.6 Skill Workshop delivery patch. A user chooses ZIP, a standalone folder, link delivery or local-only before a new Skill is generated. The Agent keeps one editable Skill source, automatically sanitizes and checks only its isolated copy, and creates a real non-overwriting local carrier. Link delivery prepares a local ZIP first and still requires an exact destination and visibility before any external action. Received folders and ZIPs are bounded, isolated and inspected without executing package scripts; one necessary installation confirmation remains. Existing 1.4.5 export entries and every instance-owned byte are preserved. Legacy draft and review states keep their meaning, while a legacy ready entry with no delivery fields remains valid and projects as sharing-method-needed until its first relevant action. A missing, stale or malformed carrier affects only that Skill and cannot stop the assistant, dashboard or unrelated capabilities. This fixed release can authorize an instance replacement only when the official v1.4.6 tag, Release object, manifest and extracted tree agree and the user authorizes that exact upgrade; it never authorizes future repository or publication actions."
+asset_changes = "Asset Schema remains 1.3. The patch creates, promotes, resets, removes or rewrites no memory, capability, SOP, experience, candidate, validation record, component, installed Skill, workspace, local binding, private reference or unknown instance field. New delivery metadata is optional and is written only by a later user-requested Skill Workshop action, never by upgrade."
+dashboard_changes = "Dashboard Snapshot Schema remains 1.1 and Dashboard Action Schema remains 1.0. Skill export projections may add low-sensitivity delivery_method and computed delivery_state while never exposing source IDs, entries, local paths, digests or links. The Workshop replaces generated-but-unshared as a primary category with My Skills and explains the real source, carrier and next action in novice-safe language. The blank template snapshots remain empty."
+extension_changes = "Extension API, Extension Manifest Schema and Instance Component Schema remain unchanged. Existing components, extensions, workspaces, installed Skills, export indexes, generated packages, delivery carriers and device-local bindings are preserved byte-for-byte and none is loaded merely to accept the upgrade."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md", "instance/components/README.md"]
+migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/components/registry.toml", "instance/maps/domain-map.toml", "instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml", "instance/profile/**", "instance/governance/**", "instance/evolution/index.toml", "instance/validations/index.toml"]
+preserve = ["workspace/**", "instance/components/**", "instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", "instance/validations/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "Only the exact README files in replace_instance_guides are target-template guides. Sibling user files, Skill requirements, export indexes and packages, delivery carriers, component bodies, validation records and migrated profiles remain instance-owned."
+validation_overlap_note = "instance/validations/index.toml is migrated before the broad instance/validations/** preserve rule. A template stays the target template empty index; an instance keeps its identity and every real validation record, and no record may be invented by this patch."
+evolution_overlap_note = "instance/evolution/index.toml is migrated before the broad instance/evolution/** preserve rule. A template stays blank; an instance keeps candidate sources and its existing generated_at unless the indexed business projection actually changes."
+component_overlap_note = "instance/components/registry.toml is migrated before the broad instance/components/** preserve rule. A template keeps the inert template registry; an instance keeps its identity, adoption state, revision, entries and component bodies."
+skill_overlap_note = "instance/skills/** is instance-owned and preserved. A template remains empty; an existing instance keeps requirements, installed routes, export indexes, editable Skill sources, generated packages, delivery carriers and unknown fields byte-for-byte. Legacy draft ready and review entries keep their bytes; missing delivery fields remain valid and no carrier is created during upgrade."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+allow_overrides_deny_for_exact_paths = [".assistant-local/.gitkeep", ".assistant-local/dashboard/.gitkeep", ".assistant-local/indexes/.gitkeep", ".assistant-local/skills/.gitkeep", ".assistant-local/task-handoffs/.gitkeep", ".assistant-local/upgrade-inbox/.gitkeep", ".assistant-private/.gitkeep", ".assistant-private/assets/.gitkeep", ".assistant-private/inbox/.gitkeep"]
+exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"
+broad_globs_are_copy_commands = false
+
+[instance_component_changes]
+schema = "1.0"
+registry = "instance/components/registry.toml"
+target_interfaces = ["agent-carry.instance-component@1"]
+migration_ids = []
+native_asset_policy = "reuse-existing-formal-owners-never-create-duplicate-component-manifests"
+professional_extension_policy = "reuse-extension-toml-never-duplicate-in-generic-registry"
+unregistered_policy = "preserve-and-stop-with-preview"
+optional_incompatible_action = "disable-and-preserve"
+required_incompatible_action = "stop-and-preserve"
+device_local_policy = "preserve-in-place-on-same-device-never-copy-to-public-or-complete-migration-reverify-before-use"
+ordinary_startup = "never-read-registry-enumerate-components-or-load-component-bodies"
+authorization = "reuse-the-current-durable-action-authorization-never-add-a-compatibility-only-user-confirmation"
+
+[[migration_rules]]
+id = "skill-workshop-delivery-1.4.6"
+from_versions = ["1.4.5"]
+when_all = ["source reports product 1.4.5", "the official fixed v1.4.6 tag Release object manifest and extracted tree agree and the user authorized that exact upgrade", "upgrade runs in a new isolated candidate against a verified 1.4.5 template or instance"]
+source = "the complete 1.4.5 tree plus its strictly parsed manifest identity-bound indexes component registry startup capsule snapshots and every preserved instance-owned Skill export package delivery artifact workspace local binding private reference and unknown field"
+destination = "an isolated 1.4.6 template or instance candidate with byte-preserved user-owned content a strict rebuilt capsule byte-identical snapshots and legacy Skill delivery state projected without rewriting its source index"
+operation_order = ["freeze the complete source-tree identity rollback point and current running-conversation Agent Carry product version instance ID and manifest digest before any candidate write", "strictly distinguish an uninstantiated template from an instantiated assistant before selecting the branch", "for a template use the fixed 1.4.6 blank template identity files together and keep instance_id=template state=template zero records zero candidates zero components no approved profile no Skill export index no editable Skill source and no delivery carrier", "for an instance preserve instance_id created_from direction profile learning policy maps signals governance hosts Skill requirements installed Skill routes export index editable Skill folders generated packages delivery carriers external-link fields assets validation records candidate sources extensions components local bindings private references workspace and unknown fields", "treat legacy export state draft as needs-finishing review as review and ready without delivery metadata as sharing-method-needed only in the rebuilt dashboard projection; do not write those labels or any delivery field back to the source index", "update only the instantiated manifest product version from 1.4.5 to 1.4.6", "do not open the Workshop convert an asset inspect a received package generate a ZIP or folder contact a link target install or remove a Skill refresh an unchanged timestamp or invent a delivery fact", "rebuild the strict startup capsule from exact merged manifest bytes", "rebuild dashboard/public/snapshot.js and dashboard/dist/snapshot.js from merged formal truth and require byte identity", "compare every preserved path byte-for-byte and require a zero-change second file pass before switching", "after a verified switch use the existing bounded current-conversation reentry route at the next safe boundary and automatically validate one non-destructive representative behavior", "if one Skill delivery record carrier or package is missing stale malformed or unsupported preserve it and keep only that item in unselected stale review or isolated state while the assistant and unrelated capabilities continue"]
+forbidden = ["upgrading from an unfixed branch archive or a tag without the matching official Release object", "re-running first instantiation against an existing instance", "changing instance identity created_from direction profile learning policy or user-owned fields", "rewriting a legacy Skill export index merely to add delivery fields", "creating deleting renaming moving checking executing installing sharing or publishing an instance Skill or carrier during upgrade", "turning a missing carrier stale digest unknown delivery field or one package error into a whole-instance failure", "inventing a shared recipient external receipt link validation or successful installation fact", "resetting an instance index registry Skill map export package signal host governance card extension workspace local binding private reference or unknown field to template state", "weakening startup capsule snapshot candidate component result-validation privacy secret archive-path or Skill package checks", "modifying the source tree or a real installed instance during rehearsal"]
+unknown_or_ambiguous = "preserve the complete 1.4.5 source candidate and failure scene; report the exact file identity ownership delivery field carrier or host constraint that is missing; isolate only the unsafe Skill item switch or completion claim and keep unrelated capabilities usable"
+idempotence = "same-source-second-file-run-makes-no-file-record-export-delivery-timestamp-or-snapshot-byte-change; old export indexes remain byte-identical and no sharing method or carrier is inferred"
+
+[verification]
+checks = ["manifest-parses", "version-1.4.6-and-existing-schema-versions-aligned", "only-1.4.5-is-a-direct-source-and-older-versions-chain-through-published-manifests", "published-1.4.5-manifest-remains-byte-immutable", "published-1.4.6-authority-requires-fixed-tag-release-object-matching-tree-and-user-authorization", "blank-1.4.6-template-remains-byte-exact-empty", "uninstantiated-1.4.5-template-upgrades-to-byte-exact-blank-1.4.6", "instantiated-1.4.5-identity-assets-validation-evolution-components-extensions-workspace-local-private-skill-requirements-export-index-editable-sources-existing-packages-delivery-carriers-and-unknown-fields-are-byte-preserved", "legacy-draft-review-and-ready-without-delivery-fields-project-as-needs-finishing-review-and-sharing-method-needed-without-source-writes", "new-zip-and-folder-carriers-round-trip-through-the-bounded-inspector", "zip-traversal-link-encryption-overflow-crc-and-duplicate-path-faults-remain-local-to-one-package", "changed-editable-source-or-missing-carrier-projects-stale-without-deleting-old-artifacts-or-blocking-snapshot", "startup-capsule-is-rebuilt-after-version-migration-and-its-source-digest-closes", "merged-instance-truth-rebuilds-public-and-dist-snapshots-byte-identically", "patch-upgrade-faults-restore-complete-source-and-second-file-run-makes-no-change", "public-distribution-excludes-private-maintainer-assets-real-skills-export-indexes-editable-sources-carriers-links-components-bindings-user-data-and-local-acceptance-evidence", "complete-tree-platform-identity-and-preserved-path-bytes-close-before-switch"]
+risk_policy = "reuse the two canonical blank-template first-instantiation lifelines; add one focused editable-source-to-ZIP-and-folder round-trip one unsafe-ZIP rejection and one synthetic 1.4.5 legacy-export preservation case; do not add a package ecosystem browser matrix host matrix background service or enterprise regression suite"
+
+[release_boundary]
+status = "published-release"
+release_ref = "v1.4.6"
+publication_authorized = true
+repository_operation_authorized = true
+instance_replacement_authorized = true
+future_publication_or_repository_operation_authorized = false
+authority_requires = ["official-fixed-tag-v1.4.6", "official-release-object-v1.4.6", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]
+authority_scope = "this-fixed-release-may-be-used-for-instance-replacement; never-authorizes-future-repository-release-or-publication-actions"
+maintainer_private_paths = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**", "workspace/**"]

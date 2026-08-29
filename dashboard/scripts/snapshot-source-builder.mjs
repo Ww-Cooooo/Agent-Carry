@@ -162,6 +162,10 @@ function enumerateInstanceSources(repository) {
   return files.sort((left, right) => compareOrdinal(left.ref, right.ref));
 }
 
+function isOpaqueSkillPayload(ref) {
+  return ref.startsWith("instance/skills/exports/") || ref.startsWith("instance/skills/shares/");
+}
+
 function computeSnapshotSourceDigestWithMode(repository, { mode = "strict", requiredSourceRefs = new Set(), issues = [] } = {}) {
   if (!snapshotModes.has(mode)) fail("snapshot mode is invalid");
   const files = enumerateInstanceSources(repository); const lines = []; let totalBytes = 0;
@@ -170,6 +174,12 @@ function computeSnapshotSourceDigestWithMode(repository, { mode = "strict", requ
     totalBytes += bytes.length;
     if (totalBytes > 512 * 1024 * 1024) fail("instance source bytes exceed the 512 MiB snapshot-maintenance bound");
     lines.push(`${file.ref}\t${hash(bytes)}\n`);
+    // Editable Skill payloads and their delivery carriers may legitimately
+    // contain images or archives. They affect the byte digest, while their
+    // content is inspected only through the bounded Skill-package route and is
+    // never projected into the dashboard. A binary carrier must not stop the
+    // whole snapshot or unrelated assistant capabilities.
+    if (isOpaqueSkillPayload(file.ref)) continue;
     let text;
     try { text = utf8Decoder.decode(bytes); }
     catch {
@@ -243,6 +253,109 @@ function titleFromSkillId(id) {
   return id.split(/[.:_-]+/u).filter(Boolean).map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join(" ") || "未命名 Skill";
 }
 
+const skillDeliveryDigest = /^sha256:[0-9a-f]{64}$/u;
+const skillDeliveryMethods = new Set(["zip", "folder", "link", "local-only"]);
+const skillDeliveryStates = new Set(["unselected", "local-only", "artifact-ready", "target-needed", "link-ready"]);
+const skillDeliveryFields = ["delivery_method", "delivery_state", "delivery_ref", "delivery_source_digest", "delivery_digest", "delivery_generated_at", "delivery_link"];
+
+function validZonedDate(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value)) && /[zZ]|[+-]\d{2}:\d{2}$/u.test(value);
+}
+
+function resolvePhysicalRef(repository, ref) {
+  if (!clean(ref, 480) || ref.startsWith("/") || ref.includes("\\") || ref.includes(":")
+    || ref.split("/").some((part) => !portablePrivatePathSegment(part))) throw new Error("delivery reference is not portable");
+  let cursor = realpathSync(repository);
+  for (const part of ref.split("/")) {
+    cursor = resolve(cursor, part);
+    const info = lstatSync(cursor);
+    if (info.isSymbolicLink()) throw new Error("delivery reference crosses a link");
+  }
+  return cursor;
+}
+
+function skillDirectoryDigest(repository, ref) {
+  const root = resolvePhysicalRef(repository, ref);
+  if (!lstatSync(root).isDirectory()) throw new Error("Skill delivery directory is not physical");
+  const files = [];
+  let totalBytes = 0;
+  const walk = (directory) => {
+    const entries = readdirSync(directory, { withFileTypes: true });
+    if (entries.length > 128) throw new Error("Skill delivery directory exceeds its entry bound");
+    for (const entry of entries) {
+      const path = resolve(directory, entry.name);
+      const itemRef = relative(root, path).split(sep).join("/");
+      if (!clean(itemRef, 480) || itemRef.split("/").some((part) => !portablePrivatePathSegment(part))) throw new Error("Skill delivery contains a non-portable path");
+      const info = lstatSync(path);
+      if (info.isSymbolicLink()) throw new Error("Skill delivery contains a link");
+      if (info.isDirectory()) { walk(path); continue; }
+      if (!info.isFile() || info.size > 512 * 1024) throw new Error("Skill delivery contains an unsupported file");
+      totalBytes += info.size;
+      if (totalBytes > 2 * 1024 * 1024) throw new Error("Skill delivery exceeds its byte bound");
+      const bytes = stableRead(path, 512 * 1024, itemRef);
+      files.push({ ref: itemRef, digest: hash(bytes) });
+      if (files.length > 128) throw new Error("Skill delivery exceeds its file bound");
+    }
+  };
+  walk(root);
+  files.sort((left, right) => compareOrdinal(left.ref, right.ref));
+  return `sha256:${hash(Buffer.from(files.map((file) => `${file.digest}  ${file.ref}\n`).join(""), "utf8"))}`;
+}
+
+function safeDeliveryLink(value) {
+  if (!clean(value, 2048)) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" && Boolean(parsed.hostname) && !parsed.username && !parsed.password && !parsed.search && !parsed.hash;
+  } catch { return false; }
+}
+
+function projectSkillDelivery(repository, item) {
+  const hasDelivery = skillDeliveryFields.some((field) => Object.hasOwn(item, field));
+  if (!hasDelivery) return { delivery_method: "", delivery_state: "unselected" };
+  const method = item.delivery_method ?? "";
+  const state = item.delivery_state ?? "";
+  const prefix = `instance/skills/shares/${item.id}/`;
+  if ((!method && state !== "unselected") || !skillDeliveryStates.has(state) || (method && !skillDeliveryMethods.has(method))) {
+    return { delivery_method: "", delivery_state: "review" };
+  }
+  if (state === "unselected") {
+    return method || skillDeliveryFields.slice(2).some((field) => Object.hasOwn(item, field))
+      ? { delivery_method: method, delivery_state: "review" }
+      : { delivery_method: "", delivery_state: "unselected" };
+  }
+  if (state === "local-only") {
+    return method === "local-only" && !skillDeliveryFields.slice(2).some((field) => Object.hasOwn(item, field))
+      ? { delivery_method: method, delivery_state: state }
+      : { delivery_method: method, delivery_state: "review" };
+  }
+  const combinationValid = (state === "artifact-ready" && ["zip", "folder"].includes(method))
+    || (["target-needed", "link-ready"].includes(state) && method === "link");
+  if (!combinationValid || !clean(item.delivery_ref, 480) || !item.delivery_ref.startsWith(prefix)
+    || !skillDeliveryDigest.test(item.delivery_source_digest ?? "") || !skillDeliveryDigest.test(item.delivery_digest ?? "")
+    || !validZonedDate(item.delivery_generated_at)
+    || (state === "link-ready" ? !safeDeliveryLink(item.delivery_link) : Object.hasOwn(item, "delivery_link"))) {
+    return { delivery_method: method, delivery_state: "review" };
+  }
+  try {
+    const currentSourceDigest = skillDirectoryDigest(repository, `instance/skills/exports/${item.id}`);
+    if (currentSourceDigest !== item.delivery_source_digest) return { delivery_method: method, delivery_state: "stale" };
+    const artifactPath = resolvePhysicalRef(repository, item.delivery_ref);
+    let artifactDigest;
+    if (method === "folder") {
+      if (!lstatSync(artifactPath).isDirectory()) return { delivery_method: method, delivery_state: "stale" };
+      artifactDigest = skillDirectoryDigest(repository, item.delivery_ref);
+    } else {
+      const info = lstatSync(artifactPath);
+      if (!info.isFile() || info.size > 4 * 1024 * 1024) return { delivery_method: method, delivery_state: "stale" };
+      artifactDigest = `sha256:${hash(stableRead(artifactPath, 4 * 1024 * 1024, item.delivery_ref))}`;
+    }
+    return { delivery_method: method, delivery_state: artifactDigest === item.delivery_digest ? state : "stale" };
+  } catch {
+    return { delivery_method: method, delivery_state: "stale" };
+  }
+}
+
 function projectSkillExports(repository, instanceId, { mode = "strict", requiredSourceRefs = new Set(), issues = [] } = {}) {
   const ref = "instance/skills/exports/index.toml";
   if (!existsSync(resolve(repository, ...ref.split("/")))) return [];
@@ -262,7 +375,7 @@ function projectSkillExports(repository, instanceId, { mode = "strict", required
         || item.entry !== `instance/skills/exports/${item.id}/SKILL.md`
         || !Number.isFinite(Date.parse(item.generated_at ?? "")) || !/[zZ]|[+-]\d{2}:\d{2}$/u.test(item.generated_at ?? "")) fail("skill export entry is invalid");
       ids.add(item.id);
-      return { id: item.id, title: item.title, summary: item.summary, state: item.state };
+      return { id: item.id, title: item.title, summary: item.summary, state: item.state, ...projectSkillDelivery(repository, item) };
     }).sort((left, right) => compareOrdinal(left.id, right.id));
   } catch (error) {
     isolateOrFail(mode, requiredSourceRefs, issues, ref, "skill-export-index-invalid", error.message);

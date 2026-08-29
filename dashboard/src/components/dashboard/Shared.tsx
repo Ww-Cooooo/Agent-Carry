@@ -269,12 +269,12 @@ export function StatusBadge({ value, showHelp = true, helpText }: { value?: stri
   const label = normalizeStatus(value);
   const help = helpText ?? STATUS_HELP[label] ?? `这条内容当前处于“${label}”状态。`;
   const tone =
-    ["本地草稿", "尚未检查完成"].includes(label)
+    ["本地草稿", "尚未检查完成", "待完善", "仅本机保留"].includes(label)
       ? "info"
-      : label.includes("未确认") || label.includes("待") || label.includes("复核") || label.includes("稍后")
+      : label.includes("未确认") || label.includes("待") || label.includes("复核") || label.includes("需要") || label.includes("稍后")
       ? "warm"
        : label.includes("完成") || label.includes("可使用") || label.includes("确认") || label.includes("启用")
-           || ["已实践", "可靠", "可迁移", "可以分享", "适合整理"].includes(label)
+           || ["已实践", "可靠", "可迁移", "可以分享", "适合整理", "ZIP 已准备", "分享文件夹已准备", "分享链接已准备"].includes(label)
          ? "success"
          : "neutral";
   return (

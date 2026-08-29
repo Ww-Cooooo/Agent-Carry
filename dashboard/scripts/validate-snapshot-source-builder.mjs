@@ -6,6 +6,7 @@ import { buildSnapshotCandidate, computeSnapshotSourceDigest } from "./snapshot-
 import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { buildStartupCapsule } from "./startup-capsule-contract.mjs";
+import { createSkillDelivery } from "./skill-package.mjs";
 
 const assert = (condition, message) => { if (!condition) throw new Error(`Snapshot source builder contract failed: ${message}`); };
 const root = mkdtempSync(join(tmpdir(), "agent-carry-snapshot-builder-"));
@@ -280,6 +281,7 @@ confirmation = "none"
   assert(snapshot.assets.skills === 1 && snapshot.skills.items?.[0]?.id === "skill.grade-review"
     && snapshot.skills.items[0].title === "成绩复核 Skill" && snapshot.skills.items[0].entry === undefined
     && snapshot.skills.items[0].source === undefined && snapshot.skills.exports?.[0]?.id === "grade-summary-share"
+    && snapshot.skills.exports[0].delivery_method === "" && snapshot.skills.exports[0].delivery_state === "unselected"
     && snapshot.skills.exports[0].source_asset_id === undefined && snapshot.skills.exports[0].entry === undefined,
   "Skill workshop projection did not expose exactly the low-sensitivity installed/export metadata");
   assert(!first.source.includes("private://") && !first.source.includes("private.collection.grade-workflow"), "a validated private locator leaked into the snapshot projection");
@@ -287,6 +289,39 @@ confirmation = "none"
   assert(snapshot.meta.source_digest === computeSnapshotSourceDigest(root).digest, "source digest did not match an independent deterministic rebuild");
   const repeated = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:00:00+08:00") });
   assert(!repeated.updated && repeated.source === first.source, "unchanged formal truth refreshed generated_at or bytes");
+
+  const exportIndexPath = resolve(root, "instance/skills/exports/index.toml");
+  const exportIndexBytes = readFileSync(exportIndexPath);
+  const exportSourcePath = resolve(root, "instance/skills/exports/grade-summary-share/SKILL.md");
+  const exportSourceBytes = readFileSync(exportSourcePath);
+  const delivery = createSkillDelivery(resolve(root, "instance/skills/exports/grade-summary-share"), {
+    format: "zip",
+    outputPath: resolve(root, "instance/skills/shares/grade-summary-share/grade-summary-share-fixture.zip"),
+  });
+  const deliveryFields = `delivery_method = "zip"
+delivery_state = "artifact-ready"
+delivery_ref = "instance/skills/shares/grade-summary-share/grade-summary-share-fixture.zip"
+delivery_source_digest = "${delivery.sourceDigest}"
+delivery_digest = "${delivery.artifactDigest}"
+delivery_generated_at = "2026-08-24T04:30:00+08:00"
+`;
+  writeFileSync(exportIndexPath, exportIndexBytes.toString("utf8").replace(
+    'entry = "instance/skills/exports/grade-summary-share/SKILL.md"\ngenerated_at = "2026-08-24T00:00:00+08:00"\n',
+    `entry = "instance/skills/exports/grade-summary-share/SKILL.md"\ngenerated_at = "2026-08-24T00:00:00+08:00"\n${deliveryFields}`,
+  ));
+  const delivered = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:01:00+08:00") });
+  assert(delivered.snapshot.skills.exports?.[0]?.delivery_method === "zip"
+    && delivered.snapshot.skills.exports[0].delivery_state === "artifact-ready"
+    && !delivered.source.includes("grade-summary-share-fixture.zip") && !delivered.source.includes(delivery.artifactDigest),
+  "a verified delivery carrier was not projected as low-sensitivity artifact-ready state");
+  writeFileSync(exportSourcePath, Buffer.concat([exportSourceBytes, Buffer.from("\n# changed\n", "utf8")]));
+  const staleDelivery = buildSnapshotCandidate(root, { existingSource: delivered.source, now: new Date("2026-08-24T05:02:00+08:00") });
+  assert(staleDelivery.snapshot.skills.exports?.[0]?.delivery_state === "stale", "changed editable Skill content did not locally mark its old carrier stale");
+  writeFileSync(exportSourcePath, exportSourceBytes);
+  writeFileSync(exportIndexPath, exportIndexBytes);
+  rmSync(resolve(root, "instance/skills/shares"), { recursive: true, force: true });
+  const restoredDelivery = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:03:00+08:00") });
+  assert(!restoredDelivery.updated && restoredDelivery.source === first.source, "delivery projection fixture did not restore its exact legacy source state");
 
   const skillRequirementsPath = resolve(root, "instance/skills/requirements.toml");
   const skillRequirementsBytes = readFileSync(skillRequirementsPath);

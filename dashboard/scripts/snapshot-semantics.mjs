@@ -14,7 +14,7 @@ const rootKeys = new Set(["meta", "overview", "profile", "model", "health", "ass
 const formalItemKeys = new Set(["id", "title", "summary", "subtype", "triggers", "scope_summary", "source_summary", "evidence_summary", "reliability", "status", "approval_state", "activation_basis", "risk_tier", "approved_by_user", "maturity"]);
 const candidateItemKeys = new Set(["id", "title", "summary", "status", "source_summary", "target_kind", "target_subtype", "next_step", "observation_state", "observation_basis"]);
 const skillItemKeys = new Set(["id", "title", "summary", "triggers", "platform", "state"]);
-const skillExportKeys = new Set(["id", "title", "summary", "state"]);
+const skillExportKeys = new Set(["id", "title", "summary", "state", "delivery_method", "delivery_state"]);
 
 function fail(label, message) {
   throw new Error(`${label} semantic validation failed: ${message}`);
@@ -307,6 +307,15 @@ export function validateSnapshotSemantics(snapshot, label = "snapshot") {
       text(item.summary, label, `${path}.summary`, { max: 500 });
       text(item.state, label, `${path}.state`, { max: 32 });
       if (!["draft", "ready", "review"].includes(item.state)) fail(label, `${path}.state is invalid`);
+      const hasDeliveryMethod = Object.hasOwn(item, "delivery_method");
+      const hasDeliveryState = Object.hasOwn(item, "delivery_state");
+      if (hasDeliveryMethod !== hasDeliveryState) fail(label, `${path} has a partial delivery projection`);
+      if (hasDeliveryMethod) {
+        text(item.delivery_method, label, `${path}.delivery_method`, { max: 32, allowEmpty: true });
+        text(item.delivery_state, label, `${path}.delivery_state`, { max: 32 });
+        if (!["", "zip", "folder", "link", "local-only"].includes(item.delivery_method)) fail(label, `${path}.delivery_method is invalid`);
+        if (!["unselected", "local-only", "artifact-ready", "target-needed", "link-ready", "stale", "review"].includes(item.delivery_state)) fail(label, `${path}.delivery_state is invalid`);
+      }
     });
   }
 

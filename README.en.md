@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.5`.** This release fixes upgrade continuity in a long-running conversation. After files switch, the Agent waits for the current atomic action to reach a safe boundary, compares the Agent Carry startup baseline, adopts the minimum new product rules, and automatically validates one non-destructive representative behavior. The user does not need to create a test task or run an acceptance prompt. A new task is only the final compatibility route when immutable host rules genuinely prevent in-place adoption.
+> **Current version: `1.4.6`.** This release closes the Skill Workshop sharing and intake workflow. Before generating a Skill, the Agent asks whether you want a ZIP, a standalone folder, link delivery, or a local-only copy. It then works only on an isolated copy of the selected method, removes instance-specific and private details, and checks the result. A sharing choice creates the corresponding local file; local-only keeps the editable Skill without inventing a delivery carrier. To receive somebody else's Skill, give the Agent a folder, ZIP, or link; it inspects the package in isolation and keeps only one necessary installation confirmation. A problem in one Skill does not stop the conversation, other Skills, or Agent Carry itself.
 
 ## Where Agent Carry fits
 
@@ -172,6 +172,24 @@ flowchart LR
 
 The detailed rules may be strong, but ordinary startup stays small. A task first reads a tiny entry, then compares ordinary wording against low-sensitive titles, summaries, aliases, and scope in a route map, then loads only the source files that task needs. You can say “do this like last time” without knowing an asset ID or file path. For a fuzzy request with one clear candidate, the Agent names the old approach and asks “is this the one?” before loading it; an explicitly named approach or stable dashboard action does not repeat that confirmation. When several materially different candidates remain, the Agent offers two or three human-readable choices. Formal modification work also loads a root-cause quality principle: fix the real problem and prove user reliability first, then keep user-facing operation clear and lightweight. Read-only use does not load that full protocol.
 
+## Skill Workshop: share your method or receive somebody else's
+
+A **Skill** here is a portable folder that explains a reusable method to another Agent. The SOP or capability remains the original method inside your assistant. Agent Carry creates a separate Skill only when you ask.
+
+**Share your own method:**
+
+1. Open **Skill Workshop** → **Skills the Agent recommends creating** in the local dashboard. Choose one item and use **Create Skill and choose sharing format**. The button only copies a request; send it to the current Agent to begin. If your method is not listed, describe it to the Agent. It will first decide whether the method should become an SOP or capability and then return here, so you do not need to know the internal label.
+2. Choose once: ZIP (recommended for sending), standalone folder, link delivery, or local-only. The Agent removes identity, paths, and private details from the copy and reports what it kept, removed, parameterized, and checked. This is not a claim of perfect sanitization; you may ask it to open the complete copy before handing it to anybody.
+3. For ZIP or folder delivery, the Agent reports the exact absolute path and digest. Local-only reports the editable Skill path and creates no extra sharing file. Link delivery first creates a local ZIP; only an exact destination, visibility, and matching external authorization allow upload. Success returns the real link. Failure preserves the ZIP and explains the next step.
+4. Send the prepared ZIP, delivery folder, or link to the recipient. They open **Skill Workshop** → **Receive a Skill** and follow the intake flow below.
+
+**Receive a shared Skill:**
+
+1. Under **Receive a Skill**, use **Copy inspection request** and send the copied text to the current Agent. If the host can read local files, add the absolute path of the folder or unopened ZIP. Or give the exact GitHub repository, subdirectory, Release/download page, or another link; the Agent stops and explains when it cannot resolve one exact package. If you are unsure what you received, describe the file or page you have. A host without local-file access cannot perform the local installation and should tell you to continue in a file-capable host instead of defaulting to upload a private package.
+2. Supplying a link with an explicit request to inspect authorizes only acquisition for isolated read-only review. A private source that needs login, an attachment that would leave the computer, or a new recipient still requires the Agent to explain the boundary and obtain the corresponding authorization.
+3. The installation preview binds the review to the exact source, digest, and destination, then lists purpose, scripts, dependencies, permissions, name/version conflicts, and rollback. Changed bytes require a new review. A same-name package never silently overwrites an existing Skill.
+4. The single installation confirmation authorizes only the listed local package copy, readback, and registration in `instance/skills/requirements.toml`. Script execution, software/model/runtime installation, login, or permission changes cannot be bundled into that confirmation and require their own impact explanation when needed. Copy or registration failure, an unavailable dependency, or a later runtime failure pauses only that Skill and preserves the older usable version; other Skills, the conversation, and Agent Carry continue.
+
 ## Migration, backup, and local-private data are different actions
 
 | Goal | Start here | What moves | Where it goes |
@@ -196,6 +214,22 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.6</strong></summary>
+
+- After you choose a method to turn into a Skill, the Agent asks once how you want to deliver it: a ZIP is recommended, while a standalone folder, link delivery, and local-only are also available. ZIP and folder choices create real local files. Link delivery first creates a local ZIP; uploading still requires the exact site, repository, or recipient and its visibility.
+- The practical entry is **Skill Workshop** in the local dashboard. Choose an item under **Skills the Agent recommends creating**, then use **Create Skill and choose sharing format**. If a formal SOP already exists but is not recommended yet, you can tell the Agent in plain language which saved SOP you want to organize; a recommendation never starts conversion by itself.
+- The original SOP or capability stays unchanged. The Agent copies only the selected method into one editable local Skill folder, removes identity, absolute paths, private references, secrets, and instance-specific names from that copy, then checks triggers, scripts, dependencies, and boundaries. You do not need to sanitize it by hand first.
+- The editable Skill folder is the only content source of truth. A “standalone folder” is a generated non-source delivery copy that can be handed to somebody else. ZIPs and standalone folders are local delivery carriers; a link is a remote way to obtain one of those carriers. The dashboard compares the recorded source and local-carrier digests to decide whether that carrier still represents the latest content. When content changes, the Agent creates a new carrier and preserves the old one instead of silently overwriting it.
+- The dashboard now uses **My Skills** and states the real next action: finish the content, review an issue, choose a sharing method, use a prepared ZIP or folder, supply a link target, or rebuild a stale carrier. It reports verifiable local state and never claims that another person has received a file.
+- This is not background synchronization or remote monitoring. The Agent recomputes local source and carrier status only after you send the request copied from the detail view, explicitly ask it to continue, or rebuild the dashboard; merely opening a static detail view triggers no check. It never infers that somebody later deleted a file, changed a remote link, or successfully imported the Skill. On an explicit remote recheck, it reports that observation without treating the last successful registration as live health and without rewriting the local source or deleting an older carrier.
+- A received folder is inspected read-only. A ZIP is safely extracted into a new isolation directory. A link is acquired under the external-content boundary and then follows the same path. Inspection runs no package script, installs no dependency, logs into no account, and never silently rewrites the package to make it pass. Before the single installation confirmation, the preview binds the exact source, digest, and destination and names scripts, dependencies, permissions, name or version conflicts, and rollback. That confirmation authorizes only the bound local Skill package copy, readback, and registration; script execution, software/model/runtime installation, login, or permission changes cannot be bundled into it.
+- Existing `draft`, `review`, and `ready` records remain byte-preserved. An old `ready` record without delivery metadata simply appears as **sharing method needed** until its next relevant action. Upgrade itself creates no ZIP, sends or installs nothing, refreshes no timestamp, and does not rewrite the old index.
+- A missing, stale, damaged, or incomplete carrier affects only that Skill and changes only its current delivery state; its editable source and older files are preserved. The dashboard, conversation, unrelated Skills, and Agent Carry remain available.
+- Version 1.4.6 can replace an instance only when the fixed `v1.4.6` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.5</strong></summary>
