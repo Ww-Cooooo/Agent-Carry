@@ -812,6 +812,22 @@ requireFragments("core/upgrade/release-manifest-1.4.7.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.8.toml", [
+  'release = "1.4.8"',
+  'from_versions = ["1.4.7"]',
+  'id = "deterministic-user-journeys-1.4.8"',
+  '"first-instantiation-transaction-closes-all-identity-files-and-rolls-back-one-injected-fault"',
+  '"shared-skill-preview-is-source-digest-target-bound-and-one-confirmation-installs-registers-without-executing-package-code"',
+  '"unchecked-state-remains-not-checked-and-is-never-reported-as-absent"',
+  '"instantiated-1.4.7-identity-assets-validation-evolution-components-extensions-workspace-local-private-skills-exports-carriers-task-handoffs-and-unknown-fields-are-byte-preserved"',
+  'status = "published-release"',
+  'release_ref = "v1.4.8"',
+  'publication_authorized = true',
+  'repository_operation_authorized = true',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -852,13 +868,17 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.7`",
+  "当前版本：`1.4.8`",
+  "点击展开：1.4.8 主要改了什么",
+  "随包可执行的本地入口",
+  "绑定内容摘要的预览",
+  "本次未核对",
+  "固定 `v1.4.8` 标签",
   "点击展开：1.4.7 主要改了什么",
   "一次性本地动作",
   "缺少一块，只修当前回复",
   "业务结果、文件、对话和无关能力继续可用",
   "`👉 接下来` 仍是最后一个用户可见区块",
-  "固定 `v1.4.7` 标签",
   "点击展开：1.4.6 主要改了什么",
   "可编辑 Skill 文件夹是唯一内容真源",
   "分享方式待选择",

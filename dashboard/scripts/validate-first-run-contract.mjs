@@ -4,6 +4,11 @@ import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, re
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  executeFirstInstantiation as executeProductFirstInstantiation,
+  inspectFirstInstantiationRequest,
+  normalizeFirstInstantiationRequest,
+} from "./first-instantiation-transaction.mjs";
 import { inspectInstanceComponentCompatibility, inspectInstanceComponents } from "./instance-component-contract.mjs";
 import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
@@ -103,6 +108,12 @@ requireFragments("core/guides/instantiation-guide.md", [
   "B. 首项任务开始前的实例化交接门",
   "用户明确确认当前模型处于 Level 3",
   "C. 实例化写入门",
+  "first-instantiation-transaction.mjs",
+  "--request-file",
+  "user_preview",
+  "--write --acknowledge-complete-preview",
+  "当前模型不得逐文件手写正式清单、索引、胶囊或快照",
+  "只停止本次实例化",
   'asset_kind = "task-family"',
   "记忆、能力、SOP、经验、学习候选、普通待办和 Skill 计数全部为 0",
   "三张长期治理卡单独计为",
@@ -111,6 +122,8 @@ requireFragments("core/guides/instantiation-guide.md", [
   "instance/validations/index.toml",
   "不得创建任何 `[[validations]]`",
   "instance/components/registry.toml",
+  "系统别名、代理名和用户对配置的说明只能作为选择线索",
+  "没有当前请求元数据或宿主可验证回执时，相关字段留空并继续创建",
   "胶囊已更新、验证索引仍是 template",
   "相同完整预览第二次执行",
   "D. 第一项真实任务结束门",
@@ -128,10 +141,18 @@ requireFragments("core/guides/first-use-execution-gates.md", [
   "只有用户已经明确确认当前模型处于 Level 3",
   "不能根据模型品牌、价格、宿主标签或自身感觉猜测等级",
   "## C. 实例化写入门",
+  "正式写入必须交给发布包自带的确定性执行器",
+  "--request-file",
+  "user_preview",
+  "--acknowledge-complete-preview",
+  "不得临时编写大段替代脚本或降低校验",
+  "保留模板与普通对话能力",
   'asset_kind = "task-family"',
   "禁止",
   "三张状态为 `active` 的治理卡都有带时区的 `schedule_anchor_at` 和 `next_due_at`",
   "当前宿主的一份最小档案",
+  "代理路由名和用户对配置的描述不能冒充当前请求后端",
+  "证据不足时留空不阻塞创建",
   "instance/skills/requirements.toml",
   "不得扫描全部 Skill",
   'status = "current"',
@@ -195,6 +216,9 @@ requireFragments("INSTALL.md", [
   "第一条用户回复的主要任务是带用户开始创建助手",
   "就在发送第一条用户回复前",
   "A. 安装完成后的回复门",
+  "first-instantiation-transaction.mjs",
+  "不得逐文件手写实例状态",
+  "普通对话和无关能力继续可用",
   "ac_kind",
   "匿名 `ac_ref`",
   "若当前宿主不能可靠读取地址栏",
@@ -205,6 +229,8 @@ requireFragments("START-HERE.txt", [
   "不看或打不开看板也可以直接在当前聊天继续",
   "生成创建指令",
   "展示完整预览并得到我的明确确认前",
+  "随包的首次实例化执行器",
+  "不要逐文件手写正式状态或临时编写替代脚本",
   "再只问我这一个选择",
   "准备给我第一条回复时",
   "不要替我选择",
@@ -221,6 +247,8 @@ requireFragments("BOOTSTRAP.md", [
   "B. 首项任务开始前的实例化交接门",
   "等待用户明确确认当前模型处于 Level 3",
   "C. 实例化写入门",
+  "first-instantiation-transaction.mjs",
+  "不得由模型逐文件手写正式状态或临时发明替代脚本",
   "不预先制造记忆、能力、SOP、经验、学习建议或普通待办",
 ]);
 
@@ -249,6 +277,8 @@ requireFragments("core/maps/trigger-registry.toml", [
   "before-real-task-input-reopen-the-instantiation-handoff-gate",
   "user-confirmed-level-3",
   "user-explicitly-confirms-the-complete-preview-before-an-allowlisted-write",
+  "first-instantiation-transaction-mjs",
+  "never-handwrite-formal-instance-files-or-improvise-a-replacement-executor",
   "user-confirms-the-result-correct-user-asks-to-continue-or-save-the-method",
   "atomic-instance-identity-set",
   "validation-index-component-registry",
@@ -316,6 +346,12 @@ requireFragments("core/maps/dashboard-actions.toml", [
   "generated_at=本次原子实例化的带时区真实时间",
   "相同输入第二次执行不得刷新候选索引 generated_at",
   "不得把尚未执行的第一项任务伪造成记录",
+  "first-instantiation-transaction.mjs",
+  "--write --acknowledge-complete-preview",
+  "不得逐文件手写正式状态",
+  "失败只暂停本次创建",
+  "系统别名、代理名和用户对配置的描述不能冒充已验证后端",
+  "证据不足就留空且不阻塞创建",
   "相同输入第二次执行必须零变化",
 ]);
 requireFragments("dashboard/src/components/dashboard/Views.tsx", ["第一次使用", "创建我的助手", "当前助手 ·"]);
@@ -353,7 +389,21 @@ requireFragments("dashboard/src/generated/dashboard-actions.json", [
   "generated_at=本次原子实例化的带时区真实时间",
   "相同输入第二次执行不得刷新候选索引 generated_at",
   "不得把尚未执行的第一项任务伪造成记录",
+  "first-instantiation-transaction.mjs",
+  "--write --acknowledge-complete-preview",
+  "不得逐文件手写正式状态",
+  "失败只暂停本次创建",
+  "系统别名、代理名和用户对配置的描述不能冒充已验证后端",
+  "证据不足就留空且不阻塞创建",
   "相同输入第二次执行必须零变化",
+]);
+requireFragments("core/maps/component-map.toml", [
+  'id = "first-instantiation-runtime"',
+  'paths = ["dashboard/scripts/first-instantiation-transaction.mjs"]',
+  'projects_to = ["installation-experience", "upgrade-system", "architecture-documentation"]',
+]);
+requireFragments("dashboard/package.json", [
+  '"instantiate": "node scripts/first-instantiation-transaction.mjs"',
 ]);
 requireFragments("core/schemas/instance-manifest.schema.md", [
   "validation.evidence_index_ref",
@@ -431,6 +481,17 @@ requireFragments("core/upgrade/release-manifest-1.4.7.toml", [
   '"uninstantiated-1.4.6-template-upgrades-to-byte-exact-blank-1.4.7"',
   '"instantiated-1.4.6-identity-assets-validation-evolution-components-extensions-workspace-local-private-skills-exports-carriers-task-handoffs-and-unknown-fields-are-byte-preserved"',
 ]);
+requireFragments("core/upgrade/release-manifest-1.4.8.toml", [
+  'migrate = ["instance/manifest.toml", "instance/startup-capsule.toml", "instance/components/registry.toml"',
+  '"instance/evolution/index.toml", "instance/validations/index.toml"]',
+  "validation_overlap_note",
+  "component_overlap_note",
+  "skill_overlap_note",
+  '"blank-1.4.8-template-remains-byte-exact-empty"',
+  '"uninstantiated-1.4.7-template-upgrades-to-byte-exact-blank-1.4.8"',
+  '"instantiated-1.4.7-identity-assets-validation-evolution-components-extensions-workspace-local-private-skills-exports-carriers-task-handoffs-and-unknown-fields-are-byte-preserved"',
+  '"first-instantiation-transaction-closes-all-identity-files-and-rolls-back-one-injected-fault"',
+]);
 requireFragments("core/upgrade/release-manifest-1.2.0.toml", [
   "replace_instance_guides",
   "instance/profile/README.md",
@@ -454,6 +515,7 @@ requireFragments("core/upgrade/release-manifest-1.2.1.toml", [
 
 forbidFragments("INSTALL.md", ["完成后只告诉我", "## 8. 安装完成报告"]);
 forbidFragments("START-HERE.txt", ["以及我唯一需要回答的下一步"]);
+forbidFragments("core/guides/first-use-execution-gates.md", ['--request "<临时请求 JSON>"']);
 forbidFragments("README.md", ["完成后告诉我安装位置、看板入口、实际打开结果"]);
 forbidFragments("BOOTSTRAP.md", ["第一条面向用户的话先让用户选择当前舒服的交流方式"]);
 forbidFragments("core/guides/instantiation-guide.md", ["用一两行说明即可"]);
@@ -508,6 +570,67 @@ const fixtureScenarios = Object.freeze([
     hostMatchHint: "isolated-first-run-video-editing",
   }),
 ]);
+
+function requestForScenario(scenario) {
+  return {
+    schema_version: 1,
+    guidance_mode: scenario.guidanceMode,
+    language: "zh-CN",
+    learning_policy: "risk-tiered",
+    display_name: scenario.displayName,
+    mission: scenario.mission,
+    direction: {
+      type: scenario.directionType,
+      domain_id: scenario.domainId,
+      label: scenario.directionLabel,
+      scope_statement: scenario.scopeStatement,
+    },
+    first_task: {
+      title: scenario.taskTitle,
+      summary: scenario.taskSummary,
+      trigger: scenario.taskTrigger,
+      aliases: [scenario.taskAlias],
+      scope: ["完全虚构的隔离测试资料"],
+      conditions: ["真实任务完成后再进入结果验证和资产生命周期"],
+      excludes: ["不把尚未执行的任务写成正式资产"],
+    },
+    profile: {
+      in_scope: [scenario.scopeStatement],
+      out_of_scope: ["不处理真实用户资料"],
+      automation: ["只执行本次隔离首次创建事务"],
+      privacy: ["只使用完全虚构资料"],
+      learning: ["真实任务结束并获得授权后才形成长期资产"],
+      environment: ["隔离测试环境"],
+      unknowns: [],
+    },
+    host: {
+      label: scenario.hostLabel,
+      product_name: "Agent Carry isolated test",
+      product_version: "1",
+      model_name: "",
+      model_selection_label: "",
+      request_model_name: "",
+      model_routing_mode: "unknown",
+      model_observation_basis: [],
+      environment: "isolated-test",
+      observation_basis: "current-local-fixture",
+      integration_mode: "local-fixture",
+      match_hint: scenario.hostMatchHint,
+      limitations: [],
+    },
+  };
+}
+
+function verificationScenario(scenario, request) {
+  const normalized = normalizeFirstInstantiationRequest(request);
+  return Object.freeze({
+    ...scenario,
+    taskFamilyId: normalized.firstTask.id,
+    topicKey: normalized.firstTask.topicKey,
+    subjectKey: normalized.firstTask.subjectKey,
+    hostProfileId: normalized.host.profileId,
+  });
+}
 const localPlaceholderFiles = new Set([
   ".assistant-local/.gitkeep",
   ".assistant-local/dashboard/.gitkeep",
@@ -933,7 +1056,7 @@ function countFormalFiles(root, directoryRef) {
 function verifyInstantiatedFixture(root, scenario) {
   const identityRefs = [...templateIdentityRefs, `instance/hosts/profiles/${scenario.hostProfileId}.toml`];
   for (const ref of identityRefs) integrationAssert(instanceIdFrom(fixtureRead(root, ref), ref) === scenario.instanceId, `${ref} identity drifted`);
-  integrationAssert(fixtureRead(root, "instance/profile/approved-profile.md").includes(`instance_id: \`${scenario.instanceId}\``), "approved profile identity drifted");
+  integrationAssert(fixtureRead(root, "instance/profile/approved-profile.md").includes("instance_id: " + scenario.instanceId), "approved profile identity drifted");
 
   const manifestSource = fixtureRead(root, "instance/manifest.toml");
   integrationAssert(manifestSource.includes(`type = "${scenario.directionType}"`)
@@ -1079,12 +1202,106 @@ function validateRealFirstInstantiationChain() {
       && repairableTemplate.userReport.headline.includes("自动修复"),
     "repairable zero-component template drift did not produce a transparent repair plan");
     const faultTemplateFingerprint = treeFingerprint(faultLive);
-    const faultResult = executeFirstInstantiation(faultLive, faultScenario, { injectAfterCapsule: true });
+    const faultRequest = requestForScenario(faultScenario);
+    const unverifiedModelRequest = JSON.parse(JSON.stringify(faultRequest));
+    unverifiedModelRequest.host.model_name = "proxy-alias";
+    unverifiedModelRequest.host.model_selection_label = "proxy-alias";
+    unverifiedModelRequest.host.request_model_name = "proxy-alias";
+    unverifiedModelRequest.host.model_observation_basis = ["user-confirmed"];
+    const guardedHost = normalizeFirstInstantiationRequest(unverifiedModelRequest).host;
+    integrationAssert(guardedHost.modelName === "" && guardedHost.modelSelectionLabel === ""
+      && guardedHost.requestModelName === "",
+    "an unverified UI or proxy model alias was promoted to a verified request backend");
+    const verifiedModelRequest = JSON.parse(JSON.stringify(faultRequest));
+    verifiedModelRequest.host.model_name = "verified-request-model";
+    verifiedModelRequest.host.request_model_name = "verified-request-model";
+    verifiedModelRequest.host.model_observation_basis = ["current-request-metadata"];
+    const verifiedHost = normalizeFirstInstantiationRequest(verifiedModelRequest).host;
+    integrationAssert(verifiedHost.modelName === "verified-request-model"
+      && verifiedHost.requestModelName === "verified-request-model",
+    "a request model with current-request metadata evidence was not preserved");
+    const cliRequestRef = resolve(integrationRoot, "first-instantiation-request.json");
+    writeFileSync(cliRequestRef, JSON.stringify(faultRequest, null, 2) + "\n", "utf8");
+    const helpResult = spawnSync(process.execPath, [
+      resolve(scriptDirectory, "first-instantiation-transaction.mjs"),
+      "--help",
+    ], { cwd: repositoryDirectory, encoding: "utf8" });
+    integrationAssert(helpResult.status === 0
+      && helpResult.stdout.includes("--request-file")
+      && helpResult.stdout.includes("Do not paste JSON text"),
+    "first-instantiation CLI help did not distinguish a request file path from pasted JSON");
+    const cliInspection = spawnSync(process.execPath, [
+      resolve(scriptDirectory, "first-instantiation-transaction.mjs"),
+      "--root", faultLive,
+      "--request-file", cliRequestRef,
+    ], { cwd: repositoryDirectory, encoding: "utf8" });
+    integrationAssert(cliInspection.status === 0, `first-instantiation CLI inspection failed: ${cliInspection.stderr || cliInspection.stdout}`);
+    const cliInspectionResult = JSON.parse(cliInspection.stdout);
+    integrationAssert(cliInspectionResult.decision === "first-instantiation-request-valid"
+      && cliInspectionResult.status === "ready"
+      && cliInspectionResult.manifest_bytes <= cliInspectionResult.manifest_limit
+      && cliInspectionResult.user_preview.includes(faultScenario.displayName)
+      && cliInspectionResult.user_preview.includes("第一项真实任务")
+      && cliInspectionResult.user_preview.includes("governance = 3"),
+    "first-instantiation CLI did not validate the compact request without writing");
+    const inlinePrivateMarker = "PRIVATE_INLINE_REQUEST_MUST_NOT_BE_ECHOED_8291";
+    const inlineRequest = JSON.parse(JSON.stringify(faultRequest));
+    inlineRequest.display_name = inlinePrivateMarker;
+    const inlineMisuse = spawnSync(process.execPath, [
+      resolve(scriptDirectory, "first-instantiation-transaction.mjs"),
+      "--root", faultLive,
+      "--request-file", JSON.stringify(inlineRequest),
+    ], { cwd: repositoryDirectory, encoding: "utf8" });
+    integrationAssert(inlineMisuse.status === 1
+      && inlineMisuse.stdout.includes("expects a UTF-8 JSON file path, not pasted JSON text")
+      && !inlineMisuse.stdout.includes(inlinePrivateMarker)
+      && inlineMisuse.stdout.length < 1600,
+    "inline JSON misuse was not rejected with a bounded, non-echoing file-path explanation");
+
+    const oversizedLive = resolve(integrationRoot, "oversized-preview-live");
+    copyFreshTemplate(oversizedLive);
+    const oversizedFingerprint = treeFingerprint(oversizedLive);
+    const oversizedRequest = JSON.parse(JSON.stringify(faultRequest));
+    oversizedRequest.direction.scope_statement = "边界".repeat(120);
+    oversizedRequest.profile.in_scope = ["这里保留完整的范围与工作细节，不需要塞进启动清单。"];
+    let oversizedError;
+    try {
+      inspectFirstInstantiationRequest(oversizedLive, oversizedRequest);
+    } catch (error) {
+      oversizedError = error;
+    }
+    integrationAssert(oversizedError instanceof Error
+      && oversizedError.message.includes("above the 2560-byte startup limit")
+      && oversizedError.message.includes("profile.in_scope")
+      && treeFingerprint(oversizedLive) === oversizedFingerprint,
+    "oversized Chinese scope was not stopped before confirmation with the untouched template preserved");
+    const faultResult = executeProductFirstInstantiation(faultLive, faultRequest, {
+      testIdentity: { instanceId: faultScenario.instanceId, createdAt: fixtureCreatedAt },
+      testFaultAfterCapsule: true,
+    });
     integrationAssert(faultResult.injectedFailureRecovered === true, "capsule-before-snapshot fault was not recovered");
     verifyTemplateFixture(faultLive, faultTemplateFingerprint, faultScenario);
 
+    const installFaultLive = resolve(integrationRoot, "install-fault-live");
+    copyFreshTemplate(installFaultLive);
+    const installFaultFingerprint = treeFingerprint(installFaultLive);
+    let installFault;
+    try {
+      executeProductFirstInstantiation(installFaultLive, faultRequest, {
+        testIdentity: { instanceId: faultScenario.instanceId, createdAt: fixtureCreatedAt },
+        testFaultAfterInstall: 8,
+      });
+    } catch (error) {
+      installFault = error;
+    }
+    integrationAssert(installFault instanceof Error && installFault.templatePreserved === true,
+      "write-set fault did not return a proven template rollback");
+    verifyTemplateFixture(installFaultLive, installFaultFingerprint, faultScenario);
+
     const scenarios = [];
     for (const scenario of fixtureScenarios) {
+      const request = requestForScenario(scenario);
+      const expected = verificationScenario(scenario, request);
       const successLive = resolve(integrationRoot, `success-${scenario.id}`);
       copyFreshTemplate(successLive);
       if (scenario.id === fixtureScenarios[0].id) {
@@ -1098,18 +1315,21 @@ function validateRealFirstInstantiationChain() {
           && diagnosis.userReport.requiresUserDecision === false,
         "repairable template identity drift incorrectly required a user decision");
       }
-      const first = executeFirstInstantiation(successLive, scenario);
+      const first = executeProductFirstInstantiation(successLive, request, {
+        testIdentity: { instanceId: scenario.instanceId, createdAt: fixtureCreatedAt },
+      });
       integrationAssert(first.updated === true && first.snapshotResult.updated === true,
         `${scenario.id} did not install a new instance snapshot`);
+      const verified = verifyInstantiatedFixture(successLive, expected);
       const firstFingerprint = treeFingerprint(successLive);
       const firstSnapshot = readFileSync(resolve(successLive, "dashboard/public/snapshot.js"));
-      const second = executeFirstInstantiation(successLive, scenario);
+      const second = executeProductFirstInstantiation(successLive, request);
       integrationAssert(second.updated === false && second.capsuleResult.updated === false && second.snapshotResult.updated === false,
         `${scenario.id} second identical instantiation was not idempotent`);
       integrationAssert(treeFingerprint(successLive) === firstFingerprint
         && Buffer.compare(firstSnapshot, readFileSync(resolve(successLive, "dashboard/public/snapshot.js"))) === 0,
       `${scenario.id} second identical instantiation changed bytes or snapshot time`);
-      scenarios.push(first.verification);
+      scenarios.push(verified);
     }
     completed = true;
     return Object.freeze({
@@ -1125,7 +1345,12 @@ function validateRealFirstInstantiationChain() {
         zeroBusinessAndLearningAssets: true,
         governanceCount: 3,
         idempotentSecondRun: true,
+        cliRequestInspection: true,
+        deterministicUserPreview: true,
+        manifestBudgetCheckedBeforeConfirmation: true,
+        requestFilePathMisuseContained: true,
         capsuleBeforeSnapshotFailureRecovered: true,
+        installedWriteFailureRecovered: true,
       }),
     });
   } finally {

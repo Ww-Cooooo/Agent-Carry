@@ -22,7 +22,7 @@ Today you may work in Codex, tomorrow in Claude Code, Trae, or WorkBuddy, and la
 
 > **The dashboard is an offline desktop interface.** It opens directly from local files without npm, a terminal, a local server, or a CDN. This project currently focuses on computer use rather than a mobile layout.
 
-> **Current version: `1.4.7`.** This release fixes a complex-task closeout gap: completed work could still lose the explanation of what was actually used, what was learned, where user-visible files went, or what the real next action is. Before a complex final reply is sent, one local check reviews bounded current-task facts and the draft. It repairs only missing reply sections, never accesses the network, creates no background task store, and never reruns completed work. If the checker, its metadata, or local Node support is unavailable, the Agent reports that local degradation and applies the same four-fact check directly. Completed results, files, conversation, and unrelated capabilities remain available. Simple tasks gain no empty receipts or extra ceremony.
+> **Current version: `1.4.8`.** This release gives first instantiation, ordinary learning persistence, and shared Skill intake bundled deterministic local entrypoints. The Agent discusses choices and supplies human-readable content; product code owns formal-file generation, source-and-digest binding, isolated writes, readback, and rollback instead of asking each model to invent transaction fields. Missing Node support, malformed input, changed source bytes, or a conflict affects only that creation, learning item, or Skill. The Agent reports the problem and a useful next action while conversation, completed results, and unrelated capabilities remain available. An unchecked result is reported as “not checked,” never as absent.
 
 ## Where Agent Carry fits
 
@@ -214,6 +214,19 @@ The protocol requires API keys, passwords, tokens, cookies, private keys, recove
 See [Safety and privacy](docs/security-and-privacy.en.md), [SECURITY.md](SECURITY.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License and status
+
+<details>
+<summary><strong>Click to expand: What changed in 1.4.8</strong></summary>
+
+- First instantiation no longer asks a model to hand-author the manifest, indexes, startup capsule, and snapshots one file at a time. The Agent presents the user's semantic choices; the bundled executor accepts that confirmed compact request, stages the complete identity closure, reads it back strictly, and switches once. A mid-transaction failure restores the blank template and limits only the current creation.
+- When saving a memory, capability, SOP, or experience, the Agent supplies readable content. Product code creates a content-digest-bound preview and ready-to-run confirmation command. One real user choice then performs the atomic write, route and snapshot update, and readback; neither user nor model fills low-level challenge or transaction fields.
+- A shared folder, ZIP, or exact local package obtained from a link enters one bounded read-only inspection path. The preview explains purpose, scripts, source, digest, target, conflicts, and rollback. One “install” reply then atomically copies into the local Skill directory, reads the bytes back, and registers the Skill. Package scripts and dependencies remain inert throughout.
+- Malformed input, changed source bytes, same-name different content, missing runtime support, or a derived dashboard refresh fault is reported in plain language with a recommended next action. The fault remains local to that creation, learning item, or Skill; conversation, completed work, other Skills, and Agent Carry remain available.
+- Only bounded readback from the current task workspace or a formal registered index can prove that a result, file, or Skill exists or is absent. An unchecked state stays “not checked” instead of being reported as missing.
+- A blank 1.4.7 template remains blank after upgrade. An existing 1.4.7 instance preserves identity, profile, assets, evidence, candidates, components, extensions, workspaces, device-local bindings, private content, Skills, export states, carriers, task handoffs, and unknown fields path by path and byte for byte. Upgrade neither reinstantiates the assistant nor invents learning or installs a Skill.
+- Version 1.4.8 can replace an instance only when the fixed `v1.4.8` tag, its Release, the manifest, and the extracted tree agree and the user chooses that exact upgrade. It never authorizes a future commit, push, tag, Release, or Pages action.
+
+</details>
 
 <details>
 <summary><strong>Click to expand: What changed in 1.4.7</strong></summary>

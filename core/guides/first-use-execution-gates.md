@@ -54,11 +54,24 @@
 ### 进入条件
 
 - Level 3 已按 `core/guides/instantiation-guide.md` 完成渐进访谈；
-- 用户已经看到包含交流方式、正式方向、范围、边界、第一项真实任务、学习与隐私策略、环境假设和未知项的完整预览；
+- 当前 Agent 已把访谈结果保存为一个临时 UTF-8 JSON 请求，并通过确定性执行器的只读检查；
+- 用户已经原样看到执行器返回的 `user_preview`，其中包含交流方式、正式方向、范围、边界、第一项真实任务、学习与隐私策略、环境假设、未知项和本次原子写入范围；
 - 用户明确确认的对象是这份完整预览，而不是只确认了某个候选任务；
 - 当前 Agent 准备第一次写入模板。
 
 ### 写入允许集合
+
+正式写入必须交给发布包自带的确定性执行器，不能让当前模型逐个手写清单、索引、胶囊或快照，也不能让模型自行概括最终预览。先运行 `node dashboard/scripts/first-instantiation-transaction.mjs --help` 查看准确用法，再用 `--example` 查看字段形状；不得照抄示例内容或写入秘密凭据。Agent 把访谈语义保存为一个不超过 64 KiB 的临时 UTF-8 JSON **文件**，然后先做不写入检查：
+
+`node dashboard/scripts/first-instantiation-transaction.mjs --root "<Agent Carry 根目录>" --request-file "<临时请求 JSON 文件路径>"`
+
+检查会在确认前验证正式清单字节预算、规范化不受支持的字段，并返回完整 `user_preview`。Agent 必须把该预览原样展示给用户；如果超出清单预算，只压缩 `direction.scope_statement`，把完整细节保留在 `profile.in_scope`／`profile.out_of_scope`，重新检查，不得提高预算或等到写入后再报错。用户确认后必须复用同一个请求文件执行：
+
+`node dashboard/scripts/first-instantiation-transaction.mjs --root "<Agent Carry 根目录>" --request-file "<临时请求 JSON 文件路径>" --write --acknowledge-complete-preview`
+
+`--request` 只保留为旧调用的兼容别名；新流程一律使用含义明确的 `--request-file`，不得把 JSON 正文直接粘贴成命令参数。`first_task.start_after_instantiation=true` 时，本次完整预览确认同时表示创建成功后直接进入首项任务，不再追加一次内容相同的“是否开始”确认；未选择立即开始时，创建后只询问一次。
+
+该临时请求不是正式真源。执行器负责规范换行、隔离候选、完整写集前像、启动胶囊与双快照的正式生成器、写后回读、失败回滚和相同输入幂等；模型只负责准确表达用户已经确认的内容，并把执行结果翻译成自然语言。缺少执行器、Node 无法运行或执行器返回失败时，不得临时编写大段替代脚本或降低校验：只暂停本次创建，保留模板与普通对话能力，说明错误、已自动修复或回滚的内容，以及最合适的下一步。
 
 实例化事务只允许创建或更新下面这些内容：
 
@@ -71,7 +84,7 @@
 - `instance/validations/index.toml`：只把 `instance_id` 初始化为本次新实例 ID；必须保持 `state = "empty"`、`source_revision = 0`、`generated_at = ""`、`budget_bytes = 262144`、`overflow = false`、`record_count = 0`，且不得创建任何 `[[validations]]`。尚未执行的第一项任务不能被伪造成验证记录；
 - `instance/components/registry.toml`：全新模板没有旧实例内容需要纳管；先有界确认 `instance/components/` 只有物理普通文件 `README.md` 和 `registry.toml`，没有其他文件、目录、链接或重解析点，再把 `instance_id` 初始化为本次新实例 ID，写 `adoption_state = "current"`、`revision = 1`、`component_count = 0`。不得为了填表创建组件、扫描整台电脑或执行任何安装内容；
 - 三张 `instance/governance/` 正式治理卡及 `instance/maps/time-trigger-map.toml`：以真实实例化时间计算首轮日程；
-- `instance/hosts/registry.toml` 和 `instance/hosts/profiles/` 中当前宿主的一份最小档案；以 `core/templates/integration/blank-host-profile.toml` 为结构真源，无法确认的模型、版本或能力必须写成未知，不能省略整个档案，也不能猜测；
+- `instance/hosts/registry.toml` 和 `instance/hosts/profiles/` 中当前宿主的一份最小档案；以 `core/templates/integration/blank-host-profile.toml` 为结构真源，无法确认的模型、版本或能力必须写成未知，不能省略整个档案，也不能猜测。用户界面标签、CLI 系统别名、代理路由名和用户对配置的描述不能冒充当前请求后端；只有当前请求元数据或宿主可验证回执才能填写 `request_model_name`，证据不足时留空不阻塞创建；
 - `instance/skills/requirements.toml`：只把模板身份改为当前实例 ID，并依据已确认的初始任务与当前宿主档案完成一次极小需求判断；不得扫描全部 Skill、自动安装 Skill 或复制 Skill 正文。没有已确认的额外 Skill 需求时，写 `status = "current"` 并保持空条目；信息不足时写 `status = "deferred"`，以后命中真实需求再按需判断；
 - `dashboard/dist/snapshot.js`：只从上述正式真源投影，经检查后原子替换；模板使用 `identity_ref = "template"`，正式实例按 Snapshot Schema 从 `instance_id` 生成不含语义的稳定匿名引用。不得把实例名、领域、用户信息、路径或秘密写入入口引用。
 - `dashboard/public/snapshot.js`：必须与 `dashboard/dist/snapshot.js` 同源生成并逐字节一致；候选索引仍是空态时不能在看板学习建议中伪造条目。

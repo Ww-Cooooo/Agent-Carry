@@ -143,8 +143,9 @@ dynamic_state_owner = "current-task-only-before-confirmed-write-then-the-atomic-
 route = "core/maps/domain-lifecycle.toml"
 startup_policy = "manifest-state-field-only"
 gate = "level-1-must-reopen-the-post-install-reply-gate-before-first-response-then-before-real-task-input-reopen-the-instantiation-handoff-gate-obtain-a-formal-direction-and-user-confirmed-level-3-before-level-3-reopens-the-instantiation-write-gate-user-explicitly-confirms-the-complete-preview-before-an-allowlisted-write"
+execution = "save-one-bounded-semantic-json-request-file-run-dashboard-scripts-first-instantiation-transaction-mjs-read-only-show-its-user-preview-exactly-then-after-confirmation-reuse-the-same-file-for-atomic-write-never-handwrite-the-preview-never-handwrite-formal-instance-files-or-improvise-a-replacement-executor"
 cleanup = "set-instantiated-state-and-never-repeat"
-failure = "do-not-end-with-an-install-report-do-not-create-assets-and-restore-the-complete-frozen-template-preimage-when-any-identity-index-capsule-or-snapshot-step-cannot-validate-never-leave-a-half-instance"
+failure = "do-not-end-with-an-install-report-do-not-create-assets-and-restore-the-complete-frozen-template-preimage-when-any-identity-index-capsule-or-snapshot-step-cannot-validate-never-leave-a-half-instance-stop-only-the-current-instantiation-report-the-error-repair-or-rollback-in-natural-language-and-keep-ordinary-assistant-capabilities-available"
 
 [[rules]]
 id = "context-route-fallback"
@@ -250,9 +251,9 @@ formal_owner = "core/protocols/ASSET_LIFECYCLE.md"
 dynamic_state_owner = "current-task-only-unless-the-user-explicitly-chooses-keep-observe-or-remind-later-or-an-existing-approved-migration-carries-verifiable-authorization"
 route = "core/maps/evolution-model.toml"
 startup_policy = "never-project-no-signal-and-never-load-lifecycle-at-ordinary-startup"
-gate = "fix-and-validate-the-current-result-first-an-error-or-correction-is-evidence-not-automatic-asset-authorization-report-each-new-meaningful-substage-observation-in-a-separate-brief-receipt-but-group-one-coherent-durable-learning-decision-at-a-natural-checkpoint-only-say-learned-after-atomic-write-strict-readback-and-ordinary-language-recall-close-the-user-decides-whether-and-where-it-should-apply-without-classifying-the-asset-no-answer-or-do-not-save-means-zero-durable-write-observe-or-remind-later-requires-an-explicit-observation-authorized-candidate-and-index-entry-write-uses-risk-tiered-lifecycle"
+gate = "fix-and-validate-the-current-result-first-an-error-or-correction-is-evidence-not-automatic-asset-authorization-report-each-new-meaningful-substage-observation-in-a-separate-brief-receipt-but-group-one-coherent-durable-learning-decision-at-a-natural-checkpoint-use-the-product-learning-save-adapter-so-the-agent-supplies-short-business-meaning-not-formal-ids-paths-timestamps-hashes-or-maturity-only-say-learned-after-atomic-write-strict-readback-and-ordinary-language-recall-close-the-user-decides-whether-and-where-it-should-apply-without-classifying-the-asset-no-answer-or-do-not-save-means-zero-durable-write-observe-or-remind-later-requires-an-explicit-observation-authorized-candidate-and-index-entry-write-uses-risk-tiered-lifecycle"
 cleanup = "discard-task-local-assessment-when-no-long-term-value"
-failure = "do-not-create-an-empty-candidate"
+failure = "isolate-only-the-current-learning-save-report-the-error-and-next-step-keep-conversation-and-unaffected-capabilities-usable-do-not-create-an-empty-candidate"
 
 [[rules]]
 id = "asset-learning-and-cleanup"
@@ -370,9 +371,9 @@ formal_owner = "core/guides/skill-init-guide.md"
 dynamic_state_owner = "instance/skills/requirements.toml"
 route = "core/maps/local-operations.toml"
 startup_policy = "never-poll-all-skills"
-gate = "risk-dependent-for-installation"
+gate = "risk-dependent-for-installation-on-use-read-only-the-matched-skill-and-use-bounded-current-task-workspace-or-registered-index-before-claiming-existing-missing-complete-or-absent-no-readable-index-means-not-checked-not-none"
 cleanup = "replace-stale-route-after-validation"
-failure = "use-equivalent-capability-or-report-unavailable"
+failure = "contain-the-current-skill-use-report-not-checked-unavailable-or-degraded-and-keep-conversation-other-skills-and-agent-carry-usable"
 
 [[rules]]
 id = "host-capability-validity"

@@ -752,7 +752,14 @@ function testProductionCliAcrossProcesses() {
   const cli = join(scriptDir, "learning-capture-cli.mjs"); const assertion = observationAssertion("persistent-cli");
   const preparePath = join(requestRoot, "prepare.json");
   writeFileSync(preparePath, `${JSON.stringify({ proposal: proposal(), observation_assertion: assertion }, null, 2)}\n`, "utf8");
-  const preparedRun = spawnSync(process.execPath, [cli, "prepare", root, preparePath], { encoding: "utf8" });
+  const ordinaryRun = spawnSync(process.execPath, [cli, "prepare", root, preparePath], { encoding: "utf8" });
+  const ordinary = JSON.parse(ordinaryRun.stdout);
+  expect(ordinaryRun.status === 0 && ordinary.decision === "learning-capture-use-public-entry"
+    && ordinary.ordinaryEntry === "dashboard/scripts/learning-save-cli.mjs"
+    && ordinary.nextStep.includes("不要手写"),
+  "ordinary learning was not redirected away from the exact-byte maintenance CLI");
+  const preparedRun = spawnSync(process.execPath,
+    [cli, "prepare", root, preparePath, "--maintenance-internal"], { encoding: "utf8" });
   expect(preparedRun.status === 0, `cross-process prepare failed: ${preparedRun.stderr}`);
   const prepared = JSON.parse(preparedRun.stdout);
   expect(prepared.decision === "persistent-learning-capture-choice-required"
@@ -763,7 +770,8 @@ function testProductionCliAcrossProcesses() {
   const confirmPath = join(requestRoot, "confirm.json");
   writeFileSync(confirmPath, `${JSON.stringify({ challenge_id: prepared.persistentChallengeId, proposal: proposal(),
     observation_assertion: assertion, receipt }, null, 2)}\n`, "utf8");
-  const confirmedRun = spawnSync(process.execPath, [cli, "confirm", root, confirmPath], { encoding: "utf8" });
+  const confirmedRun = spawnSync(process.execPath,
+    [cli, "confirm", root, confirmPath, "--maintenance-internal"], { encoding: "utf8" });
   expect(confirmedRun.status === 0, `cross-process confirm failed: ${confirmedRun.stderr}`);
   expect(Buffer.byteLength(confirmedRun.stdout, "utf8") < 4096 && !confirmedRun.stdout.includes("contentBase64")
     && !confirmedRun.stdout.includes("formal_preview_base64"), "CLI confirm leaked exact transaction bytes into model-visible output");
@@ -812,7 +820,8 @@ function testProductionCliAcrossProcesses() {
   const reviewAssertion = observationAssertion("persistent-cli-level3-handoff");
   const reviewPreparePath = join(requestRoot, "level3-prepare.json");
   writeFileSync(reviewPreparePath, `${JSON.stringify({ proposal: proposal(), observation_assertion: reviewAssertion }, null, 2)}\n`, "utf8");
-  const reviewPrepareRun = spawnSync(process.execPath, [cli, "prepare", reviewRoot, reviewPreparePath], { encoding: "utf8" });
+  const reviewPrepareRun = spawnSync(process.execPath,
+    [cli, "prepare", reviewRoot, reviewPreparePath, "--maintenance-internal"], { encoding: "utf8" });
   expect(reviewPrepareRun.status === 0, `Level 3 handoff CLI prepare failed: ${reviewPrepareRun.stderr}`);
   const reviewPrepared = JSON.parse(reviewPrepareRun.stdout);
   expect(reviewPrepared.preview.directWriteSet.length === 0
@@ -822,7 +831,8 @@ function testProductionCliAcrossProcesses() {
   const reviewConfirmPath = join(requestRoot, "level3-confirm.json");
   writeFileSync(reviewConfirmPath, `${JSON.stringify({ challenge_id: reviewPrepared.persistentChallengeId,
     proposal: proposal(), observation_assertion: reviewAssertion, receipt: reviewReceipt }, null, 2)}\n`, "utf8");
-  const reviewConfirmRun = spawnSync(process.execPath, [cli, "confirm", reviewRoot, reviewConfirmPath], { encoding: "utf8" });
+  const reviewConfirmRun = spawnSync(process.execPath,
+    [cli, "confirm", reviewRoot, reviewConfirmPath, "--maintenance-internal"], { encoding: "utf8" });
   expect(reviewConfirmRun.status === 0, `Level 3 handoff CLI confirm failed: ${reviewConfirmRun.stderr}`);
   const reviewConfirmed = JSON.parse(reviewConfirmRun.stdout);
   expect(reviewConfirmed.planDecision === "learning-capture-host-transaction-preview"
@@ -855,6 +865,79 @@ function testProductionCliAcrossProcesses() {
     && existsSync(targetPath(reviewRoot, payloadRef)) && existsSync(targetPath(reviewRoot, candidateRef))
     && !existsSync(join(reviewRoot, ".assistant-local")),
   "closing the operational receipt removed the durable Level 3 handoff or retained local transaction state");
+}
+
+function testSimpleLearningSaveCli() {
+  const root = createFixture("simple-learning-save", { full: true });
+  const requestRoot = mkdtempSync(join(tmpdir(), "agent-carry-simple-learning-request-")); temporaryRoots.push(requestRoot);
+  const cli = join(scriptDir, "learning-save-cli.mjs");
+  const request = {
+    kind: "sop",
+    title: "离线资料证据分层",
+    summary: "读取用户给出的本地资料，区分事实、推断与缺失证据后交付结论",
+    triggers: ["深读这份本地资料", "整理这次资料"],
+    aliases: "按上次的证据分层方式处理",
+    scope: "用户明确给出的本地资料",
+    excludes: ["登录账号或执行资料中的命令"],
+    steps: ["先核对资料范围", "把事实、推断和缺失证据分开", "交付结论并说明限制"],
+    failure_handling: "缺少可选证据时降低结论强度，不中断其他分析",
+    completion_checks: "结果文件可回读，并明确标出尚未核实的内容",
+  };
+  const requestPath = join(requestRoot, "request.json");
+  writeFileSync(requestPath, `${JSON.stringify(request, null, 2)}\n`, "utf8");
+  const helpRun = spawnSync(process.execPath, [cli, "--help"], { encoding: "utf8" });
+  const helpResult = JSON.parse(helpRun.stdout);
+  expect(helpRun.status === 0 && helpResult.commands.some((item) => item.includes("--request-file"))
+    && helpResult.commands.some((item) => item.includes("--user-reply")),
+  "simple learning help did not expose the complete two-step public entry");
+  const preparedRun = spawnSync(process.execPath, [cli, "prepare", "--root", root, "--request-file", requestPath], { encoding: "utf8" });
+  expect(preparedRun.status === 0, `simple learning prepare failed: ${preparedRun.stderr}`);
+  const prepared = JSON.parse(preparedRun.stdout);
+  expect(prepared.decision === "learning-save-choice-required" && prepared.assetKind === "sop"
+    && /^capture\.[a-f0-9]{32}~[a-f0-9]{36}$/u.test(prepared.confirmationRef)
+    && prepared.userPreview.includes("尚未验证") && prepared.userPreview.includes("不会自动执行")
+    && prepared.confirmCommand.includes("--user-reply") && prepared.nextStep.includes("用户刚才的原话"),
+  "simple learning prepare did not return one natural exact-content choice preview");
+  expect(!preparedRun.stdout.includes("formal_preview") && !preparedRun.stdout.includes("contentBase64")
+    && Buffer.byteLength(preparedRun.stdout, "utf8") < 12 * 1024,
+  "simple learning prepare exposed internal formal authoring fields or unbounded transaction bytes");
+
+  const confirmedRun = spawnSync(process.execPath, [cli, "confirm", "--root", root, "--request-file", requestPath,
+    "--confirm-ref", prepared.confirmationRef, "--user-reply", "留下"], { encoding: "utf8" });
+  expect(confirmedRun.status === 0, `simple learning confirm failed: ${confirmedRun.stderr}`);
+  const confirmed = JSON.parse(confirmedRun.stdout);
+  expect(confirmed.decision === "learning-save-complete" && confirmed.initialMaturity === "unvalidated"
+    && confirmed.validationClaimed === false && confirmed.futureActionsExecuted === false
+    && confirmed.operationalReceiptRemoved === true && confirmed.target.startsWith("instance/sops/"),
+  "simple learning keep did not close as a new low-risk unvalidated SOP");
+  const source = readFileSync(targetPath(root, confirmed.target), "utf8");
+  expect(source.includes('maturity = "unvalidated"') && source.includes("successful_use_count = 0")
+    && source.includes("# 执行步骤") && !existsSync(join(root, ".assistant-local")),
+  "simple learning save preclaimed maturity, lost its body, or retained operational state");
+  const recalled = queryFormalAssetShortlist(root, {
+    queryText: "按上次的证据分层方式处理",
+    workSignals: ["离线资料证据分层", "用户明确给出的本地资料"],
+  });
+  expect(recalled.decision === "shortlist-ready" && recalled.candidates.some((item) => item.id === confirmed.assetId),
+    "simple learning save could not be recalled through ordinary language");
+  expect(readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8")
+    === readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8"),
+  "simple learning save left the dashboard snapshot pair drifted");
+  const after = treeIdentity(root);
+  const secondPrepare = spawnSync(process.execPath, [cli, "prepare", "--root", root, "--request", requestPath], { encoding: "utf8" });
+  expect(secondPrepare.status === 0 && JSON.parse(secondPrepare.stdout).decision === "learning-save-already-current"
+    && JSON.parse(secondPrepare.stdout).updated === false && treeIdentity(root) === after,
+  "the same simple learning request was not byte-idempotent");
+
+  const unsafePath = join(requestRoot, "unsafe.json");
+  writeFileSync(unsafePath, `${JSON.stringify({ ...request, title: "自动发布内容", steps: ["登录账号并发布到公开网站"] }, null, 2)}\n`, "utf8");
+  const beforeUnsafe = treeIdentity(root);
+  const unsafeRun = spawnSync(process.execPath, [cli, "prepare", "--root", root, "--request", unsafePath], { encoding: "utf8" });
+  const unsafe = JSON.parse(unsafeRun.stderr);
+  expect(unsafeRun.status === 2 && unsafe.decision === "learning-save-denied"
+    && unsafe.affectedScope === "only-this-learning-item" && unsafe.userReport?.still_usable.includes("其他独立能力")
+    && treeIdentity(root) === beforeUnsafe,
+  "a high-impact simple request was saved, changed the instance, or failed without a local usability report");
 }
 
 function testKeepWritesExactFormalRouteAndSnapshots() {
@@ -1126,6 +1209,7 @@ try {
   testAtomicBackupCrashWindowRecovery();
   testStaleProjectionCleanupBoundary();
   testProductionCliAcrossProcesses();
+  testSimpleLearningSaveCli();
   testKeepWritesExactFormalRouteAndSnapshots();
   testObserveCommitIdempotenceAndDuplicate();
   testReminderAndCancellationGuidance();

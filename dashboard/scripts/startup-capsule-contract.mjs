@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { parseSectionedToml, validateInstanceManifestStructure } from "./asset-route-contract.mjs";
 
-const MAX_MANIFEST_BYTES = 2560;
+export const MAX_MANIFEST_BYTES = 2560;
 const MAX_CAPSULE_BYTES = 4096;
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 const capsuleFields = new Set([

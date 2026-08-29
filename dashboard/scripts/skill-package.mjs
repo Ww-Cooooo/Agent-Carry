@@ -287,7 +287,11 @@ export function inspectSkillSource(sourcePath, { extractTo = "" } = {}) {
   let info;
   try { info = lstatSync(source); } catch { fail("source does not exist"); }
   if (info.isSymbolicLink()) fail("source is a link and will not be followed");
-  if (info.isDirectory()) return Object.freeze({ ...inspectSkillPackage(source, { mode: "import" }), sourceKind: "folder", packageRoot: realpathSync(source) });
+  if (info.isDirectory()) {
+    const packageRoot = realpathSync(source);
+    return Object.freeze({ ...inspectSkillPackage(packageRoot, { mode: "import" }), sourceKind: "folder",
+      packageRoot, sourceDigest: contentDigest(collectSkillFiles(packageRoot)) });
+  }
   if (!info.isFile() || extname(source).toLowerCase() !== ".zip") fail("source must be a physical Skill folder or ZIP file");
   if (typeof extractTo !== "string" || !extractTo.trim()) fail("ZIP inspection requires a new isolation directory");
   const output = ensureNewOutput(extractTo);
@@ -303,7 +307,8 @@ export function inspectSkillSource(sourcePath, { extractTo = "" } = {}) {
     fail(`ZIP extraction did not finish; the isolated failure scene remains at ${output}: ${error.message}`);
   }
   const packageRoot = rootPrefix ? resolve(output, rootPrefix.slice(0, -1)) : output;
-  return Object.freeze({ ...inspectSkillPackage(packageRoot, { mode: "import" }), sourceKind: "zip", packageRoot, isolationRoot: output, archiveDigest });
+  return Object.freeze({ ...inspectSkillPackage(packageRoot, { mode: "import" }), sourceKind: "zip", packageRoot,
+    isolationRoot: output, archiveDigest, sourceDigest: contentDigest(collectSkillFiles(packageRoot)) });
 }
 
 function argument(name) {

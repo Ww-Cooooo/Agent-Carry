@@ -842,7 +842,7 @@ export function createLearningCaptureObservationReceipt(repository, assertion) {
 }
 
 export function createLearningCaptureChoiceChallenge(repository, proposal, { levelEvidence = undefined,
-  observationReceipt = undefined } = {}) {
+  observationReceipt = undefined, allowPromptOnlyLowRiskKeep = false } = {}) {
   try {
     const repositoryReal = realpathSync(repository);
     const manifestRead = stableRead(repositoryReal, MANIFEST_REF, limits.manifest);
@@ -868,7 +868,12 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
     const issuedAtMs = Date.now(); const nonce = randomBytes(18).toString("hex");
     let directKeep;
     try {
-      if (observationTrust.sourceKind !== "connected-host-observation" || observationTrust.resultState !== "closed-result-checked") {
+      const verifiedHostResult = observationTrust.sourceKind === "connected-host-observation"
+        && observationTrust.resultState === "closed-result-checked";
+      const exactPreviewOnly = allowPromptOnlyLowRiskKeep === true
+        && observationTrust.sourceKind === "unknown" && observationTrust.resultState === "closed-unverified"
+        && checked.proposal.proposed_risk_tier === "low" && checked.proposal.minimum_level === 1;
+      if (!verifiedHostResult && !exactPreviewOnly) {
         throw new Error("non-host, memory, inferred, external, unknown, or unclosed observations require targeted Level 3 review before direct formal saving");
       }
       directKeep = buildDirectKeepProjection(repositoryReal, checked, envelope, context, new Date(issuedAtMs).toISOString(), levelEvidence);
@@ -1130,14 +1135,18 @@ export function cleanupExpiredPersistentLearningCaptureChallenges(repository, { 
   }
 }
 
-export function preparePersistentLearningCaptureChallenge(repository, proposal, observationAssertion, { levelEvidence = undefined } = {}) {
+export function preparePersistentLearningCaptureChallenge(repository, proposal, observationAssertion, {
+  levelEvidence = undefined, allowPromptOnlyLowRiskKeep = false,
+} = {}) {
   try {
     const repositoryReal = realpathSync(repository);
     const cleanup = cleanupExpiredPersistentLearningCaptureChallenges(repositoryReal);
     if (cleanup.decision !== "persistent-learning-capture-cleanup-complete") throw new Error(cleanup.reason ?? "persistent challenge cleanup unavailable");
     const observationReceipt = createLearningCaptureObservationReceipt(repositoryReal, observationAssertion);
     if (observationReceipt.decision !== "learning-capture-host-observation-bound") throw new Error(observationReceipt.reason ?? "host observation unavailable");
-    const embedded = createLearningCaptureChoiceChallenge(repositoryReal, proposal, { levelEvidence, observationReceipt });
+    const embedded = createLearningCaptureChoiceChallenge(repositoryReal, proposal, {
+      levelEvidence, observationReceipt, allowPromptOnlyLowRiskKeep,
+    });
     if (embedded.decision !== "learning-capture-current-user-choice-required") {
       if (embedded.userReport) return embedded;
       throw new Error(embedded.reason ?? "learning choice unavailable");
@@ -1166,7 +1175,7 @@ export function preparePersistentLearningCaptureChallenge(repository, proposal, 
 }
 
 export function confirmPersistentLearningCaptureChallenge(repository, { challengeId, proposal, observationAssertion, receipt,
-  levelEvidence = undefined } = {}) {
+  levelEvidence = undefined, allowPromptOnlyLowRiskKeep = false } = {}) {
   try {
     const repositoryReal = realpathSync(repository); const target = persistentRecordPath(repositoryReal, challengeId);
     const record = readPersistentJson(target, 32 * 1024, "persistent challenge record");
@@ -1211,7 +1220,9 @@ export function confirmPersistentLearningCaptureChallenge(repository, { challeng
       || observationReceipt.observationDigest !== record.observation_digest) {
       throw new Error("recomputed host observation differs from the observation reviewed before the choice");
     }
-    const embedded = createLearningCaptureChoiceChallenge(repositoryReal, proposal, { levelEvidence, observationReceipt });
+    const embedded = createLearningCaptureChoiceChallenge(repositoryReal, proposal, {
+      levelEvidence, observationReceipt, allowPromptOnlyLowRiskKeep,
+    });
     if (embedded.decision !== "learning-capture-current-user-choice-required"
       || embedded.instanceId !== record.instance_id || embedded.proposalDigest !== record.proposal_digest
       || embedded.preview.exactFormalPreviewDigest !== record.formal_preview_digest
@@ -2126,8 +2137,10 @@ function structuralPlanValid(plan) {
       && plan.initialEvidence?.hostObservationCount === 1 && plan.initialEvidence?.formalSuccessfulUseCount === 0
       && plan.initialEvidence?.formalMaturityPreclaimed === false && plan.initialEvidence?.independentValidationClaimed === false
       && plan.observationReceipt?.basis === "same-process-host-natural-stop-observation"
-      && plan.observationReceipt?.sourceKind === "connected-host-observation"
-      && plan.observationReceipt?.resultState === "closed-result-checked"
+      && ((plan.observationReceipt?.sourceKind === "connected-host-observation"
+        && plan.observationReceipt?.resultState === "closed-result-checked")
+        || (plan.observationReceipt?.sourceKind === "unknown"
+          && plan.observationReceipt?.resultState === "closed-unverified"))
       && exactBytePlanShape(plan,
         ["formal-asset", "instance-domain-map", "dashboard-public-snapshot", "dashboard-dist-snapshot"], 4);
   }

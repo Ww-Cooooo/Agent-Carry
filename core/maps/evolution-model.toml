@@ -4,7 +4,7 @@ selection = "Before loading instance/evolution/index.toml, inspect its filesyste
 
 [[routes]]
 id = "evolution-review"
-summary = "只在有价值小阶段或任务结束命中学习价值时，先修正并验证当前结果，再用独立短表区分仍在观察与已经保存且可召回；用户不必判断资产类型，系统再按同类匹配、风险、授权和证据处理。"
+summary = "只在有价值小阶段或任务结束命中学习价值时，先修正并验证当前结果，再用独立短表区分仍在观察与已经保存且可召回；普通学习保存的唯一入口是 dashboard/scripts/learning-save-cli.mjs，Agent 只提交简短业务含义，正式 ID、路径、时间、摘要、成熟度、原子写入和回退由产品生成；learning-capture-cli.mjs 只供底层维护与恢复。"
 triggers = ["进化", "学习", "阶段性学到东西", "用户指出错误", "从错误中学习", "以后不要再犯", "形成经验", "修改能力", "低风险试用", "成熟度", "同类候选", "结果正确", "这次做对了", "以后继续这样", "以后可以继续使用", "保存这套方法", "发现重复习惯", "主动询问是否保留", "以后用日常说法也能找到"]
 target = "core/protocols/ASSET_LIFECYCLE.md"
 state = "active"

@@ -4,7 +4,7 @@ window.AGENT_CARRY_SNAPSHOT = {
   "meta": {
     "schema_version": "1.1",
     "generated_at": "",
-    "product_version": "1.4.7",
+    "product_version": "1.4.8",
     "state": "template",
     "freshness_seconds": 86400,
     "source_digest": "template-empty",
@@ -14,7 +14,7 @@ window.AGENT_CARRY_SNAPSHOT = {
     "product": "AgentCarry",
     "state": "template",
     "domain": "uninstantiated",
-    "startup_chars": 11324,
+    "startup_chars": 11611,
     "startup_budget": 20000
   },
   "profile": {

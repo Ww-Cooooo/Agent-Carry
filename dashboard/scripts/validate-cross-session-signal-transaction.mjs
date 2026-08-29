@@ -43,7 +43,9 @@ const signalRef = "instance/signals/count/signal.grade-workflow.toml";
 const candidateId = "evolution.grade-workflow";
 const signalId = "signal.grade-workflow";
 const oldGeneratedAt = "2026-08-23T12:00:00+08:00";
-const nextWakeupAt = "2026-08-30T00:00:00+08:00";
+const fixtureClockMs = Date.now();
+const nextWakeupAt = new Date(fixtureClockMs + 7 * 24 * 60 * 60_000).toISOString();
+const wrongNextWakeupAt = new Date(fixtureClockMs + 8 * 24 * 60 * 60_000).toISOString();
 const q = JSON.stringify;
 const messageDigest = `sha256:${"a".repeat(64)}`;
 const derivedFixtureId = (prefix, basis) => `${prefix}.${createHash("sha256")
@@ -732,7 +734,7 @@ try {
   assert(startup.decision === "startup-ordinary-route" && startup.bodyReads === 0, "ordinary startup did not stay on the minimal route");
   assert(JSON.stringify(startupReads) === JSON.stringify(["instance/manifest.toml", "instance/signals/control.toml", "instance/maps/signal-map.toml"]),
     "ordinary startup loaded the time index, candidate index, candidate source, or learning signal source");
-  const due = inspectCrossSessionSignalStartup(fixture, { now: "2026-08-30T00:00:00+08:00" });
+  const due = inspectCrossSessionSignalStartup(fixture, { now: nextWakeupAt });
   assert(due.decision === "startup-time-index-due" && !due.readSet.includes("instance/maps/time-trigger-map.toml"),
     "due detection preloaded the non-startup time projection");
   write(candidateRef, currentCandidateSource);
@@ -804,7 +806,7 @@ try {
   write(signalRef, currentSignalSource);
 
   const wrongEarliest = buildCrossSessionSignalTransactionPlan(fixture, {
-    ...request, proposed: { ...request.proposed, timeProjection: proposedTimeMap.replace(`next_wakeup_at = ${q(nextWakeupAt)}`, `next_wakeup_at = ${q("2026-09-01T00:00:00+08:00")}`) },
+    ...request, proposed: { ...request.proposed, timeProjection: proposedTimeMap.replace(`next_wakeup_at = ${q(nextWakeupAt)}`, `next_wakeup_at = ${q(wrongNextWakeupAt)}`) },
   });
   assert(wrongEarliest.decision === "transaction-denied", "an incorrect earliest wakeup was accepted");
   const overBudget = buildCrossSessionSignalTransactionPlan(fixture, {

@@ -19,6 +19,8 @@ try {
   const dashboardCss = readFileSync(resolve(repository, "dashboard", "src", "index.css"), "utf8");
   const actionRegistry = readFileSync(resolve(repository, "core", "maps", "dashboard-actions.toml"), "utf8");
   const workshopGuide = readFileSync(resolve(repository, "core", "guides", "skill-workshop-guide.md"), "utf8");
+  const skillInitGuide = readFileSync(resolve(repository, "core", "guides", "skill-init-guide.md"), "utf8");
+  const triggerRegistry = readFileSync(resolve(repository, "core", "maps", "trigger-registry.toml"), "utf8");
   const upgradeGuide = readFileSync(resolve(repository, "core", "upgrade", "upgrade-1.4.5-to-1.4.6.md"), "utf8");
   const releaseManifest = readFileSync(resolve(repository, "core", "upgrade", "release-manifest-1.4.6.toml"), "utf8");
   const actionSchema = readFileSync(resolve(repository, "core", "schemas", "dashboard-action.schema.md"), "utf8");
@@ -59,6 +61,9 @@ try {
   assert(workshopGuide.includes("`target-needed` 的唯一含义") && workshopGuide.includes("当前对话仍有准确目标") && workshopGuide.includes("不把一次失败误说成用户从未提供目标"), "link delivery has an ambiguous target-missing versus retry state");
   assert(workshopGuide.includes("不从目录猜测重建") && workshopGuide.includes("只暂停对该导出索引的新写入") && workshopGuide.includes("原样保留未知字段"), "a damaged export index has no deterministic local recovery boundary");
   assert(workshopGuide.includes("不能拿“已生成”“待检查”等状态句代替"), "generated Skill summaries can still be replaced by implementation status text");
+  assert(skillInitGuide.includes("本次未核对") && skillInitGuide.includes("不能把没查过说成“没有”")
+    && triggerRegistry.includes("no-readable-index-means-not-checked-not-none"),
+  "Skill use can still turn an unperformed bounded lookup into a false absence claim");
   assert(releaseManifest.includes('from_versions = ["1.4.5"]')
     && releaseManifest.includes('preserve = ["workspace/**", "instance/components/**"')
     && releaseManifest.includes('"instance/skills/**"')
