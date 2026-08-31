@@ -13,6 +13,7 @@ const immutable143Digest = "e069e33e86d5485e7a12f13651bba3de88ff5453966e3795206e
 const immutable144Digest = "b2e63ff9ea08cb8fddc37ecee6f0f72c116b74c887bba9225d41dbbe50bbae6b";
 const immutable146Digest = "45688bbdd2bdf6ecb00ae9712101cc3b6cff0a8cc570981e0613d309c760a6fb";
 const immutable147Digest = "c3d6039afda6842ea3c8360e5b37f17efb4c70c02a59e7812526f3c236831c09";
+const immutable148Digest = "2d49f5afb66b0782fc0279549caff0ef0fb106f54f27740f773fd9a70e57671e";
 const exactPlaceholders = [
   ".assistant-local/.gitkeep",
   ".assistant-local/dashboard/.gitkeep",
@@ -460,7 +461,9 @@ includesAll(section(release147, "release_boundary"), [
 ], "1.4.7 release boundary");
 expect(!release147.includes('status = "local-unreleased-candidate"'), "1.4.7 still declares itself a local unreleased candidate");
 
-const release148 = read("core/upgrade/release-manifest-1.4.8.toml");
+const release148Bytes = bytes("core/upgrade/release-manifest-1.4.8.toml");
+expect(sha256(release148Bytes) === immutable148Digest, "published 1.4.8 manifest was rewritten by the 1.4.9 candidate");
+const release148 = release148Bytes.toString("utf8").replaceAll("\r\n", "\n");
 includesAll(release148, [
   "schema_version = 2",
   'release = "1.4.8"',
@@ -500,6 +503,96 @@ includesAll(section(release148, "release_boundary"), [
 ], "1.4.8 release boundary");
 expect(!release148.includes('status = "local-unreleased-candidate"'), "1.4.8 still declares itself a local unreleased candidate");
 
+const release149 = read("core/upgrade/release-manifest-1.4.9.toml");
+includesAll(release149, [
+  "schema_version = 2",
+  'release = "1.4.9"',
+  'core = "1.4.9"',
+  'from_versions = ["1.4.8"]',
+  'id = "skill-upgrade-and-problem-report-1.4.9"',
+  '"published-1.4.8-manifest-remains-byte-immutable"',
+  '"explicit-higher-version-same-skill-preview-lists-bounded-added-changed-and-removed-paths"',
+  '"same-skill-upgrade-preserves-old-preimage-installs-registers-and-reads-back-without-executing-package-code"',
+  '"same-version-byte-drift-downgrade-local-drift-ambiguous-legacy-identity-and-unsafe-package-remain-local-to-one-skill"',
+  '"problem-report-action-starts-from-earliest-user-observed-problem-and-does-not-require-hidden-logs-or-a-new-conversation"',
+  '"problem-report-treats-input-as-untrusted-masks-sensitive-material-separates-facts-inference-and-missing-evidence-and-never-auto-sends"',
+  '"instantiated-1.4.8-identity-assets-validation-evolution-components-extensions-workspace-local-private-skills-requirements-exports-editable-sources-carriers-problem-reports-task-handoffs-and-unknown-fields-are-byte-preserved"',
+], "1.4.9 local candidate manifest");
+const release149TargetSelection = section(release149, "target_selection");
+includesAll(release149TargetSelection, [
+  'forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]',
+  'exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"',
+], "1.4.9 target selection");
+const release149OverrideMatch = release149TargetSelection.match(/^allow_overrides_deny_for_exact_paths\s*=\s*(\[[^\n]*\])$/mu);
+expect(release149OverrideMatch, "1.4.9 exact placeholder override list is missing");
+expect(JSON.stringify(JSON.parse(release149OverrideMatch[1])) === JSON.stringify(exactPlaceholders), "1.4.9 exact placeholder override list drifted");
+includesAll(section(release149, "instance_component_changes"), [
+  'schema = "1.0"',
+  'target_interfaces = ["agent-carry.instance-component@1"]',
+  'optional_incompatible_action = "disable-and-preserve"',
+  'required_incompatible_action = "stop-and-preserve"',
+  'ordinary_startup = "never-read-registry-enumerate-components-or-load-component-bodies"',
+], "1.4.9 instance component continuity");
+includesAll(section(release149, "release_boundary"), [
+  'status = "local-unreleased-candidate"',
+  'release_ref = "v1.4.9"',
+  "publication_authorized = false",
+  "repository_operation_authorized = false",
+  "instance_replacement_authorized = false",
+  "future_publication_or_repository_operation_authorized = false",
+], "1.4.9 local candidate boundary");
+expect(!release149.includes('status = "published-release"'), "1.4.9 local candidate falsely declares a published release");
+
+const release200 = read("core/upgrade/release-manifest-2.0.0.toml");
+includesAll(release200, [
+  "schema_version = 2",
+  'release = "2.0.0"',
+  'core = "2.0.0"',
+  'from_versions = ["1.4.8", "1.4.9"]',
+  'id = "agent-carry-to-ai-carry-product-identity-2.0.0"',
+  '"blank-2.0.0-template-remains-empty-and-writes-only-ai-carry-current-identities"',
+  '"legacy-component-record-types-and-agent-carry-interface-remain-compatible-while-new-components-use-ai-carry-interface"',
+  '"every-agent-carry-residual-is-classified-per-match-as-history-compatibility-alias-or-current-legacy-repository-url"',
+  '"published-2.0.0-authority-requires-latest-release-versioned-release-lightweight-tag-public-main-matching-tree-and-user-authorization"',
+  '"published-release-still-authorizes-no-future-publication-repository-operation-or-repository-rename"',
+  '"large-workspace-bodies-are-not-enumerated-or-copied"',
+  '"generic-session-json-never-self-attests-session-or-behavior"',
+  '"host-waits-for-an-independent-user-confirmation-before-confirm"',
+  'already_current_authority = "a local version string never proves current status;',
+  'copied_target_closure = "confirm must re-hash the isolated copied target',
+  'staging_recovery = "each same-directory staging file is recorded before copy',
+  'network_reporting = "prepare confirm and same-version official checks report network use truthfully"',
+  'windows_metadata_closure = "touched hardlinks named streams and failures to enumerate either are review-required',
+  'New Pages output requires the current AI Carry product name and current AI_CARRY envelope',
+], "2.0.0 published rename manifest");
+const release200TargetSelection = section(release200, "target_selection");
+includesAll(release200TargetSelection, [
+  'forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]',
+  'exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"',
+], "2.0.0 target selection");
+const release200OverrideMatch = release200TargetSelection.match(/^allow_overrides_deny_for_exact_paths\s*=\s*(\[[^\n]*\])$/mu);
+expect(release200OverrideMatch, "2.0.0 exact placeholder override list is missing");
+expect(JSON.stringify(JSON.parse(release200OverrideMatch[1])) === JSON.stringify(exactPlaceholders), "2.0.0 exact placeholder override list drifted");
+includesAll(section(release200, "instance_component_changes"), [
+  'schema = "1.0"',
+  'target_interfaces = ["ai-carry.instance-component@1", "agent-carry.instance-component@1"]',
+  'migration_ids = ["product-identity-agent-carry-to-ai-carry-2.0"]',
+  'optional_incompatible_action = "disable-and-preserve"',
+  'required_incompatible_action = "stop-and-preserve"',
+  'ordinary_startup = "never-read-registry-enumerate-components-or-load-component-bodies"',
+], "2.0.0 instance component continuity");
+includesAll(section(release200, "release_boundary"), [
+  'status = "published-release"',
+  'release_ref = "v2.0.0"',
+  "publication_authorized = true",
+  "repository_operation_authorized = true",
+  "instance_replacement_authorized = true",
+  "future_publication_or_repository_operation_authorized = false",
+  'authority_requires = ["official-latest-release-is-v2.0.0", "official-release-object-v2.0.0", "official-lightweight-tag-v2.0.0", "official-public-main-equals-v2.0.0-tag", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]',
+  'authority_scope = "this-fixed-release-may-be-used-for-instance-replacement; never-authorizes-future-repository-release-publication-or-rename-actions"',
+], "2.0.0 release boundary");
+expect(!release200.includes('status = "local-unreleased-candidate"'), "2.0.0 still declares itself a local unreleased candidate");
+
 const schema = read("core/schemas/release-manifest.schema.md");
 includesAll(schema, [
   "`allow_overrides_deny_for_exact_paths`",
@@ -532,19 +625,32 @@ const guide147 = read("core/upgrade/upgrade-1.4.6-to-1.4.7.md");
 includesAll(guide147, ["1.4.6 升级到 1.4.7", "固定 `v1.4.7`", "不会扫描旧对话来补回执", "业务结果、文件、对话和无关能力继续可用", "逐路径、逐字节", "第二次执行必须零变化"], "1.4.7 patch upgrade guide");
 const guide148 = read("core/upgrade/upgrade-1.4.7-to-1.4.8.md");
 includesAll(guide148, ["1.4.7 升级到 1.4.8", "固定 `v1.4.8`", "升级不执行首次创建", "本次未核对", "对话、已有结果和无关能力继续可用", "逐路径、逐字节", "第二次执行必须零变化"], "1.4.8 patch upgrade guide");
-includesAll(read("core/guides/upgrade-guide.md"), ["当前官方正式目标是 1.4.8", "固定 `v1.4.8`", "release-manifest-1.3.1.toml", "upgrade-1.2.1-to-1.3.1.md", "upgrade-1.3.0-to-1.3.1.md", "release-manifest-1.4.0.toml", "upgrade-1.3.1-to-1.4.0.md", "release-manifest-1.4.1.toml", "upgrade-1.4.0-to-1.4.1.md", "release-manifest-1.4.2.toml", "upgrade-1.4.1-to-1.4.2.md", "release-manifest-1.4.3.toml", "upgrade-1.4.2-to-1.4.3.md", "release-manifest-1.4.4.toml", "upgrade-1.4.3-to-1.4.4.md", "release-manifest-1.4.5.toml", "upgrade-1.4.4-to-1.4.5.md", "release-manifest-1.4.6.toml", "upgrade-1.4.5-to-1.4.6.md", "release-manifest-1.4.7.toml", "upgrade-1.4.6-to-1.4.7.md", "release-manifest-1.4.8.toml", "upgrade-1.4.7-to-1.4.8.md", "不授权任何未来提交"], "current upgrade guide");
+const guide149 = read("core/upgrade/upgrade-1.4.8-to-1.4.9.md");
+includesAll(guide149, ["1.4.8 升级到 1.4.9", "本地候选", "尚未成为正式发布", "逐路径、逐字节", "稳定 `skill_id`", "新增、修改、删除路径", "不执行脚本", "哪一步操作开始觉得不对", "假装拥有隐藏日志", "不会自动上传", "第二次执行零变化"], "1.4.9 candidate upgrade guide");
+const guide200 = read("core/upgrade/upgrade-1.4.8-to-2.0.0.md");
+includesAll(guide200, ["Agent Carry 1.4.8／1.4.9 升级到 AI Carry 2.0.0", "直接升级来源", "正式发布边界", "不是全文替换", "created_from", "GitHub 仓库仍位于", "ai-carry-upgrade-cli.mjs", "GitHub HTTPS API", "用户不需要操作终端", "逐字节保留核对", "已生成但尚未选择分享方式", "agent-carry.instance-component@1", "AI_CARRY_SNAPSHOT", "agent-carry-private-migration", "保持用户当前打开的实例根路径不变", "回滚包", "按事务记录逆序恢复", "复制到隔离候选并再次核对整树指纹", "本地静态产品文件与官方目标的逐路径字节", "回执如实注明这次只读检查使用了网络", "第二次", "当前会话"], "2.0.0 rename upgrade guide");
+includesAll(read("core/guides/upgrade-guide.md"), ["当前正式目标是 AI Carry 2.0.0", "固定 `v2.0.0`", "release-manifest-1.3.1.toml", "upgrade-1.2.1-to-1.3.1.md", "upgrade-1.3.0-to-1.3.1.md", "release-manifest-1.4.0.toml", "upgrade-1.3.1-to-1.4.0.md", "release-manifest-1.4.1.toml", "upgrade-1.4.0-to-1.4.1.md", "release-manifest-1.4.2.toml", "upgrade-1.4.1-to-1.4.2.md", "release-manifest-1.4.3.toml", "upgrade-1.4.2-to-1.4.3.md", "release-manifest-1.4.4.toml", "upgrade-1.4.3-to-1.4.4.md", "release-manifest-1.4.5.toml", "upgrade-1.4.4-to-1.4.5.md", "release-manifest-1.4.6.toml", "upgrade-1.4.5-to-1.4.6.md", "release-manifest-1.4.7.toml", "upgrade-1.4.6-to-1.4.7.md", "release-manifest-1.4.8.toml", "upgrade-1.4.7-to-1.4.8.md", "release-manifest-1.4.9.toml", "upgrade-1.4.8-to-1.4.9.md", "release-manifest-2.0.0.toml", "upgrade-1.4.8-to-2.0.0.md", "不授权任何未来提交"], "current upgrade guide");
 
-includesAll(read("assistant.toml"), ['product_version = "1.4.8"', 'core_version = "1.4.8"', 'release_manifest = "core/upgrade/release-manifest-1.4.8.toml"', 'new-run-is-last-host-compatibility-fallback'], "assistant authority");
-includesAll(read("core/manifest.toml"), ['version = "1.4.8"', 'instance_component_schema = "1.0"'], "core authority");
-includesAll(read("instance/manifest.toml"), ['created_from = "agent-carry@1.4.8"', 'product = "1.4.8"'], "template instance authority");
-includesAll(read("dashboard/package.json"), ['"version": "1.4.8"', '"instantiate": "node scripts/first-instantiation-transaction.mjs"', '"learning-save": "node scripts/learning-save-cli.mjs"', '"skill-install": "node scripts/skill-install-cli.mjs"', '"check:skill-install": "node scripts/validate-skill-install-transaction.mjs"', '"check:task-closeout": "node scripts/validate-task-closeout-contract.mjs"', '"check:release-authority": "node scripts/validate-release-authority.mjs"', "npm run check:first-run", "npm run check:learning-capture", "npm run check:skill-install"], "Dashboard package authority");
-includesAll(read("dashboard/package-lock.json"), ['"version": "1.4.8"'], "Dashboard lock authority");
+includesAll(read("assistant.toml"), ['product_id = "ai-carry"', 'product_name = "AI Carry"', 'product_version = "2.0.0"', 'core_version = "2.0.0"', 'release_manifest = "core/upgrade/release-manifest-2.0.0.toml"', 'legacy_product_ids = ["agent-carry"]', 'new-run-is-last-host-compatibility-fallback'], "assistant authority");
+includesAll(read("core/manifest.toml"), ['core_id = "ai-carry-core"', 'version = "2.0.0"', 'instance_component_schema = "1.0"'], "core authority");
+includesAll(read("instance/manifest.toml"), ['created_from = "ai-carry@2.0.0"', 'product = "2.0.0"'], "template instance authority");
+includesAll(read("dashboard/package.json"), ['"name": "ai-carry-dashboard"', '"version": "2.0.0"', '"instantiate": "node scripts/first-instantiation-transaction.mjs"', '"upgrade": "node scripts/ai-carry-upgrade-cli.mjs"', '"learning-save": "node scripts/learning-save-cli.mjs"', '"skill-install": "node scripts/skill-install-cli.mjs"', '"check:skill-install": "node scripts/validate-skill-install-transaction.mjs"', '"check:problem-report": "node scripts/validate-problem-report-contract.mjs"', '"check:task-closeout": "node scripts/validate-task-closeout-contract.mjs"', '"check:product-identity": "node scripts/validate-product-identity-contract.mjs"', '"check:release-authority": "node scripts/validate-release-authority.mjs"', "npm run check:first-run", "npm run check:product-identity", "npm run check:learning-capture", "npm run check:skill-install", "npm run check:problem-report"], "Dashboard package authority");
+includesAll(read("dashboard/package-lock.json"), ['"name": "ai-carry-dashboard"', '"version": "2.0.0"'], "Dashboard lock authority");
+includesAll(read("core/maps/dashboard-actions.toml"), ["目标包自己的版本文字", "GitHub HTTPS API", "我不需要操作终端", "不得遍历工作区正文", "不能认证聊天角色", "未知根文件原地不碰", "sessionReentryCommand", "不得生成 sessionActivated=true、behaviorAccepted=true"], "lower-cost-model upgrade action boundary");
+const upgrade200Cli = read("dashboard/scripts/ai-carry-upgrade-cli.mjs");
+includesAll(upgrade200Cli, ['completionState: "session-activation-required"', "sessionReentryCommand", 'decision: "ai-carry-upgrade-target-runtime-validated"', "targetPackageBoundaryValidated: true", "userMessageRoleAuthenticatedByCli: false", "filesInstalled: true", "instanceSwitched: true", "sessionActivated: false", "behaviorAccepted: false", "target release boundary does not authorize published instance replacement", "--user-reply", "聊天消息角色由承载对话的宿主负责"], "deterministic post-switch fact boundary");
+expect(!upgrade200Cli.includes("sessionActivated: true") && !upgrade200Cli.includes("behaviorAccepted: true") && !upgrade200Cli.includes("sourceVerified: true"),
+  "2.0.0 CLI still self-attests source, session, or behavior authority");
+expect(!upgrade200Cli.includes("--source-evidence") && !upgrade200Cli.includes("process.stdin.isTTY"),
+  "2.0.0 upgrade still trusts caller-authored source evidence or forces terminal-only approval");
+includesAll(read("core/protocols/UPGRADE_SESSION_ACTIVATION.md"), ["把自己填写的 `passed`", "sessionReentryCommand", "target-runtime-validated", "不得签发 `sessionActivated=true`", "宿主侧适配器"], "host-observed session activation boundary");
 
 const instanceManifestBytes = bytes("instance/manifest.toml");
 const startupCapsule = read("instance/startup-capsule.toml");
 includesAll(startupCapsule, [
   `source_manifest_digest = "sha256:${sha256(instanceManifestBytes)}"`,
-  'product_version = "1.4.8"',
+  'capsule_id = "ai-carry-startup"',
+  'product_version = "2.0.0"',
 ], "template startup capsule");
 
-console.log("Release authority validation passed for immutable published history through 1.4.8.");
+console.log("Release authority validation passed for immutable published history through 1.4.8, retained local 1.4.9 history, and the conditional AI Carry 2.0.0 published boundary.");

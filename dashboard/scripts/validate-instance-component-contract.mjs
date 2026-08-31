@@ -12,7 +12,7 @@ import {
 
 const assert = (condition, message) => { if (!condition) throw new Error(`Instance component self-test failed: ${message}`); };
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const fixture = mkdtempSync(join(tmpdir(), "agent-carry-instance-components-"));
+const fixture = mkdtempSync(join(tmpdir(), "ai-carry-instance-components-"));
 const q = JSON.stringify;
 const write = (ref, content) => {
   const target = resolve(fixture, ...ref.split("/"));
@@ -42,7 +42,7 @@ const instanceManifest = templateManifest
   .replace('user_preferences_ref = "instance/profile/README.md"', 'user_preferences_ref = "instance/profile/approved-profile.md"');
 
 const registry = ({ adoptionState = "current", count = 1, entries = "" } = {}) => `schema_version = 1
-record_type = "agent-carry-instance-component-registry"
+record_type = "ai-carry-instance-component-registry"
 instance_id = "ac.fixture"
 adoption_state = "${adoptionState}"
 revision = 1
@@ -57,11 +57,11 @@ state = "active"
 
 const component = ({
   criticality = "optional",
-  requires = ["agent-carry.instance-component@1"],
+  requires = ["ai-carry.instance-component@1"],
   migrationIds = ["migration.audio-transcriber-v2"],
   extra = "",
 } = {}) => `schema_version = 1
-record_type = "agent-carry-instance-component"
+record_type = "ai-carry-instance-component"
 component_id = "audio-transcriber"
 instance_id = "ac.fixture"
 kind = "local-tool-adapter"
@@ -116,6 +116,27 @@ try {
     && valid.components[0].tree.localFingerprints.length === 1,
   "portable, derived and device-local fingerprints are incomplete");
 
+  const legacyRegistry = registry().replace('record_type = "ai-carry-instance-component-registry"', 'record_type = "agent-carry-instance-component-registry"');
+  const legacyComponent = component()
+    .replace('record_type = "ai-carry-instance-component"', 'record_type = "agent-carry-instance-component"')
+    .replace('requires = ["ai-carry.instance-component@1"]', 'requires = ["agent-carry.instance-component@1"]');
+  write("instance/components/registry.toml", legacyRegistry);
+  write("instance/components/audio-transcriber/component.toml", legacyComponent);
+  const legacyRegistryBytes = readFileSync(resolve(fixture, "instance/components/registry.toml"));
+  const legacyComponentBytes = readFileSync(resolve(fixture, "instance/components/audio-transcriber/component.toml"));
+  const legacyValid = inspectInstanceComponents(fixture);
+  const legacyUpgrade = planInstanceComponentUpgrade(fixture, {
+    targetInterfaces: ["ai-carry.instance-component@1", "agent-carry.instance-component@1"],
+  });
+  assert(legacyValid.decision === "instance-components-valid"
+    && legacyUpgrade.decision === "instance-upgrade-compatible"
+    && legacyUpgrade.actions[0].action === "preserve"
+    && Buffer.compare(legacyRegistryBytes, readFileSync(resolve(fixture, "instance/components/registry.toml"))) === 0
+    && Buffer.compare(legacyComponentBytes, readFileSync(resolve(fixture, "instance/components/audio-transcriber/component.toml"))) === 0,
+  "a valid Agent Carry component could not be read and preserved by the AI Carry target");
+  write("instance/components/registry.toml", registry());
+  write("instance/components/audio-transcriber/component.toml", component());
+
   const driftedRegistry = registry()
     .replace('instance_id = "ac.fixture"', 'instance_id = "template"')
     .replace("component_count = 1", "component_count = 9")
@@ -137,7 +158,7 @@ try {
   "representational drift did not produce a repairable, migration-aware natural-language diagnosis");
   assert(classifyInstanceMutation(fixture, { paths: ["instance/memory/user-habit.md"] }).decision === "instance-mutation-compatible",
     "unrelated native asset change was blocked by repairable component metadata drift");
-  assert(planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-migration-required",
+  assert(planInstanceComponentUpgrade(fixture, { targetInterfaces: ["ai-carry.instance-component@1"] }).decision === "instance-upgrade-migration-required",
     "future component metadata did not request a bounded compatibility migration");
   assert(Buffer.compare(driftedRegistryBefore, readFileSync(resolve(fixture, "instance/components/registry.toml"))) === 0
     && Buffer.compare(driftedManifestBefore, readFileSync(resolve(fixture, "instance/components/audio-transcriber/component.toml"))) === 0
@@ -147,7 +168,7 @@ try {
   write("instance/components/registry.toml", registry());
   write("instance/components/audio-transcriber/component.toml", component());
   write("instance/components/registry.toml", registry().replace("component_count = 1", "component_count = 4"));
-  const autoRepairPlan = planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] });
+  const autoRepairPlan = planInstanceComponentUpgrade(fixture, { targetInterfaces: ["ai-carry.instance-component@1"] });
   assert(autoRepairPlan.decision === "instance-upgrade-auto-repair-required"
     && autoRepairPlan.repairPlan.some((item) => item.action.includes("component_count"))
     && autoRepairPlan.userReport.requiresUserDecision === false,
@@ -184,7 +205,7 @@ try {
     "a component-owned local binding could be changed as unowned framework state");
   expectFailure(() => classifyInstanceMutation(fixture, { paths: ["../escape"] }), "unsafe", "path traversal was accepted");
 
-  const targetInterfaces = ["agent-carry.instance-component@1"];
+  const targetInterfaces = ["ai-carry.instance-component@1"];
   const preservePlan = planInstanceComponentUpgrade(fixture, { targetInterfaces });
   assert(preservePlan.decision === "instance-upgrade-compatible"
     && preservePlan.actions[0].action === "preserve"
@@ -201,7 +222,7 @@ try {
   write("instance/components/audio-transcriber/generated/status.json", '{"state":"changed"}\n');
   assert(!instanceComponentPlanIsFresh(fixture, derivedPlan), "derived source drift did not expire the plan");
 
-  write("instance/components/audio-transcriber/component.toml", component({ requires: ["agent-carry.instance-component@1", "platform.audio-runtime@2"] }));
+  write("instance/components/audio-transcriber/component.toml", component({ requires: ["ai-carry.instance-component@1", "platform.audio-runtime@2"] }));
   const optionalPlan = planInstanceComponentUpgrade(fixture, { targetInterfaces });
   assert(optionalPlan.decision === "instance-upgrade-compatible" && optionalPlan.actions[0].action === "disable-and-preserve",
     "optional incompatible component did not preserve bytes while allowing the core upgrade");
@@ -209,7 +230,7 @@ try {
   assert(migrationPlan.decision === "instance-upgrade-migration-required" && migrationPlan.actions[0].action === "migrate-and-recheck",
     "declared release migration did not take precedence over disablement");
   expectFailure(() => planInstanceComponentUpgrade(fixture, { targetInterfaces, migrationIds: ["INVALID"] }), "migration ID set", "invalid migration ID was accepted");
-  write("instance/components/audio-transcriber/component.toml", component({ criticality: "required", requires: ["agent-carry.instance-component@1", "platform.audio-runtime@2"], migrationIds: [] }));
+  write("instance/components/audio-transcriber/component.toml", component({ criticality: "required", requires: ["ai-carry.instance-component@1", "platform.audio-runtime@2"], migrationIds: [] }));
   const requiredPlan = planInstanceComponentUpgrade(fixture, { targetInterfaces });
   assert(requiredPlan.decision === "instance-upgrade-conflict" && requiredPlan.actions[0].action === "stop-and-preserve",
     "required incompatible component did not stop without deletion");
@@ -258,7 +279,7 @@ state = "active"
     componentId: "audio-transcriber",
     paths: ["instance/components/audio-transcriber/config.toml"],
   }).decision === "instance-mutation-component-isolated", "the damaged component itself remained writable");
-  assert(planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-compatible-with-isolated-components",
+  assert(planInstanceComponentUpgrade(fixture, { targetInterfaces: ["ai-carry.instance-component@1"] }).decision === "instance-upgrade-compatible-with-isolated-components",
     "an isolated optional component blocked the rest of the core upgrade");
   expectFailure(() => inspectInstanceComponents(fixture), "unclassified paths", "unclassified file was accepted");
   remove("instance/components/audio-transcriber/unknown.txt");
@@ -291,7 +312,7 @@ state = "active"
     && corruptDiagnosis.userReport.dataSafety.includes("原文件")
     && nativeDuringCorruptRegistry.decision === "instance-mutation-compatible"
     && nativeDuringCorruptRegistry.compatibilityOutcome === "normal" && nativeDuringCorruptRegistry.diagnostics.length === 0
-    && planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-user-decision-required"
+    && planInstanceComponentUpgrade(fixture, { targetInterfaces: ["ai-carry.instance-component@1"] }).decision === "instance-upgrade-user-decision-required"
     && Buffer.compare(corruptRegistry, readFileSync(resolve(fixture, "instance/components/registry.toml"))) === 0,
   "a corrupt registry either stopped unrelated native work, failed to guide the user, or changed source bytes");
   expectFailure(() => inspectInstanceComponents(fixture), "valid UTF-8", "invalid UTF-8 registry was accepted");
@@ -314,7 +335,7 @@ state = "active"
   assert(boundedReport.diagnostics.length > 12 && boundedReport.userReport.details.length === 12
     && boundedReport.userReport.omittedDetailCount === boundedReport.diagnostics.length - 11
     && boundedReport.isolatedComponents.length === 21
-    && planInstanceComponentUpgrade(fixture, { targetInterfaces: ["agent-carry.instance-component@1"] }).decision === "instance-upgrade-user-decision-required",
+    && planInstanceComponentUpgrade(fixture, { targetInterfaces: ["ai-carry.instance-component@1"] }).decision === "instance-upgrade-user-decision-required",
   "many malformed component entries escaped isolation or produced an unbounded user report");
   write("instance/components/registry.toml", registry().replaceAll("\n", "\r\n"));
   expectFailure(() => inspectInstanceComponents(fixture), "portable UTF-8 LF", "CRLF registry was accepted");

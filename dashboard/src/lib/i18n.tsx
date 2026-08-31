@@ -3,17 +3,18 @@ import { ENGLISH_TEXT } from "./i18n-catalog";
 
 export type DashboardLocale = "zh-Hans" | "en";
 
-const STORAGE_PREFIX = "agent-carry:dashboard-locale:";
+const STORAGE_PREFIX = "ai-carry:dashboard-locale:";
+const LEGACY_STORAGE_PREFIX = "agent-carry:dashboard-locale:";
 const LOCALE_QUERY_KEY = "ac_lang";
 
-function localeStorageKey(): string {
+function localeStorageKey(prefix = STORAGE_PREFIX): string {
   const path = `${window.location.pathname}|${document.baseURI}`;
   let hash = 2166136261;
   for (let index = 0; index < path.length; index += 1) {
     hash ^= path.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return `${STORAGE_PREFIX}${(hash >>> 0).toString(16)}`;
+  return `${prefix}${(hash >>> 0).toString(16)}`;
 }
 
 function queryLocale(): DashboardLocale | null {
@@ -29,8 +30,14 @@ function queryLocale(): DashboardLocale | null {
 
 function storedLocale(): DashboardLocale | null {
   try {
-    const value = window.localStorage.getItem(localeStorageKey());
-    return value === "en" || value === "zh-Hans" ? value : null;
+    const current = window.localStorage.getItem(localeStorageKey());
+    if (current === "en" || current === "zh-Hans") return current;
+    const legacy = window.localStorage.getItem(localeStorageKey(LEGACY_STORAGE_PREFIX));
+    if (legacy === "en" || legacy === "zh-Hans") {
+      window.localStorage.setItem(localeStorageKey(), legacy);
+      return legacy;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -142,21 +149,21 @@ export function dashboardLanguageTag(): string {
 
 export function localizeAgentRequest(request: string): string {
   if (runtimeLocale !== "en") return request;
-  return `# Agent Carry request from an English dashboard
+  return `# AI Carry request from an English dashboard
 
-You are the current host Agent connected to this Agent Carry. Communicate with the user in clear English throughout this task, including questions, previews, warnings, choices, progress updates, and the final verification report.
+You are the current host Agent connected to this AI Carry. Communicate with the user in clear English throughout this task, including questions, previews, warnings, choices, progress updates, and the final verification report.
 
 Treat English as the current interaction language unless the user asks for another language. During first-time instantiation, include that language preference in the complete preview instead of silently reverting to the template's Chinese placeholder. Never translate or rewrite user-authored memories, professional terms, source files, or local-private data merely because the dashboard is in English.
 
-The canonical operational request below is stored in Simplified Chinese so Agent Carry has one maintained protocol instead of separate language-specific logic. Read it completely and follow its meaning exactly. Do not omit its routing, confirmation, privacy, security, model-level, preservation, or reporting requirements. Do not ask the user to translate it. When a choice is needed, explain the concrete options and consequences in plain English; assume the user may be new to Agents or programming without treating them as incapable.
+The canonical operational request below is stored in Simplified Chinese so AI Carry has one maintained protocol instead of separate language-specific logic. Read it completely and follow its meaning exactly. Do not omit its routing, confirmation, privacy, security, model-level, preservation, or reporting requirements. Do not ask the user to translate it. When a choice is needed, explain the concrete options and consequences in plain English; assume the user may be new to Agents or programming without treating them as incapable.
 
 Secrets such as API keys, passwords, tokens, cookies, private keys, recovery codes, and login state must never be copied into model prompts, migration files, GitHub repositories, or reports. Use only the host Agent's approved login or secret-management mechanism.
 
---- BEGIN CANONICAL AGENT CARRY REQUEST ---
+--- BEGIN CANONICAL AI CARRY REQUEST ---
 
 ${request}
 
---- END CANONICAL AGENT CARRY REQUEST ---`;
+--- END CANONICAL AI CARRY REQUEST ---`;
 }
 
 type LocaleContextValue = {

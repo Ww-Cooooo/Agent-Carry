@@ -14,7 +14,7 @@ function read(relative) {
 }
 
 function facts(overrides = {}) {
-  return {
+  const values = {
     sourceVerified: true,
     filesInstalled: true,
     instanceSwitched: true,
@@ -25,16 +25,19 @@ function facts(overrides = {}) {
     activationEvidence: "manual-file-reread",
     behaviorChangeExpected: true,
     behaviorAcceptance: "not-run",
+    instanceId: "ac.session-fixture",
+    manifestDigest: `sha256:${"a".repeat(64)}`,
     ...overrides,
   };
+  return values;
 }
 
 const plainReread = evaluateUpgradeSessionActivation(facts());
-expect(plainReread.decision === "upgrade-session-activation-required" && plainReread.upgrade_complete === false,
+expect(plainReread.decision === "upgrade-session-observation-required" && plainReread.upgrade_complete === false,
   "an old running session was reported complete after only manually rereading the 1.4.3 files");
 expect(plainReread.rollback_required === false && plainReread.can_continue_unaffected_work === true,
   "a valid installed instance was rolled back or globally stopped only because current-session reentry was pending");
-expect(plainReread.userReport?.next_step.includes("由 Agent")
+expect(plainReread.userReport?.next_step.includes("真正掌握宿主运行事实")
   && !plainReread.userReport?.next_step.includes("开启一个新任务"),
   "a pending reentry handed acceptance work to the user or made a new task the default");
 
@@ -42,28 +45,33 @@ const currentSessionReentry = evaluateUpgradeSessionActivation(facts({
   activationEvidence: "validated-current-session-reentry",
   behaviorAcceptance: "passed",
 }));
-expect(currentSessionReentry.decision === "upgrade-behavior-accepted"
-  && currentSessionReentry.upgrade_complete === true,
-  "a validated safe-boundary reentry could not close the long-running current conversation");
-expect(currentSessionReentry.userReport?.next_step.includes("无需亲自执行额外测试")
-  && currentSessionReentry.userReport?.still_usable.includes("当前对话已经采用新版"),
-  "successful automatic acceptance did not give the user a clear completion receipt");
+expect(currentSessionReentry.decision === "upgrade-session-observation-required"
+  && currentSessionReentry.upgrade_complete === false,
+  "caller-provided current-session facts were allowed to close the upgrade");
+
+const selfAssertedReentry = evaluateUpgradeSessionActivation(facts({
+  activationEvidence: "validated-current-session-reentry",
+  behaviorAcceptance: "passed",
+}));
+expect(selfAssertedReentry.decision === "upgrade-session-observation-required"
+  && selfAssertedReentry.upgrade_complete === false,
+"model-supplied passed values were accepted as completion");
 
 const freshRun = evaluateUpgradeSessionActivation(facts({
   sessionBaselineVersion: "1.4.3",
   activationEvidence: "fresh-session-startup",
   behaviorAcceptance: "passed",
 }));
-expect(freshRun.decision === "upgrade-behavior-accepted" && freshRun.upgrade_complete === true,
-  "a fresh target-version session could not close behavioral acceptance");
+expect(freshRun.decision === "upgrade-session-observation-required" && freshRun.upgrade_complete === false,
+  "a caller-authored fresh-session claim closed behavioral acceptance");
 
 const behaviorFailure = evaluateUpgradeSessionActivation(facts({
   activationEvidence: "validated-current-session-reentry",
   behaviorAcceptance: "failed",
 }));
-expect(behaviorFailure.decision === "upgrade-behavior-acceptance-failed"
+expect(behaviorFailure.decision === "upgrade-session-observation-required"
   && behaviorFailure.rollback_required === false && behaviorFailure.can_continue_unaffected_work === true,
-"one failed behavior acceptance was allowed to roll back files or stop unrelated Agent capabilities");
+"one untrusted behavior claim was allowed to roll back files or stop unrelated Agent capabilities");
 
 const invalidStartup = evaluateUpgradeSessionActivation(facts({ startupValidation: "failed" }));
 expect(invalidStartup.decision === "upgrade-installed-state-invalid" && invalidStartup.rollback_required === true
@@ -77,6 +85,7 @@ expect(incompleteFacts.decision === "upgrade-session-facts-invalid" && incomplet
 const protocol = read("core/protocols/UPGRADE_SESSION_ACTIVATION.md");
 const upgradeGuide = read("core/guides/upgrade-guide.md");
 const machineContract = read("core/upgrade/UPGRADE-CONTRACT.md");
+const upgradeCli = read("dashboard/scripts/ai-carry-upgrade-cli.mjs");
 const hostResume = read("core/protocols/HOST_SESSION_RESUME.md");
 const triggerRegistry = read("core/maps/trigger-registry.toml");
 const agentsEntry = read("AGENTS.md");
@@ -94,18 +103,22 @@ for (const fragment of [
 expect(upgradeGuide.includes("UPGRADE_SESSION_ACTIVATION.md"), "upgrade guide does not route to session activation");
 expect(machineContract.includes("session-activation-required") && machineContract.includes("behavior-accepted"),
   "machine upgrade completion does not distinguish session activation and behavior acceptance");
-expect(machineContract.includes("validated-current-session-reentry")
-  && machineContract.includes("不得要求用户输入测试提示词"),
-  "machine upgrade completion does not permit bounded current-session reentry or automatic acceptance");
+expect(machineContract.includes("target-runtime-validated")
+  && machineContract.includes("不得自行签发 `sessionActivated=true`、`behaviorAccepted=true`"),
+  "machine upgrade contract still lets a local file check impersonate host session or behavior facts");
+expect(upgradeCli.includes('decision: "ai-carry-upgrade-target-runtime-validated"')
+  && upgradeCli.includes("sessionActivated: false") && upgradeCli.includes("behaviorAccepted: false")
+  && !upgradeCli.includes("sessionActivated: true") && !upgradeCli.includes("behaviorAccepted: true"),
+  "2.0.0 upgrade CLI self-attests current-session activation or behavior acceptance");
 expect(hostResume.includes("升级后的新运行接续") && hostResume.includes("不是每次升级都必须执行"),
   "new-run resume still presents itself as a mandatory upgrade path");
 expect(protocol.includes("宿主产品版本属于宿主观察")
   && triggerRegistry.includes("never-use-host-product-version"),
-  "Agent Carry version adoption can still be confused with the host product version");
+  "AI Carry version adoption can still be confused with the host product version");
 for (const source of [agentsEntry, bootstrap]) {
   expect(source.includes("每个新的实质用户目标开始前")
     && source.includes("同一目标的连续回复不重复"),
   "the stable entry describes a mismatch route but never performs the bounded version comparison");
 }
 
-console.log("Upgrade session activation passed six high-information cases: plain reread rejection, current-session reentry, optional fresh run, local behavior failure, invalid installed startup, and missing-fact degradation.");
+console.log("Upgrade session activation passed high-information invalid, rollback, continuity, and generic-JSON no-self-attestation cases plus the 2.0.0 local-CLI boundary.");

@@ -5,12 +5,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        谢谢你帮助改进 Agent Carry。请描述真实目标和实际结果，不需要先提出技术方案。
+        谢谢你帮助改进 AI Carry。请描述真实目标和实际结果，不需要先提出技术方案。
         不要提交 API 密钥、登录态、真实隐私、完整个人实例或未经脱敏的日志。安全漏洞请使用私密报告入口。
   - type: input
     id: version
     attributes:
-      label: Agent Carry 版本或来源
+      label: AI Carry 版本或来源
       description: 例如 v1.1.0、Release 下载包，或某个公开提交。
       placeholder: v1.1.0
     validations:

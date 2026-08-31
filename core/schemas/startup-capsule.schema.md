@@ -14,9 +14,9 @@
 | 字段 | 类型 | 约束与来源 |
 | --- | --- | --- |
 | `schema_version` | integer | 固定为 `1` |
-| `capsule_id` | string | 固定为 `agent-carry-startup` |
+| `capsule_id` | string | 固定为 `ai-carry-startup` |
 | `source_manifest_digest` | string | `sha256:` 加 64 位小写十六进制；覆盖来源清单的原始完整字节 |
-| `product_version` | string | 来自严格解析的 `core/manifest.toml` 版本 |
+| `product_version` | string | 来自严格解析的 `core/manifest.toml` 版本；`core_id` 必须是当前 AI Carry 身份，且版本必须与实例清单 `versions.product` 一致 |
 | `instance_id` | string | 来自实例清单；模板固定为 `template` |
 | `state` | string | `template` 或 `instance` |
 | `direction_type` | string | 来自方向真源；模板为 `unselected` |
@@ -33,6 +33,8 @@
 | `migration_required` | boolean | 严格解析器发现可保守读取但必须迁移的旧 Schema 状态时为 `true` |
 
 所有 `*_ref` 都是仓库内逻辑引用，不得包含设备绝对路径、网址、`..`、秘密或用户正文。字段之间还必须满足 `instance-manifest.schema.md` 的模板／实例一致性约束；胶囊不能放宽来源清单。
+
+Agent Carry 1.4.x 的 `agent-carry-startup` 只作为升级前的旧派生值识别，不能成为 2.0.0 的规范输出。目标产品真源与实例 manifest 有效时，升级事务或一次启动派生修复应把它重建为 `ai-carry-startup`；不得为保留旧胶囊而放宽当前严格结果，也不得把这一项可重建漂移升级成整个实例不可用。
 
 ## 3. 生成、更新与失败行为
 

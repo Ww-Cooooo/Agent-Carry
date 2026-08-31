@@ -1,16 +1,16 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { parseSnapshotEnvelope, serializeSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope, serializeSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { synchronizeSnapshotPair } from "./snapshot-sync-transaction.mjs";
 
 const assert = (condition, message) => { if (!condition) throw new Error(`Snapshot transaction self-test failed: ${message}`); };
-const validateBytes = (bytes, label) => validateSnapshotSemantics(parseSnapshotEnvelope(bytes.toString("utf8"), label), label);
+const validateBytes = (bytes, label) => validateSnapshotSemantics(parseCurrentSnapshotEnvelope(bytes.toString("utf8"), label), label);
 const template = {
   meta: { schema_version: "1.1", generated_at: "", product_version: "test", state: "template", freshness_seconds: 60, source_digest: "template-empty", identity_ref: "template" },
-  overview: { product: "AgentCarry", state: "template", domain: "uninstantiated", startup_chars: 0, startup_budget: 20000 },
-  profile: { display_name: "Agent Carry", mission: "事务测试空模板", domain_id: "uninstantiated", guidance_mode: "unselected", learning_policy: "unselected", language: "zh-CN" },
+  overview: { product: "AI Carry", state: "template", domain: "uninstantiated", startup_chars: 0, startup_budget: 20000 },
+  profile: { display_name: "AI Carry", mission: "事务测试空模板", domain_id: "uninstantiated", guidance_mode: "unselected", learning_policy: "unselected", language: "zh-CN" },
   assets: { memory: 0, sops: 0, capabilities: 0, experiences: 0, evolution: 0, todo: 0, governance: 0, skills: 0 },
   memories: [], sops: [], capabilities: [], experiences: [], evolution: [], governance: [], todo: [], deferred: [],
   skills: { count: 0, status: "未扫描", path: "" }, changes: [], advanced: { file_count: 0, entry_files: [] },
@@ -23,7 +23,7 @@ async function writeTarget(target, bytes) {
 }
 
 async function withCase(name, operation) {
-  const root = await mkdtemp(join(tmpdir(), `agent-carry-snapshot-${name}-`));
+  const root = await mkdtemp(join(tmpdir(), `ai-carry-snapshot-${name}-`));
   try { await operation(root); }
   finally { await rm(root, { recursive: true, force: true }); }
 }
@@ -49,7 +49,7 @@ await withCase("rollback", async (root) => {
   } catch (error) { failed = /Both live targets were restored/.test(error.message); }
   assert(failed && (await readFile(targets[0])).equals(old[0]) && (await readFile(targets[1])).equals(old[1]), "first-install failure did not restore both original byte sets");
   for (const directory of [dirname(targets[0]), dirname(targets[1])]) {
-    assert((await readdir(directory)).every((name) => !name.includes("agent-carry-stage") && !name.includes("agent-carry-backup")), "rollback left transaction files beside a target");
+    assert((await readdir(directory)).every((name) => !name.includes("ai-carry-stage") && !name.includes("ai-carry-backup")), "rollback left transaction files beside a target");
   }
 });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic local-only export, verification and import for Agent Carry private data.
+"""Deterministic local-only export, verification and import for AI Carry private data.
 
 The tool deliberately prints only paths, locations, categories and counts for
 secret findings. It never prints a matched value and never performs networking.
@@ -29,6 +29,9 @@ from typing import Any, Iterable
 
 TOOL_VERSION = "1.2.1"
 PACKAGE_SCHEMA = 3
+CURRENT_PACKAGE_TYPE = "ai-carry-private-migration"
+LEGACY_PACKAGE_TYPES = frozenset({"agent-carry-private-migration"})
+ACCEPTED_PACKAGE_TYPES = frozenset({CURRENT_PACKAGE_TYPE, *LEGACY_PACKAGE_TYPES})
 MANIFEST_PATH = "private-package/manifest.json"
 PRIVATE_ARCHIVE_ROOT = "private-package/assets"
 PRIVATE_RESTORE_ROOT = ".assistant-private/assets"
@@ -163,7 +166,7 @@ def require_root(root: Path) -> Path:
     required = [resolved / "assistant.toml", resolved / "instance" / "manifest.toml"]
     missing = [str(path.relative_to(resolved)).replace("\\", "/") for path in required if not path.is_file()]
     if missing:
-        raise MigrationError("invalid-agent-carry-root", "目标不是完整的 Agent Carry 实例。", details={"missing": missing})
+        raise MigrationError("invalid-ai-carry-root", "目标不是完整的 AI Carry 实例。", details={"missing": missing})
     return resolved
 
 
@@ -182,7 +185,7 @@ def ensure_no_link_components(root: Path, path: Path, *, field: str) -> None:
     root = root.resolve()
     lexical = Path(os.path.abspath(path))
     if not lexical.is_relative_to(root):
-        raise MigrationError("path-outside-instance", "路径越过当前 Agent Carry 实例。", details={"field": field})
+        raise MigrationError("path-outside-instance", "路径越过当前 AI Carry 实例。", details={"field": field})
     relative = lexical.relative_to(root)
     current = root
     for part in relative.parts:
@@ -646,7 +649,7 @@ def export_package(root: Path, output_dir: Path, policy_path: Path | None = None
     root = require_root(root)
     output_dir = output_dir.resolve()
     if output_dir == root or output_dir.is_relative_to(root):
-        raise MigrationError("output-inside-instance", "迁移包必须输出到 Agent Carry 工作目录之外。", details={"path": str(output_dir)})
+        raise MigrationError("output-inside-instance", "迁移包必须输出到 AI Carry 工作目录之外。", details={"path": str(output_dir)})
     output_dir.mkdir(parents=True, exist_ok=True)
     policy_file, policy = load_policy(root, policy_path)
     path_contract, contract = load_path_contract(root, policy_file, policy)
@@ -665,7 +668,7 @@ def export_package(root: Path, output_dir: Path, policy_path: Path | None = None
     assistant = read_toml(root / "assistant.toml")
     instance = read_toml(root / "instance" / "manifest.toml")
     package_id = f"pvt-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-    package_name = f"agent-carry-private-{package_id}.zip"
+    package_name = f"ai-carry-private-{package_id}.zip"
     package_path = output_dir / package_name
     if package_path.exists():
         raise MigrationError("output-conflict", "目标迁移包已经存在。", details={"path": str(package_path)})
@@ -694,7 +697,7 @@ def export_package(root: Path, output_dir: Path, policy_path: Path | None = None
 
     manifest = {
         "schema_version": PACKAGE_SCHEMA,
-        "package_type": "agent-carry-private-migration",
+        "package_type": CURRENT_PACKAGE_TYPE,
         "package_id": package_id,
         "source_instance_id": str(instance["instance_id"]),
         "product_version": str(assistant["product_version"]),
@@ -860,7 +863,7 @@ def verify_package(package_path: Path, *, expected_root: Path | None = None, pol
         schema = int(manifest.get("schema_version", 0))
         if schema not in {1, 2, 3}:
             raise MigrationError("unsupported-package-schema", "不支持该隐私包版本。", details={"schema_version": schema})
-        if manifest.get("package_type") != "agent-carry-private-migration" or manifest.get("credentials_included") is not False:
+        if manifest.get("package_type") not in ACCEPTED_PACKAGE_TYPES or manifest.get("credentials_included") is not False:
             raise MigrationError("invalid-package-identity", "隐私包身份或凭据声明无效。")
         entries = manifest.get("entries")
         if not isinstance(entries, list):
@@ -1231,7 +1234,7 @@ def import_package(package_path: Path, target_root: Path, *, policy_path: Path |
                     raise MigrationError("staged-entry-changed", "迁移暂存条目摘要发生变化。", details={"path": plan["restore_path"]})
                 copy_file_atomic(staged, plan["target"], expected_sha256=plan["after_sha256"])
                 installed += 1
-                if os.environ.get("AGENT_CARRY_TEST_IMPORT_FAIL_AFTER") == str(installed):
+                if os.environ.get("AI_CARRY_TEST_IMPORT_FAIL_AFTER") == str(installed):
                     raise RuntimeError("synthetic import interruption")
             for plan in planned:
                 if not plan["target"].is_file() or sha256_file(plan["target"]) != plan["after_sha256"]:
@@ -1278,7 +1281,7 @@ def import_package(package_path: Path, target_root: Path, *, policy_path: Path |
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Agent Carry 本地隐私与业务数据迁移工具")
+    parser = argparse.ArgumentParser(description="AI Carry 本地隐私与业务数据迁移工具")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     export = subparsers.add_parser("export", help="在本地导出迁移包")

@@ -2,9 +2,11 @@ import { closeSync, fstatSync, lstatSync, openSync, readSync, readdirSync, realp
 import { basename, relative, resolve, sep } from "node:path";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { containsForbiddenLocationReference } from "./safe-output-boundary.mjs";
+import { stableAssetId } from "./asset-route-contract.mjs";
 
 const decoder = new TextDecoder("utf-8", { fatal: true });
 const skillName = /^[a-z0-9][a-z0-9-]{0,63}$/u;
+const skillVersion = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
 const allowedRoots = new Set(["SKILL.md", "LICENSE", "LICENSE.md", "references", "scripts", "assets"]);
 const textExtensions = new Set([".md", ".txt", ".json", ".toml", ".yaml", ".yml", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".py", ".ps1", ".sh", ".bat", ".cmd", ".css", ".html", ".xml", ".csv", ".tsv", ".svg", ".sql", ".ini", ".cfg"]);
 const forbiddenPrivateMarkers = ["private://", ".assistant-private", ".assistant-local", "maintainer-private", "AGENTS.override.md"];
@@ -106,7 +108,7 @@ export function inspectSkillPackage(packageRoot, { mode = "import", sourceAssetI
     const rootName = file.ref.split("/")[0];
     if (!allowedRoots.has(rootName)) review.push(issue("extra-root-entry", `根目录额外内容需要人工判断：${rootName}`));
     const loweredRef = file.ref.toLowerCase();
-    if (forbiddenPrivateMarkers.some((marker) => loweredRef.includes(marker.toLowerCase()))) isolated.push(issue("private-boundary", `发现 Agent Carry 私密或本地维护文件：${file.ref}`));
+    if (forbiddenPrivateMarkers.some((marker) => loweredRef.includes(marker.toLowerCase()))) isolated.push(issue("private-boundary", `发现 AI Carry 私密或本地维护文件：${file.ref}`));
     if (mode === "export" && sourceAssetId && file.ref.includes(sourceAssetId)) isolated.push(issue("source-id-leak", `共享包文件名泄露了本地来源资产 ID：${file.ref}`));
     if (file.ref.startsWith("scripts/")) scripts.push(file.ref);
     if (!textFile(file.ref)) { opaqueFiles.push(file.ref); review.push(issue("opaque-file", `不透明或二进制内容需要人工判断：${file.ref}`)); continue; }
@@ -116,19 +118,24 @@ export function inspectSkillPackage(packageRoot, { mode = "import", sourceAssetI
     if (locateHighConfidenceSecretCandidates(source).blocked) isolated.push(issue("secret-detected", `发现疑似秘密内容：${file.ref}`));
     if (containsForbiddenLocationReference(source)) isolated.push(issue("local-path-detected", `发现不可分享的本机绝对位置：${file.ref}`));
     const lowered = source.toLowerCase();
-    if (forbiddenPrivateMarkers.some((marker) => lowered.includes(marker.toLowerCase()))) isolated.push(issue("private-boundary", `发现 Agent Carry 私密或本地维护引用：${file.ref}`));
+    if (forbiddenPrivateMarkers.some((marker) => lowered.includes(marker.toLowerCase()))) isolated.push(issue("private-boundary", `发现 AI Carry 私密或本地维护引用：${file.ref}`));
     if (mode === "export" && sourceAssetId && source.includes(sourceAssetId)) isolated.push(issue("source-id-leak", `共享包泄露了本地来源资产 ID：${file.ref}`));
   }
 
-  let name = ""; let description = "";
+  let name = ""; let description = ""; let skillId = ""; let version = "";
   const skillEntry = files.find((file) => file.ref === "SKILL.md");
   if (skillEntry) {
     try {
       const head = parseSkillHead(decoder.decode(boundedRead(skillEntry.path, 512 * 1024, "SKILL.md")));
       name = typeof head?.name === "string" ? head.name : "";
       description = typeof head?.description === "string" ? head.description : "";
+      skillId = typeof head?.skill_id === "string" ? head.skill_id : "";
+      version = typeof head?.version === "string" ? head.version : "";
       if (!skillName.test(name)) isolated.push(issue("name-invalid", "SKILL.md 的 name 必须是小写字母、数字和连字符组成的稳定名称。"));
       if (!description.trim() || [...description].length > 1024) isolated.push(issue("description-invalid", "SKILL.md 缺少有界、可理解的 description。"));
+      if (skillId && !stableAssetId.test(skillId)) review.push(issue("skill-id-invalid", "SKILL.md 的 skill_id 不是可识别的稳定共享身份。"));
+      if (version && !skillVersion.test(version)) review.push(issue("version-invalid", "SKILL.md 的 version 必须是三段数字版本，例如 1.2.0。"));
+      if (Boolean(skillId) !== Boolean(version)) review.push(issue("upgrade-metadata-incomplete", "共享身份和版本需要同时提供；本包仍可保留，但不能自动判断升级。"));
     } catch { isolated.push(issue("skill-entry-read-failed", "无法稳定读取 SKILL.md。")); }
   }
 
@@ -137,6 +144,8 @@ export function inspectSkillPackage(packageRoot, { mode = "import", sourceAssetI
     decision: isolated.length ? "isolated" : review.length ? "review" : "ready",
     name,
     description,
+    skillId,
+    version,
     fileCount: files.length,
     totalBytes,
     scripts: Object.freeze([...new Set(scripts)].sort()),

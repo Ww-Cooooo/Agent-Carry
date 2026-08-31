@@ -3,18 +3,18 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { buildSnapshotCandidate, computeSnapshotSourceDigest } from "./snapshot-source-builder.mjs";
-import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { buildStartupCapsule } from "./startup-capsule-contract.mjs";
 import { createSkillDelivery } from "./skill-package.mjs";
 
 const assert = (condition, message) => { if (!condition) throw new Error(`Snapshot source builder contract failed: ${message}`); };
-const root = mkdtempSync(join(tmpdir(), "agent-carry-snapshot-builder-"));
+const root = mkdtempSync(join(tmpdir(), "ai-carry-snapshot-builder-"));
 const write = (ref, source) => { const path = resolve(root, ...ref.split("/")); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, source, "utf8"); };
 const manifest = (mission = "帮助用户整理学习平台成绩。") => `schema_version = 1
 instance_id = "ac-snapshot-fixture"
 state = "instance"
-created_from = "agent-carry@test"
+created_from = "ai-carry@test"
 created_at = "2026-08-24T00:00:00+08:00"
 
 [direction]
@@ -48,7 +48,7 @@ direct_user_instruction = "direct-authorization"
 evidence_index_ref = "instance/validations/index.toml"
 
 [versions]
-product = "test"
+product = "2.0.0"
 asset_schema = "1.2"
 evolution_candidate_index_schema = "1.0"
 asset_confirmation_gate_schema = "1.0"
@@ -58,17 +58,17 @@ result_validation_evidence_schema = "1.0"
 try {
   write("AGENTS.md", "# fixture\n"); write("BOOTSTRAP.md", "# fixture\n"); write("core/maps/root-map.toml", "schema_version = 1\n");
   write("assistant.toml", `schema_version = 1
-product_id = "agent-carry"
-product_name = "Agent Carry"
-product_version = "test"
-core_version = "test"
+product_id = "ai-carry"
+product_name = "AI Carry"
+product_version = "2.0.0"
+core_version = "2.0.0"
 
 [bootstrap]
 maximum_characters = 20000
 `);
   write("core/manifest.toml", `schema_version = 1
-core_id = "agent-carry-core"
-version = "1.3.0-test.1"
+core_id = "ai-carry-core"
+version = "2.0.0"
 asset_schema = "1.2"
 evolution_candidate_index_schema = "1.0"
 asset_confirmation_gate_schema = "1.0"
@@ -167,7 +167,7 @@ indexed_count = 0
 active_count = 0
 `);
   write("instance/components/audio-transcriber/component.toml", `schema_version = 1
-record_type = "agent-carry-instance-component"
+record_type = "ai-carry-instance-component"
 component_id = "audio-transcriber"
 instance_id = "ac-snapshot-fixture"
 kind = "local-tool-adapter"
@@ -187,7 +187,7 @@ unclassified_policy = "stop-and-preview"
 
 [interfaces]
 provides = ["capability.audio-transcription@1"]
-requires = ["agent-carry.instance-component@1"]
+requires = ["ai-carry.instance-component@1"]
 
 [upgrade]
 criticality = "optional"
@@ -273,7 +273,7 @@ confirmation = "none"
 `);
 
   const first = buildSnapshotCandidate(root, { now: new Date("2026-08-24T04:00:00+08:00") });
-  const snapshot = parseSnapshotEnvelope(first.source, "generated fixture");
+  const snapshot = parseCurrentSnapshotEnvelope(first.source, "generated fixture");
   validateSnapshotSemantics(snapshot, "generated fixture");
   const expectedIdentity = `ac-${createHash("sha256").update("ac-snapshot-fixture", "utf8").digest("hex").slice(0, 12)}`;
   assert(first.updated && first.identityRef === expectedIdentity && snapshot.meta.identity_ref === expectedIdentity, "instance identity was not derived from instance_id");
@@ -289,6 +289,10 @@ confirmation = "none"
   assert(snapshot.meta.source_digest === computeSnapshotSourceDigest(root).digest, "source digest did not match an independent deterministic rebuild");
   const repeated = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:00:00+08:00") });
   assert(!repeated.updated && repeated.source === first.source, "unchanged formal truth refreshed generated_at or bytes");
+  const legacyEnvelope = `// Agent Carry snapshot envelope v1\nwindow.AGENT_CARRY_IS_REAL = true;\nwindow.AGENT_CARRY_SNAPSHOT = ${JSON.stringify(snapshot, null, 2)};\n`;
+  const normalizedLegacy = buildSnapshotCandidate(root, { existingSource: legacyEnvelope, now: new Date("2026-08-24T04:00:00+08:00") });
+  assert(normalizedLegacy.updated && normalizedLegacy.source === first.source,
+    "a legacy Agent Carry envelope suppressed current AI Carry snapshot normalization");
 
   const exportIndexPath = resolve(root, "instance/skills/exports/index.toml");
   const exportIndexBytes = readFileSync(exportIndexPath);
@@ -371,7 +375,7 @@ unexpected_field = "must-survive-byte-for-byte"
   catch { strictBrokenTodoBlocked = true; }
   assert(strictBrokenTodoBlocked, "strict snapshot mode accepted an invalid unrelated TODO");
   const operational = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:10:00+08:00"), mode: "operational" });
-  const operationalSnapshot = parseSnapshotEnvelope(operational.source, "operational degraded fixture");
+  const operationalSnapshot = parseCurrentSnapshotEnvelope(operational.source, "operational degraded fixture");
   validateSnapshotSemantics(operationalSnapshot, "operational degraded fixture");
   assert(operational.updated && operational.mode === "operational" && operational.diagnostics.length === 1
     && operational.diagnostics[0].area === "todo" && operationalSnapshot.health?.state === "degraded"

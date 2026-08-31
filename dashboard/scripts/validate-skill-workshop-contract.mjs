@@ -9,7 +9,7 @@ import { recommendForSkillWorkshop } from "../src/lib/skill-workshop.ts";
 const assert = (condition, message) => { if (!condition) throw new Error(`Skill workshop contract failed: ${message}`); };
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repository = resolve(scriptDirectory, "..", "..");
-const root = mkdtempSync(join(tmpdir(), "agent-carry-skill-workshop-"));
+const root = mkdtempSync(join(tmpdir(), "ai-carry-skill-workshop-"));
 const write = (base, ref, source) => { const path = resolve(base, ...ref.split("/")); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, source, "utf8"); };
 
 try {
@@ -51,13 +51,18 @@ try {
   assert(sharedUi.includes("createPortal") && sharedUi.includes('className="status-help-tooltip"') && dashboardCss.includes("z-index: 2147483000"), "status help is not rendered in the top document layer");
   assert(!dashboardCss.includes('.status-help [role="tooltip"]'), "a clipped nested status tooltip implementation is still active");
   assert(actionRegistry.includes("只有本请求指定的方法进入转换") && actionRegistry.includes("不得为通过检查而自动脱敏、删除内容或静默改写外部Skill"), "the formal actions do not preserve the object boundary");
-  assert(actionRegistry.includes("不得要求用户先手工脱敏") && actionRegistry.includes("检查通过后再决定是否安装"), "the formal actions do not preserve the same responsibility boundary");
+  assert(actionRegistry.includes("不得要求用户先手工脱敏") && actionRegistry.includes("只保留一次真正必要的确认")
+    && actionRegistry.includes("在看到本次预览后明确回复‘安装’或‘升级’") && actionRegistry.includes("不得手工复制、移动、重命名或删除 Skill 目录")
+    && actionRegistry.includes("不得直接编辑 requirements"), "the formal actions do not preserve the same responsibility or deterministic-installer boundary");
   assert(actionRegistry.includes("这个 Skill 在哪里？") && actionRegistry.includes("不扫描整台电脑") && actionRegistry.includes("不重复询问"), "the copied install request cannot recover when its Skill source is missing");
-  assert(actionRegistry.includes('action_id = "skill.continue-export"') && actionRegistry.includes("显示状态与正式真源不同时") && actionRegistry.includes("任何未明确的上传、发送、提交、推送、发布、登录或公开对象仍不授权") && actionRegistry.includes("其他 Skill、对话和 Agent Carry 主体继续"), "the generated Skill continuation action does not preserve truth, authorization, or local fault containment");
+  assert(actionRegistry.includes('action_id = "skill.continue-export"') && actionRegistry.includes("显示状态与正式真源不同时") && actionRegistry.includes("任何未明确的上传、发送、提交、推送、发布、登录或公开对象仍不授权") && actionRegistry.includes("其他 Skill、对话和 AI Carry 主体继续"), "the generated Skill continuation action does not preserve truth, authorization, or local fault containment");
   assert(actionSchema.includes("`export_id`") && actionSchema.includes("`expected_state`") && actionSchema.includes("`expected_delivery_method`") && actionSchema.includes("`expected_delivery_state`") && actionSchema.includes("按真实状态路由"), "the dashboard action schema does not bound exported Skill content and delivery locators");
   assert(workshopGuide.includes("自动脱敏只作用于这次转换为所选方法复制出的本地隔离草稿") && workshopGuide.includes("别人分享的 Skill 走独立的只读审查路线"), "the workshop guide does not distinguish generation from import");
   assert(workshopGuide.includes("用户把它发给 Agent 后流程才继续") && workshopGuide.includes("来源未明确前不猜测目标"), "the guide omits the handoff from copied request to a precise source");
-  assert(workshopGuide.includes("可编辑 Skill 文件夹是唯一内容真源") && workshopGuide.includes("生成一个尚不存在的载体") && workshopGuide.includes("旧条目或 `unselected` 只问一次") && workshopGuide.includes("其他 Skill、对话和 Agent Carry 主体继续工作"), "the guide does not define one source, real carriers, legacy continuation, and local containment");
+  assert(workshopGuide.includes("只能由本次 `prepare` 返回的 `confirmCommand` 完成")
+    && workshopGuide.includes("预览前泛泛说过") && workshopGuide.includes("不得直接编辑 `instance/skills/requirements.toml`")
+    && workshopGuide.includes("模型会话、预算或工具在用户确认前的预览阶段中断时"), "a weak model can still bypass preview-bound confirmation or handcraft a partial Skill upgrade");
+  assert(workshopGuide.includes("可编辑 Skill 文件夹是唯一内容真源") && workshopGuide.includes("生成一个尚不存在的载体") && workshopGuide.includes("旧条目或 `unselected` 只问一次") && workshopGuide.includes("其他 Skill、对话和 AI Carry 主体继续工作"), "the guide does not define one source, real carriers, legacy continuation, and local containment");
   assert(workshopGuide.includes("`target-needed` 的唯一含义") && workshopGuide.includes("当前对话仍有准确目标") && workshopGuide.includes("不把一次失败误说成用户从未提供目标"), "link delivery has an ambiguous target-missing versus retry state");
   assert(workshopGuide.includes("不从目录猜测重建") && workshopGuide.includes("只暂停对该导出索引的新写入") && workshopGuide.includes("原样保留未知字段"), "a damaged export index has no deterministic local recovery boundary");
   assert(workshopGuide.includes("不能拿“已生成”“待检查”等状态句代替"), "generated Skill summaries can still be replaced by implementation status text");

@@ -35,7 +35,7 @@ for (const location of ["D:\\private\\file.txt", "\\\\server\\share\\private.txt
   assert(containsForbiddenLocationReference(location), `location boundary missed ${location}`);
 }
 for (const location of ["/Volumes/PrivateDisk/project", "/data/private/file", "/workspace/project/private", "/app/data/config", "/usr/local/secret",
-  `/project/${syntheticUser}/confidential/customer.md`, "/Library/Application Support/Agent Carry/data.txt",
+  `/project/${syntheticUser}/confidential/customer.md`, "/Library/Application Support/AI Carry/data.txt",
   `/${syntheticSecretSegment}s/oauth/client.json`, `/${syntheticCredentialSegment}/service-account.json`, `/custom/${syntheticPrivateFile}`,
   `\\Device\\HarddiskVolume3\\Users\\${syntheticUser}\\${syntheticSecretSegment}.txt`, `\\Users\\${syntheticUser}\\${syntheticSecretSegment}.txt`, `\\Temp\\${syntheticSecretSegment}.txt`, "\\boot.ini",
   `C:relative\\${syntheticSecretSegment}.txt`, `C:${syntheticSecretSegment}.txt`,

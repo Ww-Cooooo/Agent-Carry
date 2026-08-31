@@ -68,7 +68,7 @@ function currentReviewStateValid(repository, trust, current) {
   } catch { return false; }
 }
 
-// Optional defense-in-depth library. It never mutates Agent Carry and never
+// Optional defense-in-depth library. It never mutates AI Carry and never
 // treats caller JSON as a durable-write authorization. A real candidate, the
 // current instance/map/registry and exact proposed formal bytes are bound into
 // one same-process review. Cross-turn hosts must use the documented lifecycle;
@@ -76,7 +76,7 @@ function currentReviewStateValid(repository, trust, current) {
 export function preparePromotionReview(repository, { candidateId, formalTarget, formalPreview, mode = "explicit-user", classificationReason = "", levelEvidence = undefined } = {}) {
   if (mode !== "explicit-user" || typeof formalPreview !== "string"
     || Buffer.byteLength(formalPreview, "utf8") === 0 || Buffer.byteLength(formalPreview, "utf8") > 128 * 1024) return fail("request-invalid");
-  const levelPurpose = "review-and-promote-formal-agent-carry-asset";
+  const levelPurpose = "review-and-promote-formal-ai-carry-asset";
   let repositoryReal; let context; let envelope; let candidate;
   try {
     repositoryReal = realpathSync(repository);

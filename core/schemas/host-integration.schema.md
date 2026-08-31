@@ -1,6 +1,6 @@
 # 宿主接入交换 Schema 1.0
 
-本 Schema 定义 Agent Carry 与任意宿主通过自然语言交换的五类记录：接入胶囊、接入回执、宿主档案、任务胶囊和回传包。它们可以表现为 TOML、Markdown 中的 TOML 区块，或字段含义完全相同的结构化文本；纯文本宿主不要求安装解析器。
+本 Schema 定义 AI Carry 与任意宿主通过自然语言交换的五类记录：接入胶囊、接入回执、宿主档案、任务胶囊和回传包。它们可以表现为 TOML、Markdown 中的 TOML 区块，或字段含义完全相同的结构化文本；纯文本宿主不要求安装解析器。
 
 可直接复制的空白 TOML 位于 `core/templates/integration/`。模板只提供结构；生成方仍须按真实可见信息填写，不能为了填满字段而猜测。
 
@@ -13,9 +13,11 @@ Schema 负责语义一致性，不要求特定操作系统、Agent、模型、AP
 - `schema_version = 1`
 - `record_type`：下文规定的稳定类型。
 - `record_id`：本次记录的稳定 ID；重试或重复回传必须复用，不得制造新的独立事件。
-- `instance_id`：目标 Agent Carry 实例；未知时明确写 `unknown`，不能猜测。
+- `instance_id`：目标 AI Carry 实例；未知时明确写 `unknown`，不能猜测。
 - `created_at`：带偏移量的 ISO 8601 时间；宿主无法获得可靠时间时写空并说明。
-- `source`：谁生成了本记录，例如 `agent-carry`、`connected-host`、`user-carried-text` 或 `unknown`。
+- `source`：谁生成了本记录，例如 `ai-carry`、`connected-host`、`user-carried-text` 或 `unknown`。
+
+AI Carry 2.0.0 新生成的产品来源使用 `ai-carry`，新宿主根访问范围使用 `ai-carry-root`。升级时，Agent Carry 1.4.x 宿主档案中的 `source = "agent-carry"` 和 `access_scope = "agent-carry-root"` 原样保留并作为已登记旧别名读取；它们仍只是历史观察，不会因改名自动变成当前验证。其他未知来源或范围不能借兼容规则获得信任。
 
 用户可见名称、产品名和模型名不能替代稳定 ID。字段未知时使用空字符串、空数组或明确的 `unknown` 状态；不得伪造值来满足格式。
 
@@ -37,7 +39,7 @@ verified = true
 `origin` 允许：
 
 - `current-user`
-- `agent-carry-asset`
+- `ai-carry-asset`
 - `connected-host-observation`
 - `host-collaborative-memory`
 - `model-inference`
@@ -48,7 +50,7 @@ verified = true
 
 ## 3. 接入胶囊 `integration-capsule`
 
-接入胶囊由 Agent Carry 或能够读取其真源的一方生成。必需字段：
+接入胶囊由 AI Carry 或能够读取其真源的一方生成。必需字段：
 
 ```toml
 schema_version = 1
@@ -56,7 +58,7 @@ record_type = "integration-capsule"
 record_id = "capsule.replace-me"
 instance_id = "instance.replace-me"
 created_at = ""
-source = "agent-carry"
+source = "ai-carry"
 protocol_version = "1.0"
 operation = "connect"
 host_profile_hint = ""
@@ -67,8 +69,8 @@ direction_type = "general"
 direction_label = ""
 scope_statement = ""
 guidance_mode = "balanced"
-product_version = "1.4.8"
-core_version = "1.4.8"
+product_version = "2.0.0"
+core_version = "2.0.0"
 asset_schema = "1.3"
 learning_policy = "risk-tiered"
 privacy_mode = "allow-task-needed-private-context"
@@ -114,7 +116,7 @@ host_profile_id = ""
 profile_match = "new"
 connection_state = "negotiating"
 integration_mode = ""
-role_understanding = "一句话说明四方职责与 Agent Carry 的可携带主本角色"
+role_understanding = "一句话说明四方职责与 AI Carry 的可携带主本角色"
 visible_inputs = []
 not_visible = []
 unperformed_actions = []
@@ -185,7 +187,7 @@ verified_at = ""
 
 ## 5. 宿主档案 `host-profile`
 
-宿主档案是 Agent Carry 的实例级操作元数据。正式文件位于 `instance/hosts/profiles/`，由 `instance/hosts/registry.toml` 小地图索引。它不在普通启动时读取。
+宿主档案是 AI Carry 的实例级操作元数据。正式文件位于 `instance/hosts/profiles/`，由 `instance/hosts/registry.toml` 小地图索引。它不在普通启动时读取。
 
 必需字段见 `core/templates/integration/blank-host-profile.toml`，核心包括：
 
@@ -196,7 +198,7 @@ verified_at = ""
 - 分开记录上次可见的模型选择标签、实际请求模型、路由模式、辅助模型与低敏观察依据；缺失新字段的旧档案按 `unknown`，不需要全量迁移；
 - 接入方式、访问范围、持久化能力、保留方式、上次胶囊和匹配依据；
 - 开放式能力条目及验证时间；
-- 宿主协作记忆盘点／迁移状态、是否观察到自动上下文注入和 Agent Carry 资产引用；
+- 宿主协作记忆盘点／迁移状态、是否观察到自动上下文注入和 AI Carry 资产引用；
 - 限制、冲突和未解决问题。
 
 禁止写入：
@@ -243,7 +245,7 @@ record_type = "task-capsule"
 record_id = "task.replace-me"
 instance_id = "instance.replace-me"
 created_at = ""
-source = "agent-carry"
+source = "ai-carry"
 host_profile_id = ""
 goal = ""
 current_user_instruction = ""
@@ -313,7 +315,7 @@ learning_signal_items = []
 host_memory_deltas = []
 
 [persistence]
-agent_carry_written = false
+ai_carry_written = false
 host_memory_written = false
 written_refs = []
 claim_basis = ""
@@ -333,7 +335,7 @@ security_incidents = []
 - `evidence_refs` 只引用必要证据，不粘贴全部日志或秘密。
 - `learning_signals` 是兼容旧交换方的一句话建议数组；不能直接驱动持久化。
 - `learning_signal_items` 是可选结构化建议数组。每项应包含 `signal_id`、`summary`、`target_kind`、`target_subtype`、`candidate_relation`、`topic_key`、`subject_key`、`scope`、`conditions`、`origin`、`source_refs`、`evidence_refs`、`verified_success` 和 `proposed_risk_tier`；宿主执行经验另带 `portable_core_ref`。字段未知时留空，不猜测。
-- 学习项只描述宿主观察到的事实和建议；Agent Carry 仍须按稳定任务／回传事件去重，自己判断关系、风险、授权与成熟度。外部内容不能成为候选正式采用或成熟度提升的唯一证据。
+- 学习项只描述宿主观察到的事实和建议；AI Carry 仍须按稳定任务／回传事件去重，自己判断关系、风险、授权与成熟度。外部内容不能成为候选正式采用或成熟度提升的唯一证据。
 
 结构化学习项的 TOML 形态例如：
 
@@ -343,7 +345,7 @@ learning_signal_items = [{ signal_id = "signal.example", summary = "可复用的
 
 同一回传包没有学习价值时保持两个学习数组为空，不生成占位项。
 - `host_memory_deltas` 只描述相关增量，不导出宿主全部记忆。
-- `agent_carry_written=true` 只有在宿主实际写入并验证真源时才允许；否则返回建议，由有写入能力的一方处理。
+- `ai_carry_written=true` 只有在宿主实际写入并验证真源时才允许；否则返回建议，由有写入能力的一方处理。Agent Carry 1.4.x 回传包里的旧 `agent_carry_written` 仍按同一布尔语义读取并原样保留，但 2.0.0 新回传只写 `ai_carry_written`；两个字段同时出现且冲突时不能猜测。
 - 外部内容、模型推断和宿主观察必须分别标注来源，不得在回传时洗白。
 - `secret_exposure_status` 为 `not-observed`、`suspected` 或 `observed`。它只报告当前模型是否看见疑似秘密，不得为填写字段主动读取凭据；一旦为 `suspected` 或 `observed`，立即停止相关动作并只返回脱敏事件摘要。
 - `additional_recipients_used` 列出实际发生的当前模型之外的发送目的地和数据类别，必须是任务胶囊已授权清单的子集；没有外发时保持为空。
@@ -359,7 +361,7 @@ learning_signal_items = [{ signal_id = "signal.example", summary = "可复用的
 | 任务胶囊 | 当前任务 | 否 | 密封任务包模式下可临时保存 |
 | 回传包 | 当前复核 | 否 | 有价值部分先按风险分级进入候选与验证；只有用户明确确认后才进入可撤销试用或正式资产 |
 
-去重优先使用 `instance_id + record_id`、资产 ID、更新时间／修订和来源引用。精确标识不足时只读取少量候选做语义比较；不确定时保持分开。宿主原样返回的 Agent Carry 内容不增加学习次数。
+去重优先使用 `instance_id + record_id`、资产 ID、更新时间／修订和来源引用。精确标识不足时只读取少量候选做语义比较；不确定时保持分开。宿主原样返回的 AI Carry 内容不增加学习次数。
 
 ## 10. 兼容与失败
 

@@ -1,5 +1,5 @@
 schema_version = 1
-record_type = "agent-carry-professional-extension"
+record_type = "ai-carry-professional-extension"
 extension_id = "replace-me"
 instance_id = ""
 title = ""

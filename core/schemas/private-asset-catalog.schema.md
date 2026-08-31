@@ -1,8 +1,10 @@
 # 本地私密资产目录 Schema 1.0
 
-本 Schema 只在以下情况按需读取：用户要求登记／取消登记要随 Agent Carry 携带的本地资料，正式资产新增或修改 `private_refs`，导出／导入本地隐私包，或准备完整换机迁移。普通启动、普通对话、只读任务和 GitHub 私有仓库脱敏备份都不加载目录正文。
+本 Schema 只在以下情况按需读取：用户要求登记／取消登记要随 AI Carry 携带的本地资料，正式资产新增或修改 `private_refs`，导出／导入本地隐私包，或准备完整换机迁移。普通启动、普通对话、只读任务和 GitHub 私有仓库脱敏备份都不加载目录正文。
 
-它解决的问题是：实例化后的助手可能逐渐产生课程、视频、账务附件、客户材料等不同领域内容。Agent Carry 必须知道哪些资料属于用户明确要求随助手携带的范围，并在导出前证明这些范围没有被静默遗漏；它不能靠扫描整台电脑猜测，也不能把一个目录里碰巧存在的所有文件都当成用户资产。
+AI Carry 2.0.0 新目录和绑定使用 `ai-carry-private-asset-catalog` 与 `ai-carry-private-path-bindings`。从 Agent Carry 1.4.x 保留的 `agent-carry-private-asset-catalog` 与 `agent-carry-private-path-bindings` 只在本 Schema 已经命中的按需动作中作为旧别名读取，且保持原文件字节；未知记录类型仍拒绝。升级本身不枚举、不重写、不导出这些私密文件。
+
+它解决的问题是：实例化后的助手可能逐渐产生课程、视频、账务附件、客户材料等不同领域内容。AI Carry 必须知道哪些资料属于用户明确要求随助手携带的范围，并在导出前证明这些范围没有被静默遗漏；它不能靠扫描整台电脑猜测，也不能把一个目录里碰巧存在的所有文件都当成用户资产。
 
 ## 1. 两份本地真源
 
@@ -17,7 +19,7 @@
 
 ```toml
 schema_version = 1
-record_type = "agent-carry-private-asset-catalog"
+record_type = "ai-carry-private-asset-catalog"
 instance_id = "instance.example"
 updated_at = "2026-08-20T00:00:00+08:00"
 catalog_revision = 1
@@ -43,7 +45,7 @@ status = "active"
 顶层字段：
 
 - `schema_version`：当前为整数 `1`。
-- `record_type`：固定为 `agent-carry-private-asset-catalog`。
+- `record_type`：固定为 `ai-carry-private-asset-catalog`。
 - `instance_id`：必须与当前实例一致。
 - `updated_at`：实际更新目录的带时区 ISO 8601 时间；未知不伪造。
 - `catalog_revision`：每次有意义的目录变更递增，用于导出覆盖快照，不是聊天轮次。
@@ -67,7 +69,7 @@ status = "active"
 
 ```toml
 schema_version = 1
-record_type = "agent-carry-private-path-bindings"
+record_type = "ai-carry-private-path-bindings"
 instance_id = "instance.example"
 updated_at = "2026-08-20T00:00:00+08:00"
 
@@ -85,7 +87,7 @@ status = "active"
 - `path_kind` 为 `file` 或 `directory`，必须与实际对象一致。
 - `follow_links` 固定为 `false`。符号链接、目录联接、快捷方式、重解析点和挂载跳转默认不跟随；用户确实要纳入目标时，应登记真实目标为另一个集合。
 - 一个 `active` 集合在当前设备最多有一个 `active` 绑定。缺失、类型变化或指向实例外的新位置时转为 `review`，不猜测替换。
-- 绑定文件不原样恢复到新设备。恢复后根据目标实际位置生成新绑定，或保留为 Agent Carry 管理副本。
+- 绑定文件不原样恢复到新设备。恢复后根据目标实际位置生成新绑定，或保留为 AI Carry 管理副本。
 
 ## 4. `private_refs` 的稳定写法
 
@@ -105,7 +107,7 @@ status = "active"
 3. 当前任务生成了长期依赖的大型本地资料，用户明确表示它属于这个助手的持续工作资产；
 4. 导出、导入或完整迁移前进行覆盖对账。
 
-普通任务输出不会自动成为 Agent Carry 私密资产。Agent 发现一个可能长期依赖的外部资料根时，只能用普通语言问一次是否纳入；用户未确认就不登记，也不反复提示。
+普通任务输出不会自动成为 AI Carry 私密资产。Agent 发现一个可能长期依赖的外部资料根时，只能用普通语言问一次是否纳入；用户未确认就不登记，也不反复提示。
 
 ### 5.1 Agent 已经创建或操作过的资料
 
@@ -118,7 +120,7 @@ status = "active"
 - 用户选择临时使用：不创建目录项，不删除原文件，也不反复提示。
 - 用户不确定：一次只问一个会改变判断的问题，例如成品能否稳定重建、以后是否继续编辑或迁移介质容量；随后给出有依据的建议。
 
-只有 Agent 未参与创建／移动、当前宿主无法观察位置、用户曾在外部手动移动，或资料在接入 Agent Carry 前已经存在时，才需要用户帮助定位。优先使用当前宿主已有的文件选择或定位能力；没有时再用普通语言逐步帮助，不要求用户打开终端。
+只有 Agent 未参与创建／移动、当前宿主无法观察位置、用户曾在外部手动移动，或资料在接入 AI Carry 前已经存在时，才需要用户帮助定位。优先使用当前宿主已有的文件选择或定位能力；没有时再用普通语言逐步帮助，不要求用户打开终端。
 
 登记完成后必须报告逻辑集合、已知来源、包含／排除范围、未来文件规则和实际写入结果。无法持久化时明确报告“尚未登记”并给出可交给有写入能力宿主的最小请求，不能只在聊天中口头承诺。
 

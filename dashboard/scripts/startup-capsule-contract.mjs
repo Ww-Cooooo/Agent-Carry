@@ -2,6 +2,7 @@ import { closeSync, fstatSync, lstatSync, openSync, readSync, realpathSync } fro
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { parseSectionedToml, validateInstanceManifestStructure } from "./asset-route-contract.mjs";
+import { PRODUCT_IDENTITY } from "./product-identity.mjs";
 
 export const MAX_MANIFEST_BYTES = 2560;
 const MAX_CAPSULE_BYTES = 4096;
@@ -47,11 +48,13 @@ export function buildStartupCapsule(repository) {
   try { coreSource = utf8.decode(coreBuffer); } catch { fail("core manifest is not UTF-8"); }
   const core = parseSectionedToml(coreSource, "core manifest");
   const coreRoot = core[""] ?? {}; const entry = core.entry ?? {};
-  if (typeof coreRoot.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(coreRoot.version)
+  if (coreRoot.core_id !== PRODUCT_IDENTITY.coreId
+    || coreRoot.version !== PRODUCT_IDENTITY.productVersion
     || entry.root_map !== "core/maps/root-map.toml") fail("core startup identity is invalid");
+  if (validated.versions.product !== PRODUCT_IDENTITY.productVersion) fail("instance and core product versions disagree");
   const values = Object.freeze({
     schema_version: 1,
-    capsule_id: "agent-carry-startup",
+    capsule_id: PRODUCT_IDENTITY.startupCapsuleId,
     source_manifest_digest: hash(manifestBuffer),
     product_version: coreRoot.version,
     instance_id: validated.root.instance_id,

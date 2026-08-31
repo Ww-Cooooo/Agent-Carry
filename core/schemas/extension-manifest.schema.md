@@ -1,12 +1,12 @@
 # 专业扩展清单 Schema 1.0
 
-专业扩展是在某个 Agent Carry 实例长期工作后形成的多文件专业工作区，例如行业处理工具、结构化数据流程或领域看板。它不是普通记忆、能力或 SOP，也不是公开模板预装的领域内容。
+专业扩展是在某个 AI Carry 实例长期工作后形成的多文件专业工作区，例如行业处理工具、结构化数据流程或领域看板。它不是普通记忆、能力或 SOP，也不是公开模板预装的领域内容。
 
 专业扩展是实例持续进化兼容协定的一种专门组件，但继续以本 Schema 为唯一所有者，不把同一工作区再复制进 `instance/components/registry.toml`。较小的独立实例模块、能力适配器和本机工具适配器使用 `core/schemas/instance-component.schema.md`；两种清单的路径不得重叠。
 
 本 Schema 只解决四件事：这个工作区属于哪个实例；哪些文件是可携带真源；哪些文件可以重建或只属于当前设备；模板升级、换机和故障恢复时怎样保护它。没有专业工作区的实例不创建清单，也不增加普通启动读取。
 
-扩展清单也使用 Agent Carry 的可移植 TOML 子集：每个键值独占一行，字符串为 JSON 兼容双引号，数组保持单行，其他值只使用整数或布尔值，注释只能单独成行；不使用单引号、行尾注释、多行值、内联表、浮点数或 TOML 日期。这样任务族入口在不同宿主中可以由同一确定性加载器核对。旧扩展的其他合法 TOML 写法只在 Level 3 显式升级中规范化。
+扩展清单也使用 AI Carry 的可移植 TOML 子集：每个键值独占一行，字符串为 JSON 兼容双引号，数组保持单行，其他值只使用整数或布尔值，注释只能单独成行；不使用单引号、行尾注释、多行值、内联表、浮点数或 TOML 日期。这样任务族入口在不同宿主中可以由同一确定性加载器核对。旧扩展的其他合法 TOML 写法只在 Level 3 显式升级中规范化。
 
 ## 1. 位置与发现
 
@@ -18,9 +18,11 @@
 ## 2. 必需字段
 
 - `schema_version = 1`
-- `record_type = "agent-carry-professional-extension"`
+- `record_type = "ai-carry-professional-extension"`
 - `extension_id`、`instance_id`、`title`、`summary`
-- `extension_version`：该专业扩展自己的版本，不等于 Agent Carry 产品版本。
+- `extension_version`：该专业扩展自己的版本，不等于 AI Carry 产品版本。
+
+AI Carry 2.0.0 新建扩展使用 `ai-carry-professional-extension`。从 Agent Carry 1.4.x 保留下来的 `agent-carry-professional-extension` 是唯一登记的旧别名：升级和按需任务族加载必须原样读取，不重写扩展正文；其他未知 `record_type` 仍拒绝。这个兼容只解决产品改名，不改变扩展所有权、脚本执行、私密引用或本机绑定边界。
 - `status`：`active`、`review`、`disabled` 之一。
 - `root`
 - `load_policy = "on-demand-only"`
@@ -69,7 +71,7 @@
 
 `[local_write]` 的 `mode` 只能是 `none` 或 `loopback-on-demand`。默认 `none`。选择 `loopback-on-demand` 只声明该扩展可能在用户明确启动时提供本地写入面，不等于获得授权；必须同时写 `security_protocol = "core/protocols/NETWORK_AGENT_SECURITY.md#本地-loopback-写入面"`，并遵守其中 Host、Origin、内容类型、会话令牌、事务、损坏保护和关闭条件。
 
-Agent Carry 正式看板仍是离线只读投影。专业扩展不得为了方便，把公开看板静默改造成写服务器或后台常驻服务。
+AI Carry 正式看板仍是离线只读投影。专业扩展不得为了方便，把公开看板静默改造成写服务器或后台常驻服务。
 
 ## 7. 最小验收
 

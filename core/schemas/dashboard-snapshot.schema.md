@@ -3,9 +3,9 @@
 快照是可删除、可重建的只读派生物，不是真源。正式 `dashboard/public/snapshot.js` 与 `dashboard/dist/snapshot.js` 只能使用下面这个唯一外壳：
 
 ```js
-// Agent Carry snapshot envelope v1
-window.AGENT_CARRY_IS_REAL = true;
-window.AGENT_CARRY_SNAPSHOT = { /* 这里只能是 JSON.stringify 生成的严格 JSON */ };
+// AI Carry snapshot envelope v1
+window.AI_CARRY_IS_REAL = true;
+window.AI_CARRY_SNAPSHOT = { /* 这里只能是 JSON.stringify 生成的严格 JSON */ };
 ```
 
 固定注释、两个赋值前缀和结尾的 `;\n` 之间不允许插入其他语句、函数、getter 或动态表达式。写入方必须先把普通数据对象交给标准 JSON serializer，再从候选文本精确剥离固定外壳并用 `JSON.parse` 回读；不得用字段字符串拼接、模板替换、`eval` 或 JavaScript VM 解析。标题、摘要、触发语等即使包含引号、换行或类似 `\";...` 的内容，也只能作为经过转义的 JSON 字符串数据。payload 禁止 `__proto__`、`prototype`、`constructor` 键，正式文件上限 8 MiB；超限时保留旧快照并进入维护，不能截断后假装成功。正式验证器同样只能做外壳匹配和 `JSON.parse`，不能执行候选文件。

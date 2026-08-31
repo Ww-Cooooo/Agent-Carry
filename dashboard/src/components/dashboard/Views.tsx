@@ -223,7 +223,7 @@ export function HomeView({
             <span className="local-indicator"><i /> 保存在本机</span>
           </div>
           <div className="orbit-card__copy">
-            <h2>你的记忆、流程和能力，都保存在 Agent Carry 里</h2>
+            <h2>你的记忆、流程和能力，都保存在 AI Carry 里</h2>
             <p>当前任务需要什么，Agent 才会读取什么。点击周围的卫星，可以查看每一类内容。</p>
           </div>
           <Core
@@ -759,7 +759,7 @@ const SECONDARY_ACTION_META = {
   },
   "preference.reuse-from-instance": {
     icon: Sparkles,
-    description: "创建另一个 Agent Carry 实例时，只复用沟通方式、输出习惯和工作节奏，不复制领域身份与具体资料。",
+    description: "创建另一个 AI Carry 实例时，只复用沟通方式、输出习惯和工作节奏，不复制领域身份与具体资料。",
   },
   "instance.upgrade-template": {
     icon: Upload,
@@ -776,7 +776,7 @@ function choiceInstruction(mode: MigrationGuideMode, choice: MigrationGuideChoic
       return "我已在看板选择“按当前清单继续迁移”。请先用普通语言列出你已经知道并将纳入的助手内容与本地资料，然后按当前清单继续；不要重新询问同一选择，也不要让我重新提供你已经知道的路径。";
     }
     if (choice === "supplement") {
-      return "我已在看板选择“先补充以前的资料，再继续迁移”。请先一步一步帮助我补充接入 Agent Carry 前已有、由其他软件产生或被我手动移动的资料；补充并确认后在同一次对话中直接继续完整迁移，不要让我返回看板重新复制指令。";
+      return "我已在看板选择“先补充以前的资料，再继续迁移”。请先一步一步帮助我补充接入 AI Carry 前已有、由其他软件产生或被我手动移动的资料；补充并确认后在同一次对话中直接继续完整迁移，不要让我返回看板重新复制指令。";
     }
     return "我已在看板选择“我不确定，请帮我检查”。请先根据我的职业、最近任务和已经登记的内容，列出可能遗漏的资料类别；不要扫描整台电脑，一次只问一个真正会改变迁移范围的问题。判断完成后在同一次对话中继续完整迁移。";
   }
@@ -786,7 +786,7 @@ function choiceInstruction(mode: MigrationGuideMode, choice: MigrationGuideChoic
       return "我已在看板选择“按当前资料范围直接导出”。请先用普通语言列出已经登记、正式引用和准备纳入的本地隐私资料；确认范围后，在本地生成完整隐私资料输出文件夹。不要让我重新提供你已经知道的路径，不要上传到 GitHub 或其他远程位置。";
     }
     if (choice === "supplement") {
-      return "我已在看板选择“先补充以前的资料，再导出”。请先一步一步帮助我补充接入 Agent Carry 前已有、由其他软件产生或被我手动移动的资料；补充并确认后，在同一次对话中继续生成本地隐私资料输出文件夹，不要让我返回看板重新开始。";
+      return "我已在看板选择“先补充以前的资料，再导出”。请先一步一步帮助我补充接入 AI Carry 前已有、由其他软件产生或被我手动移动的资料；补充并确认后，在同一次对话中继续生成本地隐私资料输出文件夹，不要让我返回看板重新开始。";
     }
     return "我已在看板选择“我不确定，请帮我检查”。请根据我的职业、最近任务和已经登记的内容提示可能遗漏的资料类别；不要扫描整台电脑，一次只问一个会改变导出范围的问题。判断并确认后，在同一次对话中继续本地导出。";
   }
@@ -798,14 +798,14 @@ function choiceInstruction(mode: MigrationGuideMode, choice: MigrationGuideChoic
     if (choice === "supplement") {
       return "我已在看板选择“我不确定手里的文件是否完整”。请先用普通语言告诉我怎样识别完整输出文件夹，再根据我提供的位置核对入口、全部分卷和清单；不要扫描整台电脑。材料不完整时明确告诉我缺什么，不要勉强恢复。";
     }
-    return "我已在看板选择“我还没有从旧电脑导出”。现在不要假装执行导入。请先告诉我应在旧电脑打开 Agent Carry 看板的“迁移与安全”，点击“开始导出本地隐私资料”；如果旧电脑无法使用，再逐项说明仍然可行的恢复办法和限制。";
+    return "我已在看板选择“我还没有从旧电脑导出”。现在不要假装执行导入。请先告诉我应在旧电脑打开 AI Carry 看板的“迁移与安全”，点击“开始导出本地隐私资料”；如果旧电脑无法使用，再逐项说明仍然可行的恢复办法和限制。";
   }
 
   if (choice === "current") {
     return "我已在看板选择“只查看当前清单”。请用普通语言列出你已经知道、已经登记、正式引用和仍需复核的资料；不要新增范围，不要让我重新提供你已经知道的路径，也不要开始打包。";
   }
   if (choice === "supplement") {
-    return "我已在看板选择“补充以前的资料”。请先列出你已经知道的内容，再一步一步帮助我补充接入 Agent Carry 前已有、由其他软件产生或被我手动移动的资料；每次只问一个必要问题，写入前用我当前交流语言给我一份清楚预览。";
+    return "我已在看板选择“补充以前的资料”。请先列出你已经知道的内容，再一步一步帮助我补充接入 AI Carry 前已有、由其他软件产生或被我手动移动的资料；每次只问一个必要问题，写入前用我当前交流语言给我一份清楚预览。";
   }
   return "我已在看板选择“我不确定，请帮我检查”。请根据我的职业、最近任务和已经登记的内容，列出可能遗漏的资料类别；不要扫描整台电脑，一次只问一个真正会改变登记范围的问题，最后再让我决定是否补充。";
 }
@@ -866,7 +866,7 @@ function MigrationGuideDialog({
         : isPrivateExport
           ? "先补充以前的资料，再导出"
           : "补充以前的资料",
-      description: "适合接入 Agent Carry 前已有、由其他软件生成，或后来被你手动移动的资料。",
+      description: "适合接入 AI Carry 前已有、由其他软件生成，或后来被你手动移动的资料。",
       note: "一步一步引导",
     },
     {
@@ -1000,11 +1000,11 @@ function MigrationGuideDialog({
                       <span className="migration-guide-explainer__number">01</span>
                       <span className="migration-guide-explainer__icon">{isPrivateImport ? <FileArchive aria-hidden="true" /> : isPrivateExport ? <Database aria-hidden="true" /> : <PackageOpen aria-hidden="true" />}</span>
                       <div>
-                        <strong>{isPrivateImport ? "需要整个输出文件夹" : isPrivateExport ? "已经登记或正式引用的资料" : "Agent Carry 里的积累"}</strong>
+                        <strong>{isPrivateImport ? "需要整个输出文件夹" : isPrivateExport ? "已经登记或正式引用的资料" : "AI Carry 里的积累"}</strong>
                         <p>{isPrivateImport
                           ? "不要只挑一个 ZIP。请保留旧电脑导出时生成的恢复说明、总清单和全部分卷。"
                           : isPrivateExport
-                            ? "只导出本地隐私资料，不重复打包 Agent Carry 主体；真正导出前还会重新核对范围。"
+                            ? "只导出本地隐私资料，不重复打包 AI Carry 主体；真正导出前还会重新核对范围。"
                             : profile.state === "instance"
                               ? `看板目前可确认 ${visibleAssetCount} 项随身资产，迁移时还会按正式文件重新核对。`
                               : "当前还是空白模板；创建助手后，记忆、能力、SOP 和成长内容会随主体包迁移。"}</p>
@@ -1177,9 +1177,9 @@ export function TransferView({ onCopy }: { onCopy: CopyRequest }) {
                 <span className="relocation-scenario__place">同一台电脑</span>
               </div>
               <h3>换到另一个本地 Agent 继续使用</h3>
-              <p>例如从 Codex 换到 Claude Code、Trae 或其他本地 Agent。它们直接接入当前这份 Agent Carry，不需要把整套内容再复制一遍。</p>
+              <p>例如从 Codex 换到 Claude Code、Trae 或其他本地 Agent。它们直接接入当前这份 AI Carry，不需要把整套内容再复制一遍。</p>
               <div className="relocation-local-route" aria-label="同一台电脑换 Agent 的接入路线">
-                <span><HardDrive aria-hidden="true" /><strong>同一份 Agent Carry</strong><small>可携带资产主本</small></span>
+                <span><HardDrive aria-hidden="true" /><strong>同一份 AI Carry</strong><small>可携带资产主本</small></span>
                 <ArrowRight aria-hidden="true" />
                 <span><Cpu aria-hidden="true" /><strong>另一个本地 Agent</strong><small>按需读取，不一次全载入</small></span>
               </div>
@@ -1197,7 +1197,7 @@ export function TransferView({ onCopy }: { onCopy: CopyRequest }) {
                 <span className="relocation-scenario__icon"><PackageOpen aria-hidden="true" /></span>
                 <span className="relocation-scenario__place">另一台电脑</span>
               </div>
-              <h3>把完整的 Agent Carry 迁移过去</h3>
+              <h3>把完整的 AI Carry 迁移过去</h3>
               <p>Agent 会先列出已经知道的助手资产和本地资料，只请你补充它不知道的部分；确认后在同一次对话中生成迁移套件，不要求你先学会管理文件。</p>
               <div className="relocation-kit" aria-label="完整换机迁移套件包含三部分">
                 <span><FileArchive aria-hidden="true" /><strong>助手主体包</strong><small>记忆、能力、SOP、经验和成长内容</small></span>
@@ -1208,7 +1208,7 @@ export function TransferView({ onCopy }: { onCopy: CopyRequest }) {
                 <FileText aria-hidden="true" />
                 <div>
                   <strong>打包完成后，当前 Agent 会给你一句可以直接发给新 Agent 的话</strong>
-                  <p>请先读取迁移套件里的 START-RESTORE.md，按照里面的步骤帮我恢复 Agent Carry，完成后告诉我检查结果。</p>
+                  <p>请先读取迁移套件里的 START-RESTORE.md，按照里面的步骤帮我恢复 AI Carry，完成后告诉我检查结果。</p>
                 </div>
               </div>
               <p className="relocation-scenario__note"><ShieldCheck aria-hidden="true" />API 密钥、密码和登录状态不会进入迁移包，需要在新电脑上重新配置；GitHub 私有仓库脱敏备份是可选项，不是迁移前提。</p>
@@ -1238,7 +1238,7 @@ export function TransferView({ onCopy }: { onCopy: CopyRequest }) {
 
           <div className="github-backup-layout">
             <div className="github-backup-route" aria-label="GitHub 私有仓库脱敏备份过程">
-              <div><HardDrive aria-hidden="true" /><strong>当前 Agent Carry</strong><span>选择可以备份的内容</span></div>
+              <div><HardDrive aria-hidden="true" /><strong>当前 AI Carry</strong><span>选择可以备份的内容</span></div>
               <span className="transfer-route-arrow" aria-hidden="true"><ArrowRight /></span>
               <div><ShieldCheck aria-hidden="true" /><strong>先在本地检查</strong><span>排除隐私和密钥，再请你确认</span></div>
               <span className="transfer-route-arrow" aria-hidden="true"><ArrowRight /></span>
@@ -1397,6 +1397,7 @@ export function SystemView({ onRefresh, onCopy, refreshIn, refreshFailed = false
   const snapshot = getSnapshotStatus(refreshFailed);
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const guidanceAction = findAction("profile.adjust-guidance-mode");
+  const problemReportAction = findAction("support.create-problem-report");
   const startupBudget = Math.max(Number(profile.startupBudget ?? 0), 1);
   const startupChars = Math.max(Number(profile.startupChars ?? 0), 0);
   const budgetRatio = Math.min((startupChars / startupBudget) * 100, 100);
@@ -1509,6 +1510,33 @@ export function SystemView({ onRefresh, onCopy, refreshIn, refreshFailed = false
         </article>
       </section>
       </Reveal>
+
+      {problemReportAction ? (
+        <Reveal>
+          <section className="problem-report-card render-deferred" aria-labelledby="problem-report-title">
+            <div className="problem-report-card__lead">
+              <span className="problem-report-card__icon"><CircleHelp aria-hidden="true" /></span>
+              <div>
+                <SectionEyebrow icon={MessageCircleMore}>遇到问题</SectionEyebrow>
+                <h2 id="problem-report-title">从最早觉得不对的地方，生成一份问题报告</h2>
+                <p>不用懂日志或开发术语。Agent 会在当前对话里引导你找到最早异常点，区分事实和推断，自动遮盖敏感信息，再生成可转交的 Markdown。</p>
+              </div>
+            </div>
+            <ol className="problem-report-card__flow" aria-label="问题报告生成步骤">
+              <li><span>1</span><strong>你指出最早异常</strong></li>
+              <li><span>2</span><strong>Agent 整理并遮盖隐私</strong></li>
+              <li><span>3</span><strong>你核对后再决定是否发送</strong></li>
+            </ol>
+            <div className="problem-report-card__action">
+              <p><ShieldCheck aria-hidden="true" />按钮只复制请求；不会读取后台日志，也不会自动上传或发送报告。</p>
+              <Button onClick={() => onCopy(problemReportAction.request, problemReportAction.label)}>
+                <ClipboardCopy aria-hidden="true" />
+                复制问题报告请求
+              </Button>
+            </div>
+          </section>
+        </Reveal>
+      ) : null}
 
       <details className="advanced-details render-deferred">
         <summary><span><FileText aria-hidden="true" />维护者技术信息</span><ChevronRight aria-hidden="true" /></summary>

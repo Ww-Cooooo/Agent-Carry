@@ -1,9 +1,15 @@
 import { Buffer } from "node:buffer";
+import { PRODUCT_IDENTITY } from "./product-identity.mjs";
 
-export const SNAPSHOT_PREFIX = "// Agent Carry snapshot envelope v1\nwindow.AGENT_CARRY_IS_REAL = true;\nwindow.AGENT_CARRY_SNAPSHOT = ";
-export const DEMO_SNAPSHOT_PREFIX = "// Agent Carry demo snapshot envelope v1\nwindow.AGENT_CARRY_DEMO = true;\nwindow.AGENT_CARRY_IS_REAL = true;\nwindow.AGENT_CARRY_SNAPSHOT = ";
-export const SNAPSHOT_SUFFIX = ";\n";
+export const SNAPSHOT_PREFIX = "// AI Carry snapshot envelope v1\nwindow.AI_CARRY_IS_REAL = true;\nwindow.AI_CARRY_SNAPSHOT = ";
+export const DEMO_SNAPSHOT_PREFIX = "// AI Carry demo snapshot envelope v1\nwindow.AI_CARRY_DEMO = true;\nwindow.AI_CARRY_IS_REAL = true;\nwindow.AI_CARRY_SNAPSHOT = ";
+export const SNAPSHOT_SUFFIX = ";\nwindow.AGENT_CARRY_DEMO = window.AI_CARRY_DEMO === true;\nwindow.AGENT_CARRY_IS_REAL = window.AI_CARRY_IS_REAL;\nwindow.AGENT_CARRY_SNAPSHOT = window.AI_CARRY_SNAPSHOT;\n";
 export const SNAPSHOT_MAX_BYTES = 8 * 1024 * 1024;
+
+// One-major-version read compatibility for snapshots generated before the product rename.
+export const LEGACY_SNAPSHOT_PREFIX = "// Agent Carry snapshot envelope v1\nwindow.AGENT_CARRY_IS_REAL = true;\nwindow.AGENT_CARRY_SNAPSHOT = ";
+export const LEGACY_DEMO_SNAPSHOT_PREFIX = "// Agent Carry demo snapshot envelope v1\nwindow.AGENT_CARRY_DEMO = true;\nwindow.AGENT_CARRY_IS_REAL = true;\nwindow.AGENT_CARRY_SNAPSHOT = ";
+export const LEGACY_SNAPSHOT_SUFFIX = ";\n";
 
 const forbiddenKeys = new Set(["__proto__", "prototype", "constructor"]);
 
@@ -40,12 +46,18 @@ export function parseSnapshotEnvelope(source, label = "snapshot", { allowDemo = 
   if (Buffer.byteLength(source, "utf8") > SNAPSHOT_MAX_BYTES) {
     throw new Error(`${label} exceeds ${SNAPSHOT_MAX_BYTES} bytes`);
   }
-  const isDemo = source.startsWith(DEMO_SNAPSHOT_PREFIX);
-  const prefix = isDemo ? DEMO_SNAPSHOT_PREFIX : SNAPSHOT_PREFIX;
-  if ((isDemo && !allowDemo) || (requireDemo && !isDemo) || !source.startsWith(prefix) || !source.endsWith(SNAPSHOT_SUFFIX)) {
+  const shapes = [
+    { prefix: DEMO_SNAPSHOT_PREFIX, suffix: SNAPSHOT_SUFFIX, demo: true },
+    { prefix: SNAPSHOT_PREFIX, suffix: SNAPSHOT_SUFFIX, demo: false },
+    { prefix: LEGACY_DEMO_SNAPSHOT_PREFIX, suffix: LEGACY_SNAPSHOT_SUFFIX, demo: true },
+    { prefix: LEGACY_SNAPSHOT_PREFIX, suffix: LEGACY_SNAPSHOT_SUFFIX, demo: false },
+  ];
+  const shape = shapes.find(({ prefix, suffix }) => source.startsWith(prefix) && source.endsWith(suffix));
+  const isDemo = shape?.demo === true;
+  if (!shape || (isDemo && !allowDemo) || (requireDemo && !isDemo)) {
     throw new Error(`${label} does not use the exact snapshot envelope`);
   }
-  const payload = source.slice(prefix.length, -SNAPSHOT_SUFFIX.length);
+  const payload = source.slice(shape.prefix.length, -shape.suffix.length);
   let snapshot;
   try {
     snapshot = JSON.parse(payload);
@@ -53,5 +65,21 @@ export function parseSnapshotEnvelope(source, label = "snapshot", { allowDemo = 
     throw new Error(`${label} payload is not strict JSON: ${error.message}`);
   }
   assertJsonData(snapshot);
+  return snapshot;
+}
+
+// New product-owned output must use the current AI Carry envelope and product
+// name. The generic parser above remains deliberately tolerant so existing
+// 1.4.x instances and cached pages can still be read and migrated.
+export function parseCurrentSnapshotEnvelope(source, label = "snapshot", { demo = false, expectedProduct = PRODUCT_IDENTITY.productName } = {}) {
+  if (typeof source !== "string") throw new Error(`${label} must be UTF-8 text`);
+  const expectedPrefix = demo ? DEMO_SNAPSHOT_PREFIX : SNAPSHOT_PREFIX;
+  if (!source.startsWith(expectedPrefix) || !source.endsWith(SNAPSHOT_SUFFIX)) {
+    throw new Error(`${label} does not use the current AI Carry snapshot envelope`);
+  }
+  const snapshot = parseSnapshotEnvelope(source, label, { allowDemo: demo, requireDemo: demo });
+  if (expectedProduct && snapshot?.overview?.product !== expectedProduct) {
+    throw new Error(`${label} does not declare the current ${expectedProduct} product identity`);
+  }
   return snapshot;
 }

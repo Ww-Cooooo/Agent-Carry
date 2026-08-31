@@ -27,8 +27,8 @@ const PERSISTENT_BUNDLE_MAX_FILES = 64;
 const PERSISTENT_BUNDLE_MAX_BYTES = 40 * 1024 * 1024;
 const PERSISTENT_TRANSACTION_TTL_MS = 7 * 24 * 60 * 60_000;
 const PERSISTENT_LOCK_STALE_MS = 10 * 60_000;
-const SNAPSHOT_PROJECTION_PREFIX = ".agent-carry-cross-session-snapshot-";
-const SNAPSHOT_PROJECTION_MARKER = ".agent-carry-cross-session-owner.json";
+const SNAPSHOT_PROJECTION_PREFIX = ".ai-carry-cross-session-snapshot-";
+const SNAPSHOT_PROJECTION_MARKER = ".ai-carry-cross-session-owner.json";
 const SNAPSHOT_PROJECTION_PARENT_ENTRY_LIMIT = 4096;
 const SNAPSHOT_PROJECTION_DIRECTORY_LIMIT = 4096;
 const SNAPSHOT_PROJECTION_FILE_LIMIT = 16384;
@@ -124,7 +124,7 @@ const accumulatingSignalStates = new Set(["observing", "near-trigger"]);
 const allSignalStates = new Set(["observing", "near-trigger", "pending-review", "conflict", "uncertain", "stale", "resolved", "rejected", "archived"]);
 const eventRelations = new Set(["supporting", "contradicting", "neutral", "superseding"]);
 const eventSourceKinds = new Set([
-  "current-user", "agent-carry-asset", "connected-host-observation", "host-collaborative-memory",
+  "current-user", "ai-carry-asset", "connected-host-observation", "host-collaborative-memory",
   "model-inference", "external-content", "unknown",
 ]);
 // Schema 1.1 and HOST_INTEGRATION own the canonical vocabulary. These aliases
@@ -279,7 +279,7 @@ function validPrivateReference(ref) {
 }
 function ensureInside(repositoryReal, target) {
   const fromRoot = relative(repositoryReal, target);
-  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || resolve(repositoryReal, fromRoot) !== target) fail("path escapes Agent Carry");
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || resolve(repositoryReal, fromRoot) !== target) fail("path escapes AI Carry");
 }
 function resolveCheckedPath(repositoryReal, ref, { allowMissing = false } = {}) {
   const parts = ref.split("/");

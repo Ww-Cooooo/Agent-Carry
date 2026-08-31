@@ -113,7 +113,7 @@ function exportedSkillView(item: ExportedSkillItem): ExportedSkillView {
 const INSTALLED_SKILL_HELP: Record<string, string> = {
   available: "这个 Skill 已登记并可在相关任务命中时按需读取；仍只会加载完成当前任务所需的内容。",
   review: "这个 Skill 的入口、依赖、权限或兼容状态需要复核。让 Agent 只检查这一个 Skill；复核前不会启用它，其他能力不受影响。",
-  unavailable: "这个 Skill 当前不能使用。Agent 会保留它的记录和恢复入口，其他 Skill 与 Agent Carry 主体仍可继续工作。",
+  unavailable: "这个 Skill 当前不能使用。Agent 会保留它的记录和恢复入口，其他 Skill 与 AI Carry 主体仍可继续工作。",
 };
 
 function MethodTicket({ asset, onCopy }: { asset: WorkshopAsset; onCopy: CopyRequest }) {

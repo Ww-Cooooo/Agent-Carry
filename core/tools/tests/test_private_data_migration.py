@@ -179,7 +179,7 @@ class PrivateDataMigrationTests(unittest.TestCase):
             package = Path(temp) / "unsafe.zip"
             manifest = {
                 "schema_version": 2,
-                "package_type": "agent-carry-private-migration",
+                "package_type": "ai-carry-private-migration",
                 "package_id": "pvt-test",
                 "source_instance_id": "ac.test.instance",
                 "credentials_included": False,
@@ -197,7 +197,7 @@ class PrivateDataMigrationTests(unittest.TestCase):
             package = Path(temp) / "collision.zip"
             manifest = {
                 "schema_version": 2,
-                "package_type": "agent-carry-private-migration",
+                "package_type": "ai-carry-private-migration",
                 "package_id": "pvt-test",
                 "source_instance_id": "ac.test.instance",
                 "credentials_included": False,
@@ -210,6 +210,25 @@ class PrivateDataMigrationTests(unittest.TestCase):
             result = self.run_tool("verify", "--package", str(package))
             self.assertEqual(result.returncode, 2)
             self.assertEqual(json.loads(result.stdout)["error"], "portable-path-collision")
+
+    def test_legacy_agent_carry_package_identity_remains_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            package = Path(temp) / "legacy-agent-carry-private.zip"
+            manifest = {
+                "schema_version": 1,
+                "package_type": "agent-carry-private-migration",
+                "package_id": "pvt-legacy-agent-carry",
+                "source_instance_id": "ac.legacy.instance",
+                "credentials_included": False,
+                "entries": [],
+            }
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("private-package/manifest.json", json.dumps(manifest))
+            result = self.run_tool("verify", "--package", str(package))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "validated")
+            self.assertEqual(payload["entry_count"], 0)
 
     def test_absolute_json_path_blocks_export_without_echoing_value(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -276,7 +295,7 @@ class PrivateDataMigrationTests(unittest.TestCase):
             package = Path(json.loads(exported.stdout)["package_path"])
 
             environment = os.environ.copy()
-            environment["AGENT_CARRY_TEST_IMPORT_FAIL_AFTER"] = "2"
+            environment["AI_CARRY_TEST_IMPORT_FAIL_AFTER"] = "2"
             interrupted = subprocess.run(
                 [sys.executable, str(SCRIPT), "import", "--package", str(package), "--target-root", str(target), "--policy", POLICY_REL.as_posix()],
                 check=False,

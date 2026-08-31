@@ -1,6 +1,6 @@
 # 正式资产元数据 Schema 1.3
 
-本 Schema 约束 Agent Carry 的记忆、能力、SOP、经验和进化候选。正文仍使用人和不同 Agent 都能读取的 Markdown；TOML frontmatter 只保存路由、授权、风险、成熟度和少量代表性证据，不保存聊天全文或无限事件日志。
+本 Schema 约束 AI Carry 的记忆、能力、SOP、经验和进化候选。正文仍使用人和不同 Agent 都能读取的 Markdown；TOML frontmatter 只保存路由、授权、风险、成熟度和少量代表性证据，不保存聊天全文或无限事件日志。
 
 Schema 1.3 把四个容易混淆的维度分开，并进一步把“候选观察优先级”与“正式资产使用授权”彻底分离：
 
@@ -11,7 +11,7 @@ Schema 1.3 把四个容易混淆的维度分开，并进一步把“候选观察
 
 用户批准一份新 SOP，只表示“允许使用”，不等于它已经可靠。`risk-tiered` 只决定已获准观察的候选先验证、先复核还是继续等待；无论风险高低，候选成为可参与任务的正式资产前都必须取得用户对具体内容和范围的明确确认，或回读同一用户主本中的既有明确授权。
 
-为保证弱模型和不同宿主写出的文件能被同一套模型外加载器确定性回读，新写 frontmatter 使用 Agent Carry 的可移植 TOML 子集：每个键值独占一行，键使用 Schema 声明的 ASCII 名称，值只能是 JSON 兼容的双引号字符串、单行数组、整数或布尔值；注释只能单独成行。禁止单引号字符串、多行数组／字符串、行尾注释、内联表、浮点数、TOML 日期和隐式类型。模板就是规范序列化示例。旧实例里其他合法 TOML 写法只能在 Level 3 的显式迁移中用完整 TOML 解析器读入、规范化并回读，不能让弱宿主自行猜写法，也不能把原始文本先送进模型再补验。
+为保证弱模型和不同宿主写出的文件能被同一套模型外加载器确定性回读，新写 frontmatter 使用 AI Carry 的可移植 TOML 子集：每个键值独占一行，键使用 Schema 声明的 ASCII 名称，值只能是 JSON 兼容的双引号字符串、单行数组、整数或布尔值；注释只能单独成行。禁止单引号字符串、多行数组／字符串、行尾注释、内联表、浮点数、TOML 日期和隐式类型。模板就是规范序列化示例。旧实例里其他合法 TOML 写法只能在 Level 3 的显式迁移中用完整 TOML 解析器读入、规范化并回读，不能让弱宿主自行猜写法，也不能把原始文本先送进模型再补验。
 
 ## 1. 通用结构
 
@@ -109,7 +109,7 @@ updated_at = ""
 
 - `candidate`：尚未激活；
 - `explicit-user`：用户当前直接授权；
-- `existing-approved-migration`：从同一用户可验证的 Agent Carry 主本迁移并保留原授权；
+- `existing-approved-migration`：从同一用户可验证的 AI Carry 主本迁移并保留原授权；
 - `task-state`：TODO、延期卡等由用户请求本身成立，不属于学习晋升。
 
 `low-risk-evidence-policy` 是 1.2 旧值，只能触发迁移复核，不能作为 1.3 正式资产的激活依据。`approved_by_user` 是 1.1 兼容字段：只有用户直接授权或能够验证原用户授权时写 `true`。读取方不能仅凭这个布尔值判断资产是否可用，必须同时看 `status`、`approval_state`、`activation_basis` 和风险门禁。
@@ -162,7 +162,7 @@ host_experience_refs = []
 - `reliable`：通常至少三个独立任务成功，覆盖至少两个有实质差异的任务情境，范围稳定，且没有未解决的显著失败；
 - `portable`：先满足 `reliable`，再在至少两个不同宿主档案，或一次真实宿主／环境变化中，通过语义自适应成功完成。
 
-数字是默认证据下限，不是机械评分。重复点击、同一任务重试、会话恢复、同一回传转发和 Agent Carry 原文回显不能增加 `independent_task_count`。同一任务内经过修正且最终通过 `RESULT_VALIDATION`，只按一个成功任务计数；最终为 `limited` 或 `failed` 不能增加成功数，只有资产在该独立任务中的最终可复用结果确实失败，才增加 `failed_use_count`。`distinct_host_count` 按真实宿主档案或实质环境变化计算，不按模型营销名称计数。
+数字是默认证据下限，不是机械评分。重复点击、同一任务重试、会话恢复、同一回传转发和 AI Carry 原文回显不能增加 `independent_task_count`。同一任务内经过修正且最终通过 `RESULT_VALIDATION`，只按一个成功任务计数；最终为 `limited` 或 `failed` 不能增加成功数，只有资产在该独立任务中的最终可复用结果确实失败，才增加 `failed_use_count`。`distinct_host_count` 按真实宿主档案或实质环境变化计算，不按模型营销名称计数。
 
 `validation_refs` 只保留最多 5 个代表性验证记录 ID，并且每个 ID 都必须在 `instance/validations/index.toml` 中闭合到同一 `asset_id`、结果、任务情境和验证时间。`successful_use_count`、`failed_use_count` 与 `distinct_context_count` 必须由闭合记录计算；资产 frontmatter 自报计数不能单独证明成熟度。总次数保存在计数字段，重复过程证据压缩或删除。一次显著失败必须增加 `failed_use_count`，并根据影响进入 `review`、缩小范围或降低成熟度。
 

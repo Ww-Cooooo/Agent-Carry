@@ -31,7 +31,7 @@
 - `credentials`：固定 `host-secret-mechanism-only`。API 密钥、密码、令牌、Cookie、私钥、恢复码和登录态不能进入模型上下文、资产、Git 或隐私迁移包。
 - `private_asset_catalog`：默认 `create-on-first-relevant-use`。空模板和没有私密资产需求的实例不预先创建目录。
 - `private_asset_catalog_load`：固定 `on-demand-only`。只有登记／取消登记资料、命中 `private_refs`、隐私导入导出或完整换机迁移时加载相关目录项。
-- `complete_export_scope`：固定 `registered-and-referenced`。完整结论只覆盖 Agent Carry 管理、正式引用或用户明确登记的资料，不声称扫描整台电脑。
+- `complete_export_scope`：固定 `registered-and-referenced`。完整结论只覆盖 AI Carry 管理、正式引用或用户明确登记的资料，不声称扫描整台电脑。
 
 可选的 `profile.guidance_mode` 保存当前交流方式；旧实例缺失时按 `balanced` 处理：
 
@@ -44,8 +44,8 @@
 
 约束：
 
-- 清单只使用单行 TOML 字符串、整数和布尔值，不使用多行字符串、内联表、数组或可执行扩展。每个键在所属小节内唯一；所有字符串必须为 Unicode NFC，拒绝 NUL、C0/C1 控制字符以及 `U+202A`～`U+202E`、`U+2066`～`U+2069` 双向控制字符。单个字符串最多 512 个 Unicode 字符；`instance_id` 最多 160 个、`direction.label` 最多 80 个、`direction.scope_statement` 最多 240 个、任何 `*_ref` 最多 240 个。未知结构字段不能静默解释为授权、路径或状态。
-- 所有 `*_ref` 必须是以 `instance/` 开始的规范仓库相对 POSIX 路径：不得含反斜杠、冒号、URL、查询、片段、空段、`.` 或 `..`。解析后必须仍在当前 Agent Carry 根目录，目标必须是普通文件，任一路径段为符号链接、目录联接或其他重解析点时失败关闭。不能从相邻目录、标题或旧绝对路径猜测替代目标。
+- 清单只使用单行 TOML 字符串、整数和布尔值，不使用多行字符串、内联表、数组或可执行扩展。每个键在所属小节内唯一；所有字符串必须为 Unicode NFC，拒绝 NUL、C0/C1 控制字符以及 `U+202A`～`U+202E`、`U+2066`～`U+2069` 双向控制字符。单个字符串最多 512 个 Unicode 字符；`instance_id` 最多 160 个、`direction.label` 最多 80 个、`direction.scope_statement` 最多 240 个、任何 `*_ref` 最多 240 个。读取旧实例和未来扩展时，有界、安全的未知标量字段或小节必须原样保留，但不得进入启动胶囊、快照、权限、路径、身份或状态投影；当前版本的写入器仍只生成已登记字段。未知字段不安全、超限或带非标量结构时只暂停相关迁移，不能把它静默解释为授权，也不能因此删除用户数据。
+- 所有 `*_ref` 必须是以 `instance/` 开始的规范仓库相对 POSIX 路径：不得含反斜杠、冒号、URL、查询、片段、空段、`.` 或 `..`。解析后必须仍在当前 AI Carry 根目录，目标必须是普通文件，任一路径段为符号链接、目录联接或其他重解析点时失败关闭。不能从相邻目录、标题或旧绝对路径猜测替代目标。
 
 - `state=template` 时 `direction.type=unselected`、`locked=false`，且 `profile.guidance_mode` 为 `unselected` 或缺失。
 - `state=instance` 时方向只能为 `general` 或 `domain`，且 `locked=true`；新实例的 `profile.guidance_mode` 必须为 `step-by-step`、`balanced` 或 `direct`。
@@ -58,4 +58,4 @@
 - 修改 `learning.policy` 本身需要用户明确决定。切换为 `manual-only` 只改变候选验证、复核和提问节奏，不静默授权、撤销或改写正式资产。1.2 旧实例中的 `policy-authorized` 资产必须按 1.3 升级规则定向复核，不能因为当前政策值被自动视为 `explicit`。该小节只保存一个极小策略选择，不复制风险定义、成熟度阈值或生命周期正文；详细规则命中学习事件后才加载。
 - 用户可以把 `privacy.current_execution_model` 改成更严格模式，但任何模式都不能放宽 `credentials` 和 `git_storage`。隐私小节只保存极小选择值；完整接收方、安全、导入导出和提示词攻击规则按事件加载，不扩写启动胶囊。
 - 私密资产目录和当前设备绑定都位于受 Git 排除的 `.assistant-private/`。模板升级保留现有目录、绑定和正文；目标设备不会原样复用旧绝对路径。
-- 专业工作区是可选实例层。没有 `workspace/` 的实例不创建扩展字段或清单；存在 `workspace/**` 时，每个受 Agent Carry 管理的扩展必须使用 `workspace/<extension-id>/extension.toml`，并遵守 `core/schemas/extension-manifest.schema.md`。普通启动不得枚举工作区；未登记工作区在升级或迁移时进入冲突预览，不能被模板递归接管。
+- 专业工作区是可选实例层。没有 `workspace/` 的实例不创建扩展字段或清单；存在 `workspace/**` 时，每个受 AI Carry 管理的扩展必须使用 `workspace/<extension-id>/extension.toml`，并遵守 `core/schemas/extension-manifest.schema.md`。普通启动不得枚举工作区；未登记工作区在升级或迁移时进入冲突预览，不能被模板递归接管。

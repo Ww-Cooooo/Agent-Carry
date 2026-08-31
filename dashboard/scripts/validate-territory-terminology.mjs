@@ -100,7 +100,7 @@ function lineIssues(text) {
     let index = text.indexOf(term)
     while (index >= 0) {
       if (text.slice(Math.max(0, index - 2), index) !== '中国') {
-        issues.push(`Agent Carry 自有中文称谓“${term}”缺少“中国”归属。`)
+        issues.push(`AI Carry 自有中文称谓“${term}”缺少“中国”归属。`)
       }
       index = text.indexOf(term, index + term.length)
     }
@@ -116,11 +116,11 @@ function lineIssues(text) {
     for (const match of text.matchAll(pattern)) {
       const remainder = text.slice(match.index)
       if (!accepted.some((canonical) => remainder.startsWith(canonical))) {
-        issues.push(`Agent Carry-owned English term “${term}” must use its reviewed China-qualified form.`)
+        issues.push(`AI Carry-owned English term “${term}” must use its reviewed China-qualified form.`)
       }
     }
   }
-  if (/\bMacau\b/.test(text)) issues.push('Agent Carry-owned English copy must use “Macao”, not “Macau”.')
+  if (/\bMacau\b/.test(text)) issues.push('AI Carry-owned English copy must use “Macao”, not “Macau”.')
   return [...new Set(issues)]
 }
 
@@ -184,7 +184,7 @@ async function validateContractGraph() {
   ])
   await requireContractFragments('assistant.toml', [
     'territory_terminology = "core/protocols/TERRITORY_TERMINOLOGY.md"',
-    'territory_terminology_load_policy = "only-when-agent-carry-authored-content-or-publication-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping; never-rewrite-user-or-source-text"',
+    'territory_terminology_load_policy = "only-when-ai-carry-authored-content-or-publication-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping; never-rewrite-user-or-source-text"',
   ])
   await requireContractFragments('core/manifest.toml', ['territory_terminology = "core/protocols/TERRITORY_TERMINOLOGY.md"'])
   await requireContractFragments('core/upgrade/release-manifest-1.2.1.toml', [
@@ -193,7 +193,7 @@ async function validateContractGraph() {
     '"compiled-dashboard-and-pages-projection-pass-territory-terminology-gate"',
   ])
   await requireContractFragments('docs/localization.md', [
-    'Agent Carry-owned Chinese product copy uses `中国台湾`、`中国香港`、`中国澳门`',
+    'AI Carry-owned Chinese product copy uses `中国台湾`、`中国香港`、`中国澳门`',
     '`Taiwan, China`, `Hong Kong SAR, China`, and `Macao SAR, China`',
   ])
   await requireContractFragments('dashboard/package.json', [
@@ -233,7 +233,7 @@ async function main() {
   if (failures.length) {
     throw new Error(`Territory terminology validation failed:\n${failures.join('\n')}`)
   }
-  console.log(`Territory terminology contract passed: ${new Set(files).size} Agent Carry-owned text files checked${externalTarget ? ' in the supplied projection' : includeDist ? ', including compiled Dashboard files' : ''}; canonical Chinese/English naming and source-text boundary aligned.`)
+  console.log(`Territory terminology contract passed: ${new Set(files).size} AI Carry-owned text files checked${externalTarget ? ' in the supplied projection' : includeDist ? ', including compiled Dashboard files' : ''}; canonical Chinese/English naming and source-text boundary aligned.`)
 }
 
 await main()

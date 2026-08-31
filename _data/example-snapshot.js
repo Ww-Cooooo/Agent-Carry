@@ -1,27 +1,27 @@
-// Agent Carry — 正式模板空态回退快照
+// AI Carry — 正式模板空态回退快照
 // 仅当本地真实快照缺失或异常时装载。这里不得放维护者日期、个人资产或演示任务。
 
-if (!window.AGENT_CARRY_SNAPSHOT) {
-  window.AGENT_CARRY_IS_REAL = false;
-  window.AGENT_CARRY_SNAPSHOT = {
+if (!window.AI_CARRY_SNAPSHOT) {
+  window.AI_CARRY_IS_REAL = false;
+  window.AI_CARRY_SNAPSHOT = {
     meta: {
       schema_version: "1.1",
       generated_at: "",
-      product_version: "1.4.8",
+      product_version: "2.0.0",
       state: "template",
       freshness_seconds: 86400,
       source_digest: "template-empty",
       identity_ref: "template"
     },
     overview: {
-      product: "AgentCarry",
+      product: "AI Carry",
       state: "template",
       domain: "uninstantiated",
       startup_chars: 0,
       startup_budget: 20000
     },
     profile: {
-      display_name: "Agent Carry",
+      display_name: "AI Carry",
       mission: "把你的记忆、能力与工作方式沉淀为可迁移的个人助手。",
       domain_id: "uninstantiated",
       guidance_mode: "unselected",
@@ -53,3 +53,7 @@ if (!window.AGENT_CARRY_SNAPSHOT) {
     }
   };
 }
+
+// Bounded compatibility for a cached 1.4.x dashboard shell. New code reads AI_CARRY_* first.
+window.AGENT_CARRY_IS_REAL = window.AI_CARRY_IS_REAL;
+window.AGENT_CARRY_SNAPSHOT = window.AI_CARRY_SNAPSHOT;

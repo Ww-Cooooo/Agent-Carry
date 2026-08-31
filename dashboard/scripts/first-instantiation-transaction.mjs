@@ -30,7 +30,7 @@ import {
   repairOperationalDerivedStateOnce,
 } from "./cross-session-signal-transaction.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
-import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { inspectStartupCapsule, MAX_MANIFEST_BYTES } from "./startup-capsule-contract.mjs";
 import { syncStartupCapsule } from "./sync-startup-capsule.mjs";
@@ -570,7 +570,7 @@ function userPreview(request) {
   ].filter(Boolean);
   if (english) {
     return [
-      "# Create my Agent Carry assistant",
+      "# Create my AI Carry assistant",
       "",
       "- Name: " + request.displayName,
       "- Direction: " + request.direction.label + " (" + request.direction.type + ", permanently locked after creation)",
@@ -611,7 +611,7 @@ function userPreview(request) {
     ].join("\n");
   }
   return [
-    "# 创建我的 Agent Carry 助手",
+    "# 创建我的 AI Carry 助手",
     "",
     "- 名称：" + request.displayName,
     "- 方向：" + request.direction.label + "（" + request.direction.type + "；创建后永久锁定）",
@@ -930,7 +930,7 @@ function buildPrimarySources(root, request, identity) {
   ].join("\n"));
   sources.set("instance/components/registry.toml", [
     "schema_version = 1",
-    'record_type = "agent-carry-instance-component-registry"',
+    'record_type = "ai-carry-instance-component-registry"',
     "instance_id = " + q(identity.instanceId),
     'adoption_state = "current"',
     "revision = 1",
@@ -963,7 +963,7 @@ function buildPrimarySources(root, request, identity) {
     "record_id = " + q(request.host.profileId),
     "profile_id = " + q(request.host.profileId),
     "instance_id = " + q(identity.instanceId),
-    'source = "agent-carry"',
+    'source = "ai-carry"',
     "label = " + q(request.host.label),
     'status = "active"',
     'protocol_version = "1.0"',
@@ -985,7 +985,7 @@ function buildPrimarySources(root, request, identity) {
     "",
     "[connection]",
     "integration_mode = " + q(request.host.integrationMode),
-    'access_scope = "agent-carry-root"',
+    'access_scope = "ai-carry-root"',
     'write_capability = "confirmed-first-instantiation"',
     'persistence = "local-files"',
     'retention = "instance-owned-metadata"',
@@ -1143,7 +1143,7 @@ function verifyCandidate(root, request, identity, sources) {
   const publicBytes = readFileSync(resolve(root, "dashboard/public/snapshot.js"));
   const distBytes = readFileSync(resolve(root, "dashboard/dist/snapshot.js"));
   if (!publicBytes.equals(distBytes)) fail("public and dist snapshots are not byte-identical");
-  const snapshot = parseSnapshotEnvelope(publicBytes.toString("utf8"), "first-instantiation snapshot");
+  const snapshot = parseCurrentSnapshotEnvelope(publicBytes.toString("utf8"), "first-instantiation snapshot");
   validateSnapshotSemantics(snapshot, "first-instantiation snapshot");
   const identityRef = "ac-" + sha256(Buffer.from(identity.instanceId, "utf8")).slice(0, 12);
   const expectedCounts = { memory: 0, sops: 0, capabilities: 0, experiences: 0, evolution: 0, todo: 0, governance: 3, skills: 0 };
@@ -1312,7 +1312,7 @@ export function inspectFirstInstantiationRequest(repository, input) {
       executable: false,
       warnings: request.warnings,
       user_report: Object.freeze({
-        summary: "当前 Agent Carry 已经是正式实例，本次没有重做首次创建，也没有改动任何文件。",
+        summary: "当前 AI Carry 已经是正式实例，本次没有重做首次创建，也没有改动任何文件。",
         next_step: "继续使用当前实例；如果要创建另一个方向，请从干净模板建立新的独立实例。",
       }),
     });
@@ -1490,14 +1490,14 @@ export function executeFirstInstantiation(repository, input, {
 }
 
 const cliHelp = [
-  "Agent Carry first instantiation",
+  "AI Carry first instantiation",
   "",
   "1. Save the compact request JSON as a UTF-8 file (maximum 64 KiB).",
   "2. Inspect without writing:",
-  '   node dashboard/scripts/first-instantiation-transaction.mjs --root "<Agent Carry root>" --request-file "<request.json>"',
+  '   node dashboard/scripts/first-instantiation-transaction.mjs --root "<AI Carry root>" --request-file "<request.json>"',
   "3. Show the returned user_preview exactly and wait for explicit confirmation.",
   "4. Write the same file atomically:",
-  '   node dashboard/scripts/first-instantiation-transaction.mjs --root "<Agent Carry root>" --request-file "<request.json>" --write --acknowledge-complete-preview',
+  '   node dashboard/scripts/first-instantiation-transaction.mjs --root "<AI Carry root>" --request-file "<request.json>" --write --acknowledge-complete-preview',
   "",
   "Use --example to print the JSON field shape. Do not paste JSON text as a command argument.",
   "--request remains a compatibility alias for --request-file.",

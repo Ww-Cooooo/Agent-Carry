@@ -22,7 +22,7 @@
 
 第一条回复只有同时满足下面五项才可以发送：
 
-1. **先邀请创建助手**：开头的主要内容是“接下来创建你的 Agent Carry 助手”，不是“安装完成”。
+1. **先邀请创建助手**：开头的主要内容是“接下来创建你的 AI Carry 助手”，不是“安装完成”。
 2. **看板与聊天双入口**：如实说明看板是否已在用户可见窗口打开；说明首页右侧“第一次使用”→“创建我的助手”→第三步“生成创建指令”→把完整内容交回当前 Agent／聊天；同时明确不看、没看见或打不开看板也可以直接在当前聊天继续。
 3. **三种路线有完整解释**：分别说明“第一次接触 Agent”“已经用过一些”“经常使用 Agent”适合谁、当前 Agent 会怎样配合；不能只列三个名称，也不能替用户选择。
 4. **只问一个容易回答的问题**：让用户回复 `1`、`2`、`3`，或直接说职业、困难和目标。此时不要同时追问助手方向、环境和第一项任务。
@@ -47,7 +47,7 @@
 3. **重要架构由 Level 3 负责**：转入实例结构设计、完整预览和正式写入前，读取 `core/protocols/MODEL_LEVELS.md`。只有用户已经明确确认当前模型处于 Level 3，才能继续；没有有效确认时，说明为什么这一段需要 Level 3，保留已经取得的交流方式、职业、困难、方向意向和首项任务，然后等待用户手动切换并明确回复“已切换”。不能根据模型品牌、价格、宿主标签或自身感觉猜测等级。
 4. **先创建，再做第一项任务**：Level 3 按实例化指南完成剩余访谈、完整预览和用户确认，通过下面的“C. 实例化写入门”完成原子写入与回读。只有实例已经通过完成门，当前 Agent 才能询问用户是否立即开始首项任务，并在用户同意后索取实际任务数据。
 
-如果用户只是想临时完成一项普通任务而不创建 Agent Carry，可以暂停创建流程并做普通任务，但必须明确说明模板仍未实例化、这次工作不会自动成为 Agent Carry 的长期积累；不能一边保持模板，一边声称正在培养已经创建好的助手。
+如果用户只是想临时完成一项普通任务而不创建 AI Carry，可以暂停创建流程并做普通任务，但必须明确说明模板仍未实例化、这次工作不会自动成为 AI Carry 的长期积累；不能一边保持模板，一边声称正在培养已经创建好的助手。
 
 ## C. 实例化写入门
 
@@ -63,11 +63,11 @@
 
 正式写入必须交给发布包自带的确定性执行器，不能让当前模型逐个手写清单、索引、胶囊或快照，也不能让模型自行概括最终预览。先运行 `node dashboard/scripts/first-instantiation-transaction.mjs --help` 查看准确用法，再用 `--example` 查看字段形状；不得照抄示例内容或写入秘密凭据。Agent 把访谈语义保存为一个不超过 64 KiB 的临时 UTF-8 JSON **文件**，然后先做不写入检查：
 
-`node dashboard/scripts/first-instantiation-transaction.mjs --root "<Agent Carry 根目录>" --request-file "<临时请求 JSON 文件路径>"`
+`node dashboard/scripts/first-instantiation-transaction.mjs --root "<AI Carry 根目录>" --request-file "<临时请求 JSON 文件路径>"`
 
 检查会在确认前验证正式清单字节预算、规范化不受支持的字段，并返回完整 `user_preview`。Agent 必须把该预览原样展示给用户；如果超出清单预算，只压缩 `direction.scope_statement`，把完整细节保留在 `profile.in_scope`／`profile.out_of_scope`，重新检查，不得提高预算或等到写入后再报错。用户确认后必须复用同一个请求文件执行：
 
-`node dashboard/scripts/first-instantiation-transaction.mjs --root "<Agent Carry 根目录>" --request-file "<临时请求 JSON 文件路径>" --write --acknowledge-complete-preview`
+`node dashboard/scripts/first-instantiation-transaction.mjs --root "<AI Carry 根目录>" --request-file "<临时请求 JSON 文件路径>" --write --acknowledge-complete-preview`
 
 `--request` 只保留为旧调用的兼容别名；新流程一律使用含义明确的 `--request-file`，不得把 JSON 正文直接粘贴成命令参数。`first_task.start_after_instantiation=true` 时，本次完整预览确认同时表示创建成功后直接进入首项任务，不再追加一次内容相同的“是否开始”确认；未选择立即开始时，创建后只询问一次。
 
@@ -150,4 +150,4 @@
 9. 再从正式资产、治理卡和清单重建看板快照。不得把当天金额、聊天全文、秘密或一次性参数写进 SOP、证据或快照。
 10. 用普通语言告诉用户：本次结果是否核对通过、是否形成或更新了长期资产、看板现在显示什么；不要求用户打开终端或理解内部字段。
 
-如果当前宿主不能写入 Agent Carry 真源，要明确说“这次方法尚未保存进 Agent Carry”，并返回最小结构化学习信号；不能只在聊天里说“以后会继续使用”却不做持久化。
+如果当前宿主不能写入 AI Carry 真源，要明确说“这次方法尚未保存进 AI Carry”，并返回最小结构化学习信号；不能只在聊天里说“以后会继续使用”却不做持久化。

@@ -4,6 +4,7 @@ import { dirname, relative, resolve, sep } from "node:path";
 import { lexicalSimilarity, normalizeRetrievalRequest, projectRecallUse, rankRetrievalEntries } from "./bounded-retrieval.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { containsForbiddenLocationReference, containsForbiddenStructuredLocation } from "./safe-output-boundary.mjs";
+import { acceptedProfessionalExtensionRecordTypes } from "./product-identity.mjs";
 
 export const stableAssetId = /^[a-z0-9][a-z0-9._:-]{0,159}$/;
 export const stableSectionSelector = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
@@ -49,19 +50,35 @@ function portableManifestRef(value, expectedPrefix, extension) {
   return value.split("/").every((part) => part && part !== "." && part !== ".." && !/[. ]$/u.test(part) && !/[<>"|*]/u.test(part));
 }
 
-export function validateInstanceManifestStructure(manifest) {
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)
-    || Object.keys(manifest).some((section) => !manifestSections.has(section))) fail("instance manifest contains an unknown section");
+function projectKnownManifestFields(values, fields) {
+  const projected = Object.create(null);
+  for (const field of fields) if (Object.hasOwn(values, field)) projected[field] = values[field];
+  return projected;
+}
+
+export function validateInstanceManifestStructure(manifest, { allowUnknownFields = true, allowLegacyProfileReadme = false } = {}) {
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) fail("instance manifest is not an object");
+  if (!allowUnknownFields && Object.keys(manifest).some((section) => !manifestSections.has(section))) {
+    fail("instance manifest contains an unknown section");
+  }
   for (const [section, values] of Object.entries(manifest)) {
-    if (!values || typeof values !== "object" || Array.isArray(values)
-      || Object.keys(values).some((field) => !manifestFields[section].has(field))) fail("instance manifest contains an unknown field");
+    if (!values || typeof values !== "object" || Array.isArray(values)) fail("instance manifest contains a non-object section");
+    const fields = manifestFields[section];
+    if (!allowUnknownFields && (!fields || Object.keys(values).some((field) => !fields.has(field)))) {
+      fail("instance manifest contains an unknown field");
+    }
     for (const value of Object.values(values)) {
       if (typeof value === "string" && (!clean(value, 512) || locateHighConfidenceSecretCandidates(value).blocked)) fail("instance manifest contains unsafe text");
       if (!["string", "number", "boolean"].includes(typeof value)) fail("instance manifest contains a non-scalar value");
     }
   }
-  const root = manifest[""] ?? {}; const direction = manifest.direction ?? {}; const profile = manifest.profile ?? {};
-  const learning = manifest.learning ?? {}; const validation = manifest.validation ?? {}; const privacy = manifest.privacy ?? {}; const versions = manifest.versions ?? {};
+  const root = projectKnownManifestFields(manifest[""] ?? {}, manifestFields[""]);
+  const direction = projectKnownManifestFields(manifest.direction ?? {}, manifestFields.direction);
+  const profile = projectKnownManifestFields(manifest.profile ?? {}, manifestFields.profile);
+  const learning = projectKnownManifestFields(manifest.learning ?? {}, manifestFields.learning);
+  const validation = projectKnownManifestFields(manifest.validation ?? {}, manifestFields.validation);
+  const privacy = projectKnownManifestFields(manifest.privacy ?? {}, manifestFields.privacy);
+  const versions = projectKnownManifestFields(manifest.versions ?? {}, manifestFields.versions);
   const requiredRoot = ["schema_version", "instance_id", "state", "created_from", "created_at"];
   const requiredDirection = ["type", "locked", "domain_id", "label", "scope_statement", "out_of_scope_policy"];
   const requiredProfile = ["status", "guidance_mode", "user_preferences_ref", "domain_map_ref", "signal_control_ref", "signal_map_ref", "time_trigger_map_ref", "host_registry_ref"];
@@ -85,10 +102,11 @@ export function validateInstanceManifestStructure(manifest) {
       || profile.status !== "not-instantiated" || profile.guidance_mode !== "unselected" || profile.user_preferences_ref !== "instance/profile/README.md") fail("template manifest state is inconsistent");
   } else if (direction.type === "general") {
     if (direction.locked !== true || direction.domain_id !== "" || profile.status !== "active" || profile.guidance_mode === "unselected"
-      || profile.user_preferences_ref === "instance/profile/README.md") fail("general instance manifest state is inconsistent");
+      || (!allowLegacyProfileReadme && profile.user_preferences_ref === "instance/profile/README.md")) fail("general instance manifest state is inconsistent");
   } else if (direction.type === "domain") {
     if (direction.locked !== true || !stableAssetId.test(direction.domain_id ?? "") || direction.domain_id === ""
-      || profile.status !== "active" || profile.guidance_mode === "unselected" || profile.user_preferences_ref === "instance/profile/README.md") fail("domain instance manifest state is inconsistent");
+      || profile.status !== "active" || profile.guidance_mode === "unselected"
+      || (!allowLegacyProfileReadme && profile.user_preferences_ref === "instance/profile/README.md")) fail("domain instance manifest state is inconsistent");
   } else fail("instance manifest direction is unsupported");
   const learningMissing = !Object.hasOwn(manifest, "learning");
   if (!learningMissing && (Object.keys(learning).length !== manifestFields.learning.size
@@ -105,6 +123,7 @@ export function validateInstanceManifestStructure(manifest) {
     || privacy.complete_export_scope !== "registered-and-referenced")) fail("instance manifest privacy policy is invalid");
   return Object.freeze({ root, direction, profile, learningPolicy: learningMissing ? "manual-only" : learning.policy,
     validationEvidenceIndexRef: validationMissing ? "instance/validations/index.toml" : validation.evidence_index_ref,
+    legacyProfileMigrationRequired: root.state === "instance" && profile.user_preferences_ref === "instance/profile/README.md",
     versions, schemaMigrationRequired: learningMissing || validationMissing || versions.result_validation_evidence_schema !== "1.0"
       || versions.evolution_candidate_index_schema !== "1.0" || versions.asset_confirmation_gate_schema !== "1.0"
       || versions.startup_capsule_schema !== "1.0" });
@@ -245,7 +264,7 @@ function resolvePhysicalRelativeFile(repository, target, label, allowedExtension
   const rootReal = realpathSync(repository);
   const targetReal = realpathSync(cursor);
   const fromRoot = relative(rootReal, targetReal);
-  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail(`${label} escapes Agent Carry: ${target}`);
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail(`${label} escapes AI Carry: ${target}`);
   return cursor;
 }
 
@@ -314,7 +333,7 @@ export function prepareNewFormalTarget(repository, target, kind) {
   const parent = dirname(targetPath);
   const parentReal = realpathSync(parent);
   const fromRoot = relative(repositoryReal, parentReal);
-  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail("new formal target parent escapes Agent Carry");
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail("new formal target parent escapes AI Carry");
   let cursor = repositoryReal;
   for (const part of target.split("/").slice(0, -1)) {
     cursor = resolve(cursor, part);
@@ -379,7 +398,7 @@ function resolveTaskFamilyTarget(repository, route, expected) {
   if (Object.keys(root).some((field) => !new Set(["schema_version", "record_type", "extension_id", "instance_id", "title", "summary", "extension_version", "status", "root", "load_policy"]).has(field))
     || Object.keys(entry).some((field) => !new Set(["route_ids", "task_family_targets"]).has(field))
     || Object.keys(ownership).some((field) => !new Set(["portable_paths", "derived_paths", "device_local_root", "private_collection_refs", "unclassified_policy"]).has(field))
-    || root.schema_version !== 1 || root.record_type !== "agent-carry-professional-extension" || root.extension_id !== extensionId
+    || root.schema_version !== 1 || !acceptedProfessionalExtensionRecordTypes.has(root.record_type) || root.extension_id !== extensionId
     || root.instance_id !== expected.instanceId || root.status !== "active" || root.root !== `workspace/${extensionId}` || root.load_policy !== "on-demand-only"
     || !clean(root.title, 80, false) || !clean(root.summary, 240, false) || !clean(root.extension_version, 32, false)) fail(`task-family ${route.id} extension identity or lifecycle is invalid`);
   if (!Array.isArray(entry.route_ids) || !entry.route_ids.includes(route.id) || new Set(entry.route_ids).size !== entry.route_ids.length || entry.route_ids.some((id) => !stableAssetId.test(id))) fail(`task-family ${route.id} is not registered by its extension entry`);
@@ -773,7 +792,7 @@ function verifyFormalSourceClosure(repository, validatedRoutes, trustedContext) 
 
 function loadTrustedInstanceContext(repository) {
   let repositoryReal;
-  try { repositoryReal = realpathSync(repository); } catch { fail("Agent Carry root does not exist"); }
+  try { repositoryReal = realpathSync(repository); } catch { fail("AI Carry root does not exist"); }
   const coreManifestRead = readPhysicalRelativeFile(repositoryReal, "core/manifest.toml", "core manifest", [".toml"], 32 * 1024);
   const coreManifest = parseSectionedToml(coreManifestRead.text, "core manifest");
   const coreRoot = coreManifest[""] ?? {};

@@ -29,7 +29,7 @@ import {
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { containsForbiddenLocationReference } from "./safe-output-boundary.mjs";
 import { buildSnapshotCandidate } from "./snapshot-source-builder.mjs";
-import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { operationalDerivedStateGate } from "./cross-session-signal-transaction.mjs";
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -39,8 +39,8 @@ const formalKinds = new Set(["memory", "capability", "sop", "experience"]);
 const ordinaryCandidateRelations = new Set(["new", "refine", "condition-variant", "related"]);
 const signalStatuses = new Set(["observing", "near-trigger", "pending-review", "conflict", "uncertain", "stale", "resolved", "rejected", "archived"]);
 const STORE_REF = ".assistant-local/learning-promotion-transactions";
-const PROJECTION_PREFIX = ".agent-carry-promotion-projection-";
-const PROJECTION_MARKER = ".agent-carry-promotion-projection-owner.json";
+const PROJECTION_PREFIX = ".ai-carry-promotion-projection-";
+const PROJECTION_MARKER = ".ai-carry-promotion-projection-owner.json";
 const MANIFEST_REF = "instance/manifest.toml";
 const INDEX_REF = "instance/evolution/index.toml";
 const CONTROL_REF = "instance/signals/control.toml";
@@ -766,7 +766,7 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
     const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicRead.text, now: new Date(transactionAt),
       mode: "operational", requiredSourceRefs });
     if (!snapshot.updated || typeof snapshot.source !== "string") throw new Error("formal promotion did not create a changed snapshot");
-    const parsedSnapshot = parseSnapshotEnvelope(snapshot.source, "promotion snapshot");
+    const parsedSnapshot = parseCurrentSnapshotEnvelope(snapshot.source, "promotion snapshot");
     const formalCards = [...parsedSnapshot.memories, ...parsedSnapshot.sops, ...parsedSnapshot.capabilities, ...parsedSnapshot.experiences]
       .filter((item) => item.id === handoff.asset.id);
     if (formalCards.length !== 1 || parsedSnapshot.evolution.some((item) => item.id === handoff.candidate.id)) {
@@ -1301,7 +1301,7 @@ function verifyFinalSemantics(loaded) {
   const publicRead = stableRead(loaded.repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
   const distRead = stableRead(loaded.repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
   if (publicRead.digest !== distRead.digest) throw new Error("committed snapshot pair is not byte-identical");
-  const snapshot = parseSnapshotEnvelope(publicRead.text, "committed promotion snapshot");
+  const snapshot = parseCurrentSnapshotEnvelope(publicRead.text, "committed promotion snapshot");
   const formalCards = [...snapshot.memories, ...snapshot.sops, ...snapshot.capabilities, ...snapshot.experiences]
     .filter((item) => item.id === loaded.plan.formal_id);
   if (formalCards.length !== 1 || snapshot.evolution.some((item) => item.id === loaded.plan.candidate_id)) {

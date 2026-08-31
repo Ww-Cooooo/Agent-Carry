@@ -14,6 +14,12 @@ import {
   parseSectionedToml,
   validateInstanceManifestStructure,
 } from "./asset-route-contract.mjs";
+import {
+  PRODUCT_IDENTITY,
+  acceptedComponentRecordTypes,
+  acceptedComponentRegistryRecordTypes,
+  hasAcceptedComponentInterface,
+} from "./product-identity.mjs";
 
 const REGISTRY_REF = "instance/components/registry.toml";
 const REGISTRY_LIMIT = 32 * 1024;
@@ -222,7 +228,7 @@ function resolvePhysical(repositoryReal, ref, label, { allowMissing = false } = 
   }
   const physical = realpathSync(cursor);
   const fromRoot = relative(repositoryReal, physical);
-  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail(`${label} escapes Agent Carry: ${ref}`);
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail(`${label} escapes AI Carry: ${ref}`);
   return physical;
 }
 
@@ -290,7 +296,7 @@ function readBoundedCompatible(repositoryReal, ref, label, maximum) {
 
 function inspectInstanceIdentity(repository) {
   let repositoryReal;
-  try { repositoryReal = realpathSync(repository); } catch { fail("Agent Carry root does not exist"); }
+  try { repositoryReal = realpathSync(repository); } catch { fail("AI Carry root does not exist"); }
   const instanceRead = readBounded(repositoryReal, "instance/manifest.toml", "instance manifest", 2560);
   const instance = validateInstanceManifestStructure(parseSectionedToml(instanceRead.text, "instance manifest"));
   return Object.freeze({ repositoryReal, instanceRead, instance });
@@ -360,7 +366,7 @@ function validateRegistry(parsed, instanceId, instanceState) {
   const expectedRoot = new Set(["schema_version", "record_type", "instance_id", "adoption_state", "revision", "component_count"]);
   if (!exactKeys(parsed.root, expectedRoot)
     || parsed.root.schema_version !== 1
-    || parsed.root.record_type !== "agent-carry-instance-component-registry"
+    || !acceptedComponentRegistryRecordTypes.has(parsed.root.record_type)
     || parsed.root.instance_id !== instanceId
     || !adoptionStates.has(parsed.root.adoption_state)
     || !Number.isSafeInteger(parsed.root.revision) || parsed.root.revision < 0
@@ -387,7 +393,7 @@ function validateManifest(parsed, entry, instanceId) {
   const interfaces = parsed.interfaces ?? {};
   const upgrade = parsed.upgrade ?? {};
   if (!exactKeys(root, rootFields) || !exactKeys(ownership, ownershipFields) || !exactKeys(interfaces, interfaceFields) || !exactKeys(upgrade, upgradeFields)) fail(`component ${entry.id} has unknown or missing fields`);
-  if (root.schema_version !== 1 || root.record_type !== "agent-carry-instance-component" || root.component_id !== entry.id
+  if (root.schema_version !== 1 || !acceptedComponentRecordTypes.has(root.record_type) || root.component_id !== entry.id
     || root.instance_id !== instanceId || root.kind !== entry.kind || root.status !== entry.state
     || !clean(root.title, 120) || !clean(root.summary, 500) || !semver.test(root.component_version ?? "")
     || root.root !== `instance/components/${entry.id}` || root.load_policy !== "on-demand-only") fail(`component ${entry.id} identity or root is invalid`);
@@ -405,7 +411,7 @@ function validateManifest(parsed, entry, instanceId) {
   }
   if (!cleanList(interfaces.provides, 32, (value) => interfaceId.test(value))
     || !cleanList(interfaces.requires, 32, (value) => interfaceId.test(value))
-    || !interfaces.requires.includes("agent-carry.instance-component@1")) fail(`component ${entry.id} interface declaration is invalid`);
+    || !hasAcceptedComponentInterface(interfaces.requires)) fail(`component ${entry.id} interface declaration is invalid`);
   if (!new Set(["optional", "required"]).has(upgrade.criticality) || !activations.has(upgrade.activation)
     || upgrade.compatible_action !== "preserve"
     || (upgrade.criticality === "optional" && upgrade.incompatible_action !== "disable-and-preserve")
@@ -518,8 +524,8 @@ function compatibleManifest(parsed, source, entry, instanceId, issues) {
     ownership.unclassified_policy = "stop-and-preview";
     deterministicRepairs.push("ownership.unclassified_policy");
   }
-  if (Array.isArray(interfaces.requires) && !interfaces.requires.includes("agent-carry.instance-component@1")) {
-    interfaces.requires = ["agent-carry.instance-component@1", ...interfaces.requires];
+  if (Array.isArray(interfaces.requires) && !hasAcceptedComponentInterface(interfaces.requires)) {
+    interfaces.requires = [PRODUCT_IDENTITY.componentInterface, ...interfaces.requires];
     deterministicRepairs.push("interfaces.requires");
   }
   if (upgrade.compatible_action !== "preserve") { upgrade.compatible_action = "preserve"; deterministicRepairs.push("upgrade.compatible_action"); }
@@ -675,7 +681,7 @@ function compatibleRegistry(read, instance, issues) {
       repair: "preserve-unknown-fields-and-run-versioned-migration",
     }));
   }
-  if (parsed.root.schema_version !== 1 || parsed.root.record_type !== "agent-carry-instance-component-registry") {
+  if (parsed.root.schema_version !== 1 || !acceptedComponentRegistryRecordTypes.has(parsed.root.record_type)) {
     issues.push(compatibilityIssue({
       code: "registry-schema-migration-required",
       outcome: "user-decision-needed",

@@ -207,7 +207,7 @@ async function runSourceArchiveInventorySelfTests() {
   let passed = 0
 
   async function withFixture(label, callback) {
-    const fixture = await mkdtemp(join(temporaryBase, 'agent-carry-archive-compliance-'))
+    const fixture = await mkdtemp(join(temporaryBase, 'ai-carry-archive-compliance-'))
     const fixtureRealPath = await realpath(fixture)
     try {
       const relativeToTemporaryBase = relative(temporaryBase, fixtureRealPath)
@@ -420,14 +420,14 @@ async function assertManifestFileIsSafe(root, relativePath, rootRealPath) {
   const inside = isSamePath(actualRealPath, rootRealPath) || (process.platform === 'win32'
     ? actualRealPath.toLowerCase().startsWith(insidePrefix.toLowerCase())
     : actualRealPath.startsWith(insidePrefix))
-  assert(inside, `Distribution path resolves outside the Agent Carry root: ${relativePath}`)
+  assert(inside, `Distribution path resolves outside the AI Carry root: ${relativePath}`)
 }
 
 async function readDistributionManifest(root) {
   const metadata = await stat(distributionManifestPath)
   assert(metadata.isFile() && metadata.size <= maxDistributionManifestBytes, 'Public distribution manifest is missing, not a file or too large.')
   const parsed = JSON.parse(await readFile(distributionManifestPath, 'utf8'))
-  assert(parsed?.schemaVersion === 1 && parsed?.recordType === 'agent-carry-public-distribution-files', 'Unsupported public distribution manifest schema.')
+  assert(parsed?.schemaVersion === 1 && parsed?.recordType === 'ai-carry-public-distribution-files', 'Unsupported public distribution manifest schema.')
   assert(Array.isArray(parsed.paths) && parsed.fileCount === parsed.paths.length, 'Public distribution manifest count is invalid.')
   const keys = Object.keys(parsed).sort(compareOrdinal)
   assert(JSON.stringify(keys) === JSON.stringify(['fileCount', 'paths', 'recordType', 'schemaVersion']), 'Public distribution manifest contains unknown fields.')
@@ -454,7 +454,7 @@ function loadGitPublicFiles(root) {
     cwd: root,
     stdio: ['ignore', 'pipe', 'pipe'],
   }).toString('utf8').trim()
-  assert(isSamePath(gitRoot, root), 'Git metadata exists, but the Agent Carry root is not the worktree root.')
+  assert(isSamePath(gitRoot, root), 'Git metadata exists, but the AI Carry root is not the worktree root.')
   return execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
     cwd: root,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -462,18 +462,18 @@ function loadGitPublicFiles(root) {
 }
 
 async function writeDistributionManifest(root) {
-  assert(await exists(resolve(root, '.git')), 'Writing the public distribution manifest requires the Agent Carry Git worktree.')
+  assert(await exists(resolve(root, '.git')), 'Writing the public distribution manifest requires the AI Carry Git worktree.')
   const paths = loadGitPublicFiles(root).filter((path) => path !== distributionManifestRelative)
   paths.push(distributionManifestRelative)
   paths.sort(compareOrdinal)
-  const manifest = { schemaVersion: 1, recordType: 'agent-carry-public-distribution-files', fileCount: paths.length, paths }
+  const manifest = { schemaVersion: 1, recordType: 'ai-carry-public-distribution-files', fileCount: paths.length, paths }
   await writeFile(distributionManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
 }
 
 async function loadRepositoryInventory(root, distributionPaths, { allowDependencies = false, requireSourceArchive = false } = {}) {
   const hasGitMetadata = await exists(resolve(root, '.git'))
   if (requireSourceArchive) {
-    assert(!hasGitMetadata, 'Strict source-archive mode requires a Git-metadata-free Agent Carry root.')
+    assert(!hasGitMetadata, 'Strict source-archive mode requires a Git-metadata-free AI Carry root.')
   }
   if (hasGitMetadata) {
     await assertGitWorktreeDependencyBoundary(root, { allowDashboardDependencies: allowDependencies })

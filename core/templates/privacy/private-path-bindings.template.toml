@@ -1,5 +1,5 @@
 schema_version = 1
-record_type = "agent-carry-private-path-bindings"
+record_type = "ai-carry-private-path-bindings"
 instance_id = "{{INSTANCE_ID}}"
 updated_at = "{{UPDATED_AT}}"
 

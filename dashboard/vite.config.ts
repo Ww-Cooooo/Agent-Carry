@@ -16,20 +16,20 @@ export default defineConfig(({ mode }) => ({
           gzipSize: true,
           brotliSize: true,
           open: false,
-          title: 'Agent Carry Dashboard Bundle',
+          title: 'AI Carry Dashboard Bundle',
         })]
       : []),
   ],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
-      'agent-carry-jsx': path.resolve(import.meta.dirname, './src/lib/localized-jsx'),
+      'ai-carry-jsx': path.resolve(import.meta.dirname, './src/lib/localized-jsx'),
     },
   },
   // jsxImportSource is declared in tsconfig so the React plugin only forces
   // React itself into the dependency cache. This local runtime must stay live.
   optimizeDeps: {
-    exclude: ['agent-carry-jsx', 'agent-carry-jsx/jsx-runtime', 'agent-carry-jsx/jsx-dev-runtime'],
+    exclude: ['ai-carry-jsx', 'ai-carry-jsx/jsx-runtime', 'ai-carry-jsx/jsx-dev-runtime'],
   },
   // The final offline file intentionally inlines the application bundle.
   // A single larger chunk is expected here and avoids file:// module loading failures.

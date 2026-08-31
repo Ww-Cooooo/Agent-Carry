@@ -48,10 +48,18 @@ import { inspectDashboardIdentity, syncDashboardIdentity } from "@/lib/identity"
 import { DashboardScrollRootContext } from "@/lib/scroll-root";
 import { localizeAgentRequest, useDashboardLocale } from "@/lib/i18n";
 
-const SCROLL_STATE_EVENT = "agent-carry:scroll-state";
+const SCROLL_STATE_EVENT = "ai-carry:scroll-state";
+type CarryWindow = Window & {
+  AI_CARRY_DEMO?: boolean;
+  AI_CARRY_SNAPSHOT?: unknown;
+  AGENT_CARRY_DEMO?: boolean;
+  AGENT_CARRY_SNAPSHOT?: unknown;
+};
+const carryWindow = () => window as CarryWindow;
+const currentSnapshot = () => carryWindow().AI_CARRY_SNAPSHOT ?? carryWindow().AGENT_CARRY_SNAPSHOT;
 
 export default function Dashboard() {
-  const demoMode = (window as Window & { AGENT_CARRY_DEMO?: boolean }).AGENT_CARRY_DEMO === true;
+  const demoMode = carryWindow().AI_CARRY_DEMO === true || carryWindow().AGENT_CARRY_DEMO === true;
   const [route, setRoute] = useState<RouteState>(() => routeFromHash(window.location.hash));
   const [copyState, setCopyState] = useState<CopyState>(EMPTY_COPY);
   const [detail, setDetail] = useState<DetailState | null>(null);
@@ -164,7 +172,7 @@ export default function Dashboard() {
     refreshingRef.current = true;
     setRefreshing(true);
     setRefreshError(false);
-    const current = (window as Window & { AGENT_CARRY_SNAPSHOT?: unknown }).AGENT_CARRY_SNAPSHOT;
+    const current = currentSnapshot();
     const before = JSON.stringify(current ?? null);
     const previousScroll = mainRef.current?.scrollTop ?? 0;
     try {
@@ -173,12 +181,12 @@ export default function Dashboard() {
         const source = new URL("./snapshot.js", document.baseURI);
         source.searchParams.set("refresh", String(Date.now()));
         script.src = source.href;
-        script.dataset.agentCarryRefresh = "true";
+        script.dataset.aiCarryRefresh = "true";
         script.onload = () => { script.remove(); resolve(); };
         script.onerror = () => { script.remove(); reject(new Error("snapshot refresh failed")); };
         document.head.appendChild(script);
       });
-      const next = (window as Window & { AGENT_CARRY_SNAPSHOT?: unknown }).AGENT_CARRY_SNAPSHOT;
+      const next = currentSnapshot();
       const after = JSON.stringify(next ?? null);
       if (after !== before) {
         if (applyDashboardSnapshot(next)) {
@@ -257,7 +265,7 @@ export default function Dashboard() {
       <aside className="site-rail" aria-label="主要导航">
         <div className="rail-brand">
           <LogoMark />
-          <div><strong>Agent Carry</strong><span>便携式 AI 助手</span></div>
+          <div><strong>AI Carry</strong><span>便携式 AI 助手</span></div>
         </div>
 
         <div
@@ -311,7 +319,7 @@ export default function Dashboard() {
           </div>
         ) : null}
         <header className="topbar">
-          <div className="topbar-brand-compact"><LogoMark /><strong>Agent Carry</strong></div>
+          <div className="topbar-brand-compact"><LogoMark /><strong>AI Carry</strong></div>
           <div className="topbar-title"><currentNav.icon aria-hidden="true" /><div><strong>{currentNav.label}</strong><span>{currentNav.description}</span></div></div>
           <div className="topbar-tools">
             <button
@@ -354,7 +362,7 @@ export default function Dashboard() {
             <TriangleAlert aria-hidden="true" />
             <div>
               <strong>这个入口和实际加载的助手不一致</strong>
-              <span>可能打开了另一份 Agent Carry、旧书签或复制错目录。为防止把指令交给错误助手，本页暂时只提供查看。</span>
+              <span>可能打开了另一份 AI Carry、旧书签或复制错目录。为防止把指令交给错误助手，本页暂时只提供查看。</span>
             </div>
             <Button variant="outline" className="identity-warning__button" onClick={() => setIdentityIssueOpen(true)}>
               怎么处理

@@ -37,7 +37,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(`Cross-
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const sourceRoot = resolve(scriptDir, "../..");
 const cliPath = resolve(scriptDir, "cross-session-signal-cli.mjs");
-let fixture = mkdtempSync(join(tmpdir(), "agent-carry-signal-transaction-"));
+let fixture = mkdtempSync(join(tmpdir(), "ai-carry-signal-transaction-"));
 const candidateRef = "instance/evolution/grade-workflow.md";
 const signalRef = "instance/signals/count/signal.grade-workflow.toml";
 const candidateId = "evolution.grade-workflow";
@@ -111,7 +111,7 @@ function fixtureWrite(root, ref, content) {
 }
 
 function createInteropFixture() {
-  const root = mkdtempSync(join(tmpdir(), "agent-carry-capture-signal-interop-"));
+  const root = mkdtempSync(join(tmpdir(), "ai-carry-capture-signal-interop-"));
   for (const file of ["assistant.toml", "AGENTS.md", "BOOTSTRAP.md"]) cpSync(resolve(sourceRoot, file), resolve(root, file));
   cpSync(resolve(sourceRoot, "core"), resolve(root, "core"), { recursive: true });
   cpSync(resolve(sourceRoot, "instance"), resolve(root, "instance"), { recursive: true });
@@ -608,18 +608,18 @@ function runCaptureSignalInteropFixture() {
     // for this exact repository and never follows a forged junction.
     const repositoryReal = realpathSync(root); const projectionParent = dirname(repositoryReal);
     const repositoryHex = createHash("sha256").update(repositoryReal.normalize("NFC")).digest("hex");
-    const projectionPrefix = `.agent-carry-cross-session-snapshot-${repositoryHex.slice(0, 16)}-`;
+    const projectionPrefix = `.ai-carry-cross-session-snapshot-${repositoryHex.slice(0, 16)}-`;
     const staleProjection = resolve(projectionParent, `${projectionPrefix}stale-fixture`);
     mkdirSync(staleProjection); linkSync(resolve(repositoryReal, "instance/manifest.toml"), resolve(staleProjection, "manifest-hardlink.toml"));
-    writeFileSync(resolve(staleProjection, ".agent-carry-cross-session-owner.json"), `${JSON.stringify({
+    writeFileSync(resolve(staleProjection, ".ai-carry-cross-session-owner.json"), `${JSON.stringify({
       schema_version: 1, record_type: "cross-session-snapshot-projection",
       repository_binding: `sha256:${repositoryHex}`, directory_name: staleProjection.slice(projectionParent.length + 1),
       pid: 2147483647, created_at: new Date(Date.now() - 60_000).toISOString(),
     })}\n`, "utf8");
     const unique = repositoryHex.slice(16, 28);
-    nonOwnedProjection = resolve(projectionParent, `.agent-carry-cross-session-snapshot-foreign-${unique}`);
+    nonOwnedProjection = resolve(projectionParent, `.ai-carry-cross-session-snapshot-foreign-${unique}`);
     mkdirSync(nonOwnedProjection); writeFileSync(resolve(nonOwnedProjection, "sentinel.txt"), "preserve", "utf8");
-    forgedProjectionTarget = mkdtempSync(join(tmpdir(), `agent-carry-forged-projection-${unique}-`));
+    forgedProjectionTarget = mkdtempSync(join(tmpdir(), `ai-carry-forged-projection-${unique}-`));
     writeFileSync(resolve(forgedProjectionTarget, "sentinel.txt"), "do-not-follow", "utf8");
     forgedProjectionLink = resolve(projectionParent, `${projectionPrefix}linked-fixture`);
     symlinkSync(forgedProjectionTarget, forgedProjectionLink, "junction");

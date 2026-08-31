@@ -79,8 +79,8 @@ function run() {
   if (command === "persist") return persistPreparedPromotionTransaction(repositoryReal, args);
   if (command === "inspect") return inspectPersistentPromotionTransaction(repositoryReal, args);
   if (command === "execute") {
-    const enabled = process.env.AGENT_CARRY_PROMOTION_TEST_FAULTS === "1";
-    const requested = Number.parseInt(process.env.AGENT_CARRY_PROMOTION_FAIL_AFTER_STEP ?? "0", 10);
+    const enabled = process.env.AI_CARRY_PROMOTION_TEST_FAULTS === "1";
+    const requested = Number.parseInt(process.env.AI_CARRY_PROMOTION_FAIL_AFTER_STEP ?? "0", 10);
     return executePersistentPromotionTransaction(repositoryReal, { ...args,
       faultAfterStep: enabled && Number.isSafeInteger(requested) && requested > 0 ? requested : 0 });
   }

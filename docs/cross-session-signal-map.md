@@ -6,7 +6,7 @@
 
 ## 1. 这次解决的不是一个定时器
 
-Agent Carry 中有很多表面不同、实质相同的问题：
+AI Carry 中有很多表面不同、实质相同的问题：
 
 - 180 天后应该提醒一次长期治理；
 - 同类候选被宿主在两个不同任务观察中再次命中后，应该请用户复核是否值得整理；
@@ -18,7 +18,7 @@ Agent Carry 中有很多表面不同、实质相同的问题：
 
 它们的共同形式确实是“系统达到某种状态后，应该触发某种判断或动作”。但它们不能都用启动扫描解决：有些只在当前动作发生时判断，有些需要跨会话累计，有些属于消费者自身。把它们全部加入启动，会让规则数量直接变成启动上下文长度。
 
-因此 Agent Carry 采用统一的**触发治理内核**，先分类，再决定检查点、状态和上下文策略。
+因此 AI Carry 采用统一的**触发治理内核**，先分类，再决定检查点、状态和上下文策略。
 
 ## 2. 总体结构
 
@@ -117,7 +117,7 @@ next_wakeup_ref = "instance/maps/time-trigger-map.toml"
 
 创建或启用时从锚点计算第一次到期。完成一轮后，以实际完成时间加 180 天作为下一次到期；不从旧计划日期连续补算，避免离线很久后堆出多次“欠账”。
 
-到期语义是“第一次不早于该时间的活跃检查点发现它”。Agent Carry 核心没有后台进程：关闭期间不能声称准点弹窗，重新启动后会根据持久化绝对时间立即识别。需要离线准点通知的用户可以另选宿主或系统定时插件，但核心功能不依赖它。
+到期语义是“第一次不早于该时间的活跃检查点发现它”。AI Carry 核心没有后台进程：关闭期间不能声称准点弹窗，重新启动后会根据持久化绝对时间立即识别。需要离线准点通知的用户可以另选宿主或系统定时插件，但核心功能不依赖它。
 
 到期不等于执行。长期治理仍然需要：
 
@@ -177,7 +177,7 @@ next_wakeup_ref = "instance/maps/time-trigger-map.toml"
 
 中间失败时保留目标引用，下一次启动只恢复该目标。目标引用缺失时才做有界元数据重建。重建读取 frontmatter 和状态字段，不读取所有资产正文。
 
-事件身份使用来源加稳定 ID 去重。这个方向与 CloudEvents 对 `source + id` 唯一性的要求相符，但 Agent Carry 只借鉴最小事件身份，不引入消息总线或完整事件仓库。
+事件身份使用来源加稳定 ID 去重。这个方向与 CloudEvents 对 `source + id` 唯一性的要求相符，但 AI Carry 只借鉴最小事件身份，不引入消息总线或完整事件仓库。
 
 ## 10. 清理与增长控制
 
@@ -237,7 +237,7 @@ next_wakeup_ref = "instance/maps/time-trigger-map.toml"
 2. 增加大量未来日程后，唤醒胶囊仍只增长固定聚合字段。
 3. 日期到达时只读取时间索引，先提醒数量；选中后才读取一张目标卡。
 4. Agent 在到期时关闭，下一次启动能够发现过期时间。
-5. 同一事件重试、恢复或通过宿主接入回传包重复返回时不会重复累计；Agent Carry 原样提供后由宿主返回的资产也不算新事件。
+5. 同一事件重试、恢复或通过宿主接入回传包重复返回时不会重复累计；AI Carry 原样提供后由宿主返回的资产也不算新事件。
 6. 宿主区分出的两个任务观察中的同类信号能够累计为复核提示，条件不同的内容不会错误合并；观察计数不会冒充结果验证。
 7. 健康指标只在相关操作时更新，不在启动重数全部资产。
 8. 状态更新后投影中断，下一次启动能定向恢复。
@@ -251,11 +251,11 @@ next_wakeup_ref = "instance/maps/time-trigger-map.toml"
 
 ## 14. 设计依据与取舍
 
-- [Anthropic：Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) 强调把上下文视为有限资源，保留轻量引用并即时加载；Agent Carry 把它落实为最早时间聚合和按事件展开。
-- [CNCF CloudEvents Specification](https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md) 规定同一来源中的事件 ID 唯一，并允许重发复用 ID；Agent Carry 借鉴 `source + event_id` 去重，不采用完整事件基础设施。
-- [Kubernetes Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 用期望状态与当前状态的协调解释可恢复控制循环；Agent Carry 借鉴可重复协调和明确所有者，但只在会话检查点运行。
+- [Anthropic：Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) 强调把上下文视为有限资源，保留轻量引用并即时加载；AI Carry 把它落实为最早时间聚合和按事件展开。
+- [CNCF CloudEvents Specification](https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md) 规定同一来源中的事件 ID 唯一，并允许重发复用 ID；AI Carry 借鉴 `source + event_id` 去重，不采用完整事件基础设施。
+- [Kubernetes Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 用期望状态与当前状态的协调解释可恢复控制循环；AI Carry 借鉴可重复协调和明确所有者，但只在会话检查点运行。
 - [Microsoft：Materialized View pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/materialized-view) 说明读取优化的投影应可从真源重建；唤醒胶囊和时间索引都遵循这一边界。
-- [Microsoft：Scheduler Agent Supervisor pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/scheduler-agent-supervisor) 说明持久状态、截止时间、重试身份和恢复的价值，也指出完整调度体系的复杂度；个人级 Agent Carry 只保留必要状态和定向恢复。
+- [Microsoft：Scheduler Agent Supervisor pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/scheduler-agent-supervisor) 说明持久状态、截止时间、重试身份和恢复的价值，也指出完整调度体系的复杂度；个人级 AI Carry 只保留必要状态和定向恢复。
 - [RFC 3339](https://www.rfc-editor.org/info/rfc3339/) 为带偏移量的互联网时间戳提供标准；跨平台日程不用本地文件时间或模糊日期猜测。
 
-这些资料用于验证原则，不构成供应商绑定。Agent Carry 明确拒绝为了形式完整而引入后台服务、企业级工作流和普通用户必须维护的基础设施。
+这些资料用于验证原则，不构成供应商绑定。AI Carry 明确拒绝为了形式完整而引入后台服务、企业级工作流和普通用户必须维护的基础设施。

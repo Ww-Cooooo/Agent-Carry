@@ -35,8 +35,8 @@ export async function synchronizeSnapshotPair({ sourceBytes, targets, validateBy
 
   const records = targets.map((target, index) => ({
     target,
-    stage: `${target}.agent-carry-stage-${operationId}-${index}`,
-    backup: `${target}.agent-carry-backup-${operationId}-${index}`,
+    stage: `${target}.ai-carry-stage-${operationId}-${index}`,
+    backup: `${target}.ai-carry-backup-${operationId}-${index}`,
     hadOriginal: previous.get(target) !== null,
     originalMoved: false,
     installed: false,

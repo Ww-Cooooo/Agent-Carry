@@ -1,24 +1,24 @@
-// Agent Carry snapshot envelope v1
-window.AGENT_CARRY_IS_REAL = true;
-window.AGENT_CARRY_SNAPSHOT = {
+// AI Carry snapshot envelope v1
+window.AI_CARRY_IS_REAL = true;
+window.AI_CARRY_SNAPSHOT = {
   "meta": {
     "schema_version": "1.1",
     "generated_at": "",
-    "product_version": "1.4.8",
+    "product_version": "2.0.0",
     "state": "template",
     "freshness_seconds": 86400,
     "source_digest": "template-empty",
     "identity_ref": "template"
   },
   "overview": {
-    "product": "AgentCarry",
+    "product": "AI Carry",
     "state": "template",
     "domain": "uninstantiated",
-    "startup_chars": 11611,
+    "startup_chars": 11629,
     "startup_budget": 20000
   },
   "profile": {
-    "display_name": "Agent Carry",
+    "display_name": "AI Carry",
     "mission": "把你的记忆、能力与工作方式沉淀为可迁移的个人助手。",
     "domain_id": "uninstantiated",
     "guidance_mode": "unselected",
@@ -59,3 +59,6 @@ window.AGENT_CARRY_SNAPSHOT = {
     ]
   }
 };
+window.AGENT_CARRY_DEMO = window.AI_CARRY_DEMO === true;
+window.AGENT_CARRY_IS_REAL = window.AI_CARRY_IS_REAL;
+window.AGENT_CARRY_SNAPSHOT = window.AI_CARRY_SNAPSHOT;

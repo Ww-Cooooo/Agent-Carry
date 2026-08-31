@@ -1,5 +1,5 @@
 // Optional defense-in-depth adapter for hosts that already provide a JavaScript
-// runtime. Agent Carry installation and the offline dashboard do not require it.
+// runtime. AI Carry installation and the offline dashboard do not require it.
 // The repository root is derived from this file; callers cannot supply a path.
 //
 // A body read is deliberately inseparable from the query that selected it. This

@@ -5,6 +5,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+  parseCurrentSnapshotEnvelope,
   parseSnapshotEnvelope,
   serializeSnapshotEnvelope,
   SNAPSHOT_MAX_BYTES,
@@ -80,7 +81,7 @@ const publicPath = resolve(root, "dashboard/public/snapshot.js");
 const distPath = resolve(root, "dashboard/dist/snapshot.js");
 const [publicBytes, distBytes] = await Promise.all([readFile(publicPath), readFile(distPath)]);
 assert(publicBytes.equals(distBytes), "dashboard/public/snapshot.js and dashboard/dist/snapshot.js are not byte-identical.");
-const snapshot = parseSnapshotEnvelope(publicBytes.toString("utf8"), "formal snapshot");
+const snapshot = parseCurrentSnapshotEnvelope(publicBytes.toString("utf8"), "formal snapshot");
 validateSnapshotSemantics(snapshot, "formal snapshot");
 validateFormalTemplateSnapshot(snapshot, "formal snapshot");
 

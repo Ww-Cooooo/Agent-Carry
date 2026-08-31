@@ -4,7 +4,9 @@
 
 普通模板只携带空注册表，不创建示例组件。普通启动不得读取注册表、枚举 `instance/components/` 或读取组件正文；只有首次实例化、首次纳管、升级、迁移、修复、其他正式实例变化或已经命中某个组件时才按需读取。
 
-规范写出使用 Agent Carry 可移植 TOML 子集：UTF-8 无 BOM、LF、每个键值独占一行、JSON 兼容双引号字符串、单行数组、整数和布尔值；不使用单引号、多行字符串、行尾注释、内联表、浮点数或日期。严格发布审计要求这份规范表示；按需兼容读取可以接受不改变语义的 CRLF、BOM、已知章节顺序差异和未知标量字段，但必须保留原字节、不执行未知内容，并返回修复或迁移诊断。
+规范写出使用 AI Carry 可移植 TOML 子集：UTF-8 无 BOM、LF、每个键值独占一行、JSON 兼容双引号字符串、单行数组、整数和布尔值；不使用单引号、多行字符串、行尾注释、内联表、浮点数或日期。严格发布审计要求这份规范表示；按需兼容读取可以接受不改变语义的 CRLF、BOM、已知章节顺序差异和未知标量字段，但必须保留原字节、不执行未知内容，并返回修复或迁移诊断。
+
+AI Carry 2.0.0 规范写出 `ai-carry-instance-component-registry`、`ai-carry-instance-component` 和 `ai-carry.instance-component@1`。从 Agent Carry 1.4.x 升级的实例可以继续使用旧 `agent-carry-instance-component-registry`、`agent-carry-instance-component` 和 `agent-carry.instance-component@1`；加载器只把这些逐字登记的旧值视为兼容别名，保留原文件字节。未知记录类型或接口仍按本 Schema 的局部隔离／冲突规则处理，不能因改名放宽为任意字符串。
 
 ## 1. 注册表
 
@@ -13,7 +15,7 @@
 根字段：
 
 - `schema_version = 1`
-- `record_type = "agent-carry-instance-component-registry"`
+- `record_type = "ai-carry-instance-component-registry"`
 - `instance_id`：必须与严格实例清单一致；空模板为 `template`。
 - `adoption_state`：`template`、`required`、`current` 或 `conflict`。
 - `revision`：非负整数；正式内容改变时递增，空模板为 0。
@@ -39,7 +41,7 @@
 根字段：
 
 - `schema_version = 1`
-- `record_type = "agent-carry-instance-component"`
+- `record_type = "ai-carry-instance-component"`
 - `component_id`、`instance_id`：分别与注册表和实例清单一致；
 - `kind`、`status`：必须与注册表条目一致；
 - `title`：1～120 字符；
@@ -52,7 +54,7 @@
 
 - `portable_paths`：1～128 个相对组件根的路径，必须包含 `component.toml`；随实例迁移并按升级计划保留。
 - `derived_paths`：0～128 个相对组件根的可重建路径；不得与便携路径重叠。
-- `device_local_paths`：0～32 个 Agent Carry 根相对路径，每项必须位于 `.assistant-local/` 下；不会进入 Git、公开发布或完整迁移主体。
+- `device_local_paths`：0～32 个 AI Carry 根相对路径，每项必须位于 `.assistant-local/` 下；不会进入 Git、公开发布或完整迁移主体。
 - `private_collection_refs`：0～32 个由私密目录 Schema 解析的稳定 `private://` 引用；不包含正文或绝对路径。
 - `unclassified_policy = "stop-and-preview"`。
 
@@ -60,7 +62,7 @@
 
 不同组件的 `device_local_paths` 也不得相等、互为父子或重叠。它们物理上仍处于 `local-private` 本机层，隐私与公开排除继续由该层约束；逻辑写入所有者以唯一引用它的组件清单为准。未携带目标组件 ID 的写入不能借 `.assistant-local/**` 宽泛边界修改组件绑定。
 
-已经存在但不符合推荐 `.assistant-local/components/<component-id>/` 结构的本机目录，可以在首次纳管时原地列入 `device_local_paths`；不为目录整齐强制重装。Agent Carry 根外的实际软件路径只能写入某个已声明设备本地路径内的绑定文件。
+已经存在但不符合推荐 `.assistant-local/components/<component-id>/` 结构的本机目录，可以在首次纳管时原地列入 `device_local_paths`；不为目录整齐强制重装。AI Carry 根外的实际软件路径只能写入某个已声明设备本地路径内的绑定文件。
 
 ### `[interfaces]`
 

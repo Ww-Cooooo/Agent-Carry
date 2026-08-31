@@ -96,6 +96,29 @@ function contentDigest(files) {
   return `sha256:${sha256(Buffer.from(manifest, "utf8"))}`;
 }
 
+/** Compare two bounded physical Skill folders without executing package code. */
+export function compareSkillPackages(beforeRoot, afterRoot) {
+  const beforeFiles = collectSkillFiles(beforeRoot);
+  const afterFiles = collectSkillFiles(afterRoot);
+  const before = new Map(beforeFiles.map((file) => [file.ref, sha256(file.bytes)]));
+  const after = new Map(afterFiles.map((file) => [file.ref, sha256(file.bytes)]));
+  const added = []; const changed = []; const removed = []; const unchanged = [];
+  for (const [ref, digest] of after) {
+    if (!before.has(ref)) added.push(ref);
+    else if (before.get(ref) === digest) unchanged.push(ref);
+    else changed.push(ref);
+  }
+  for (const ref of before.keys()) if (!after.has(ref)) removed.push(ref);
+  return Object.freeze({
+    beforeDigest: contentDigest(beforeFiles),
+    afterDigest: contentDigest(afterFiles),
+    added: Object.freeze(added),
+    changed: Object.freeze(changed),
+    removed: Object.freeze(removed),
+    unchanged: Object.freeze(unchanged),
+  });
+}
+
 const CRC_TABLE = Object.freeze(Array.from({ length: 256 }, (_, seed) => {
   let value = seed;
   for (let bit = 0; bit < 8; bit += 1) value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);

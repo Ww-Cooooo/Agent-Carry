@@ -41,7 +41,7 @@ import {
 } from "./asset-route-contract.mjs";
 import { validateCandidateIndex } from "./candidate-index-contract.mjs";
 import { buildSnapshotCandidate } from "./snapshot-source-builder.mjs";
-import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { buildStartupCapsule } from "./startup-capsule-contract.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -58,7 +58,7 @@ function sha256(value) {
 }
 
 function createFixture(name, { full = false } = {}) {
-  const root = mkdtempSync(join(tmpdir(), `agent-carry-${name}-`)); temporaryRoots.push(root);
+  const root = mkdtempSync(join(tmpdir(), `ai-carry-${name}-`)); temporaryRoots.push(root);
   if (full) {
     for (const file of ["assistant.toml", "AGENTS.md", "BOOTSTRAP.md"]) cpSync(join(sourceRoot, file), join(root, file));
     cpSync(join(sourceRoot, "core"), join(root, "core"), { recursive: true });
@@ -582,7 +582,7 @@ function testPersistentCrossTurnChallengeAndCleanup() {
 
 function testPersistentRecoveryEvidenceSurvivesExpiryAndClose() {
   const cli = join(scriptDir, "learning-capture-cli.mjs");
-  const requestRoot = mkdtempSync(join(tmpdir(), "agent-carry-learning-recovery-request-")); temporaryRoots.push(requestRoot);
+  const requestRoot = mkdtempSync(join(tmpdir(), "ai-carry-learning-recovery-request-")); temporaryRoots.push(requestRoot);
   for (const stopAfter of [1, 2, 3]) {
     const root = createFixture(`persistent-expired-prefix-${stopAfter}`, { full: true }); const before = treeIdentity(root);
     const assertion = observationAssertion(`persistent-expired-prefix-${stopAfter}`);
@@ -648,7 +648,7 @@ function testPersistentRecoveryEvidenceSurvivesExpiryAndClose() {
 
 function testAtomicBackupCrashWindowRecovery() {
   const cli = join(scriptDir, "learning-capture-cli.mjs");
-  const requestRoot = mkdtempSync(join(tmpdir(), "agent-carry-atomic-window-request-")); temporaryRoots.push(requestRoot);
+  const requestRoot = mkdtempSync(join(tmpdir(), "ai-carry-atomic-window-request-")); temporaryRoots.push(requestRoot);
   const prepare = (root, suffix) => {
     const assertion = observationAssertion(suffix);
     const challenge = preparePersistentLearningCaptureChallenge(root, proposal(), assertion);
@@ -712,27 +712,27 @@ function testStaleProjectionCleanupBoundary() {
   const root = createFixture("projection-cleanup", { full: true }); const parent = dirname(root);
   const createdAt = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
   const marker = (target, kind, repositoryBinding = sha256(realpathSync(root).normalize("NFC"))) => {
-    writeFileSync(join(target, ".agent-carry-projection-owner.json"), `${JSON.stringify({
-      schema_version: 1, record_type: "agent-carry-learning-projection-owner",
+    writeFileSync(join(target, ".ai-carry-projection-owner.json"), `${JSON.stringify({
+      schema_version: 1, record_type: "ai-carry-learning-projection-owner",
       repository_binding: repositoryBinding, projection_kind: kind, created_at: createdAt,
       nonce: "0123456789abcdef01234567", state: "projection-only",
     }, null, 2)}\n`, "utf8");
   };
 
-  const owned = mkdtempSync(join(parent, ".agent-carry-learning-capture-snapshot-owned-")); temporaryRoots.push(owned);
+  const owned = mkdtempSync(join(parent, ".ai-carry-learning-capture-snapshot-owned-")); temporaryRoots.push(owned);
   marker(owned, "candidate-snapshot"); mkdirSync(join(owned, "instance"));
   const sourceDigest = sha256(readFileSync(join(root, "assistant.toml")));
   linkSync(join(root, "assistant.toml"), join(owned, "instance", "assistant-hardlink.toml"));
 
-  const unowned = mkdtempSync(join(parent, ".agent-carry-learning-capture-snapshot-unowned-")); temporaryRoots.push(unowned);
+  const unowned = mkdtempSync(join(parent, ".ai-carry-learning-capture-snapshot-unowned-")); temporaryRoots.push(unowned);
   writeFileSync(join(unowned, "do-not-delete.txt"), "not owned", "utf8");
-  const wrongBinding = mkdtempSync(join(parent, ".agent-carry-direct-keep-projection-wrong-binding-")); temporaryRoots.push(wrongBinding);
+  const wrongBinding = mkdtempSync(join(parent, ".ai-carry-direct-keep-projection-wrong-binding-")); temporaryRoots.push(wrongBinding);
   marker(wrongBinding, "direct-keep", sha256("another repository"));
   linkSync(join(root, "assistant.toml"), join(wrongBinding, "do-not-delete-hardlink.toml"));
 
-  const outside = mkdtempSync(join(tmpdir(), "agent-carry-projection-outside-")); temporaryRoots.push(outside);
+  const outside = mkdtempSync(join(tmpdir(), "ai-carry-projection-outside-")); temporaryRoots.push(outside);
   writeFileSync(join(outside, "sentinel.txt"), "outside sentinel", "utf8");
-  const linked = mkdtempSync(join(parent, ".agent-carry-learning-capture-snapshot-linked-")); temporaryRoots.push(linked);
+  const linked = mkdtempSync(join(parent, ".ai-carry-learning-capture-snapshot-linked-")); temporaryRoots.push(linked);
   marker(linked, "candidate-snapshot");
   symlinkSync(outside, join(linked, "linked-outside"), "junction");
 
@@ -748,7 +748,7 @@ function testStaleProjectionCleanupBoundary() {
 
 function testProductionCliAcrossProcesses() {
   const root = createFixture("persistent-cli", { full: true });
-  const requestRoot = mkdtempSync(join(tmpdir(), "agent-carry-learning-cli-request-")); temporaryRoots.push(requestRoot);
+  const requestRoot = mkdtempSync(join(tmpdir(), "ai-carry-learning-cli-request-")); temporaryRoots.push(requestRoot);
   const cli = join(scriptDir, "learning-capture-cli.mjs"); const assertion = observationAssertion("persistent-cli");
   const preparePath = join(requestRoot, "prepare.json");
   writeFileSync(preparePath, `${JSON.stringify({ proposal: proposal(), observation_assertion: assertion }, null, 2)}\n`, "utf8");
@@ -856,7 +856,7 @@ function testProductionCliAcrossProcesses() {
   const formalId = proposal().formal_preview.match(/^id = "([^"]+)"/mu)[1];
   expect(!loadTrustedDomainEnvelope(reviewRoot, { explicitRequestedId: formalId }).envelope.explicitRoute,
     "Level 3 handoff silently installed a formal route");
-  const reviewSnapshot = parseSnapshotEnvelope(readFileSync(join(reviewRoot, "dashboard/public/snapshot.js"), "utf8"), "Level 3 handoff snapshot");
+  const reviewSnapshot = parseCurrentSnapshotEnvelope(readFileSync(join(reviewRoot, "dashboard/public/snapshot.js"), "utf8"), "Level 3 handoff snapshot");
   expect(reviewSnapshot.assets.evolution === 1
     && readFileSync(join(reviewRoot, "dashboard/public/snapshot.js"), "utf8") === readFileSync(join(reviewRoot, "dashboard/dist/snapshot.js"), "utf8"),
   "Level 3 handoff was not visible in the byte-identical dashboard snapshot pair");
@@ -869,7 +869,7 @@ function testProductionCliAcrossProcesses() {
 
 function testSimpleLearningSaveCli() {
   const root = createFixture("simple-learning-save", { full: true });
-  const requestRoot = mkdtempSync(join(tmpdir(), "agent-carry-simple-learning-request-")); temporaryRoots.push(requestRoot);
+  const requestRoot = mkdtempSync(join(tmpdir(), "ai-carry-simple-learning-request-")); temporaryRoots.push(requestRoot);
   const cli = join(scriptDir, "learning-save-cli.mjs");
   const request = {
     kind: "sop",
@@ -1006,7 +1006,7 @@ unsupported_field = "preserve-exactly"
   applyPlan(degradedRoot, degradedPlan);
   const degradedPublic = readFileSync(join(degradedRoot, "dashboard/public/snapshot.js"), "utf8");
   const degradedDist = readFileSync(join(degradedRoot, "dashboard/dist/snapshot.js"), "utf8");
-  const degradedSnapshot = parseSnapshotEnvelope(degradedPublic, "degraded direct keep snapshot");
+  const degradedSnapshot = parseCurrentSnapshotEnvelope(degradedPublic, "degraded direct keep snapshot");
   expect(degradedPublic === degradedDist && degradedSnapshot.assets.memory === 1
     && degradedSnapshot.health?.state === "degraded" && degradedSnapshot.health?.isolated_item_count === 1
     && degradedSnapshot.health?.affected_areas?.[0] === "todo" && degradedSnapshot.health?.source_data_preserved === true,
@@ -1072,7 +1072,7 @@ function testObserveCommitIdempotenceAndDuplicate() {
   expect(signal.includes('provenance = "host-asserted-connected-host-observation"'), "host assertion was mislabeled as independent verification");
   const publicSnapshot = readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8");
   const distSnapshot = readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8");
-  const snapshot = parseSnapshotEnvelope(publicSnapshot, "observe committed snapshot");
+  const snapshot = parseCurrentSnapshotEnvelope(publicSnapshot, "observe committed snapshot");
   expect(publicSnapshot === distSnapshot && snapshot.assets.evolution === 1 && snapshot.evolution.length === 1
     && snapshot.evolution[0].status === "candidate" && snapshot.evolution[0].source_summary.includes("1 次不同任务观察")
     && snapshot.evolution[0].source_summary.includes("不代表任务结果已经验证"),
@@ -1100,7 +1100,7 @@ function testReminderAndCancellationGuidance() {
   expect(plan.userGuidance.includes("取消刚才那条学习提醒") && plan.userGuidance.includes("不需要记住 ID 或路径"),
     "committed reminder does not explain cancellation to a nontechnical user");
   const reminderPublic = readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8");
-  const reminderSnapshot = parseSnapshotEnvelope(reminderPublic, "reminder committed snapshot");
+  const reminderSnapshot = parseCurrentSnapshotEnvelope(reminderPublic, "reminder committed snapshot");
   expect(reminderPublic === readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8")
     && reminderSnapshot.assets.evolution === 1 && reminderSnapshot.evolution[0].status === "candidate",
   "remind did not atomically rebuild one identical visible candidate snapshot pair");

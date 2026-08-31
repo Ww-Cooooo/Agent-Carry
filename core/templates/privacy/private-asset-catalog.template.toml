@@ -1,5 +1,5 @@
 schema_version = 1
-record_type = "agent-carry-private-asset-catalog"
+record_type = "ai-carry-private-asset-catalog"
 instance_id = "{{INSTANCE_ID}}"
 updated_at = "{{UPDATED_AT}}"
 catalog_revision = 1
@@ -10,7 +10,7 @@ catalog_revision = 1
 # [[collections]]
 # id = "private.collection.example"
 # title = "用户能看懂的资料名称"
-# purpose = "为什么需要随 Agent Carry 携带"
+# purpose = "为什么需要随 AI Carry 携带"
 # source_kind = "external-binding"
 # binding_id = "binding.example.current-device"
 # include_mode = "recursive"

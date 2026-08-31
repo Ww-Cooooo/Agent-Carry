@@ -69,7 +69,7 @@ const GUIDE_DEFINITIONS: Record<GrowthKind, GuideDefinition> = {
   todos: {
     eyebrow: "待办怎么保存？",
     title: "你明确要求，它才会成为待办",
-    summary: "Agent Carry 不会把每次聊天都变成待办，除非你明确要求。",
+    summary: "AI Carry 不会把每次聊天都变成待办，除非你明确要求。",
     statusLabel: "待办事项",
     screenReaderSteps: [
       "你明确说“把这件事加入待办”。",

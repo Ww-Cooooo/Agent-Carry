@@ -36,24 +36,35 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
   read('dashboard/src/components/dashboard/SkillWorkshop.tsx'),
 ])
 
-requireFragments(readmeZh, 'Chinese README', ['[English](README.en.md)', '当前版本：`1.4.8`', '点击展开：1.4.8 主要改了什么', '随包可执行的本地入口', '本次未核对', '固定 `v1.4.8` 标签', '点击展开：1.4.7 主要改了什么', '一次性本地动作', '点击展开：1.4.6 主要改了什么', '可编辑 Skill 文件夹是唯一内容真源', '分享方式待选择', 'ZIP 先安全解压到新的隔离目录', '🧠 这次用上了', '🌱 这一步我学到了', '👉 接下来'])
+requireFragments(readmeZh, 'Chinese README', [
+  '[English](README.en.md)',
+  '当前版本：`2.0.0`',
+  '点击展开：2.0.0 主要改了什么',
+  '稳定身份和三段版本',
+  '最早觉得不对',
+  '固定 `v2.0.0` 标签',
+  '🧠 这次用上了',
+  '🌱 这一步我学到了',
+  '👉 接下来',
+  'Skill 工坊：把方法分享出去，或接入别人分享的方法',
+  '按钮只复制请求',
+  '只暂停这一项 Skill',
+  'GitHub Releases',
+])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `1.4.8`',
-  'What changed in 1.4.8',
-  'bundled deterministic local entrypoints',
-  'not checked',
-  'fixed `v1.4.8` tag',
-  'What changed in 1.4.7',
-  'one-shot and local',
-  'repairs only the current reply',
-  'What changed in 1.4.6',
-  'only content source of truth',
-  'sharing method needed',
-  'safely extracted into a new isolation directory',
+  'Current version: `2.0.0`',
+  'What changed in 2.0.0',
+  'stable identity and semantic version',
+  'which first message or action felt wrong',
+  'fixed `v2.0.0` tag',
   '🧠 Used this time',
   '🌱 Learned this step',
-  '👉 Next step',
+  "👉 What's next",
+  'Skill Workshop: share your method or receive somebody else\'s',
+  'The button only copies a request',
+  'other Skills and the assistant remain usable',
+  'GitHub Releases',
   'AI changes quickly. Agents come and go.',
   'Try the dashboard',
   'INSTALL.en.md',
@@ -77,7 +88,7 @@ requireFragments(i18n, 'Dashboard locale runtime', [
   'storedLocale() ?? queryLocale() ?? "zh-Hans"',
   'document.documentElement.lang = locale',
   'localizeAgentRequest',
-  'BEGIN CANONICAL AGENT CARRY REQUEST',
+  'BEGIN CANONICAL AI CARRY REQUEST',
   'Secrets such as API keys',
   'ASSET_NOUN_EN',
   'ASSET_OPERATION_EN',
@@ -91,9 +102,17 @@ requireFragments(catalog, 'Library status localization', [
   '"查看已停止状态": "Check stopped status"',
   '"你始终可以改正或停止它": "You can always correct it or stop using it"',
 ])
+requireFragments(catalog, 'English empty-to-do card localization', [
+  '"今天没有待办": "No to-dos today"',
+  '"现在没有需要继续的待办": "No to-dos to continue"',
+  '"直接告诉 Agent 今天想做什么即可。需要用到的记忆、流程或能力，会在任务开始后再读取。"',
+  '"不会一次读完所有内容": "It will not read everything at once"',
+  '"当前任务需要什么，就读取什么": "It reads only what the current task needs"',
+  '"查看随身资产": "View portable assets"',
+])
 requireFragments(dashboard, 'Dashboard language control', ['useDashboardLocale', 'locale-switch', 'localizeAgentRequest'])
-requireFragments(shared, 'Source-text boundary', ['export function SourceText', 'data-agent-carry-source-text', 'agentCarrySourceText'])
-requireFragments(jsxRuntime, 'Localized JSX runtime', ['agentCarrySourceText', 'sourceText ? props : localizeProps(props)'])
+requireFragments(shared, 'Source-text boundary', ['export function SourceText', 'data-ai-carry-source-text', 'aiCarrySourceText'])
+requireFragments(jsxRuntime, 'Localized JSX runtime', ['aiCarrySourceText', 'sourceText ? props : localizeProps(props)'])
 requireFragments(jsxDevRuntime, 'Localized JSX development runtime', [
   'react/jsx-dev-runtime',
   'reactJsxDEV',
@@ -102,11 +121,11 @@ requireFragments(jsxDevRuntime, 'Localized JSX development runtime', [
 ])
 requireFragments(viteConfig, 'Localized JSX development cache boundary', [
   'react()',
-  "exclude: ['agent-carry-jsx', 'agent-carry-jsx/jsx-runtime', 'agent-carry-jsx/jsx-dev-runtime']",
+  "exclude: ['ai-carry-jsx', 'ai-carry-jsx/jsx-runtime', 'ai-carry-jsx/jsx-dev-runtime']",
 ])
 requireFragments(tsconfig, 'Localized JSX compiler source', [
-  '"jsxImportSource": "agent-carry-jsx"',
-  '"agent-carry-jsx/*": ["./src/lib/localized-jsx/*"]',
+  '"jsxImportSource": "ai-carry-jsx"',
+  '"ai-carry-jsx/*": ["./src/lib/localized-jsx/*"]',
 ])
 requireFragments(views, 'Source-text projections', [
   '<SourceText>{profile.displayName}</SourceText>',

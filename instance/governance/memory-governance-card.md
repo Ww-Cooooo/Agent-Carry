@@ -3,7 +3,7 @@ id = "governance.memory-technology-review"
 kind = "governance"
 status = "active"
 title = "记忆治理技术长期改进"
-summary = "周期性研究更适合 Agent Carry 的记忆、检索与自我进化技术。"
+summary = "周期性研究更适合 AI Carry 的记忆、检索与自我进化技术。"
 triggers = ["运行记忆治理长期TODO", "研究新的记忆技术"]
 frequency_days = 180
 background = false
@@ -18,7 +18,7 @@ trigger_revision = 0
 +++
 # 原始目的
 
-当前分层地图、按需加载、Markdown/TOML 真源和混合路由是可用基线，但技术会继续发展。本项目每隔约 180 天，在用户明确要求后做一次完整联网调研，寻找比现有方案更适合 Agent Carry 的记忆治理方式，并据此提出优化。
+当前分层地图、按需加载、Markdown/TOML 真源和混合路由是可用基线，但技术会继续发展。本项目每隔约 180 天，在用户明确要求后做一次完整联网调研，寻找比现有方案更适合 AI Carry 的记忆治理方式，并据此提出优化。
 
 # 每轮必须做什么
 

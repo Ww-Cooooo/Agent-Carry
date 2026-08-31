@@ -1,5 +1,5 @@
 schema_version = 1
-record_type = "agent-carry-instance-component-registry"
+record_type = "ai-carry-instance-component-registry"
 instance_id = "template"
 adoption_state = "template"
 revision = 0

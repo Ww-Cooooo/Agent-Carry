@@ -6,7 +6,7 @@ import { parseArrayTableDocument, parseMarkdownFrontmatterHead, parseSectionedTo
 import { projectCandidatesForSnapshot, projectCandidatesForOperationalSnapshot } from "./candidate-index-contract.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { containsForbiddenLocationReference, containsForbiddenStructuredLocation } from "./safe-output-boundary.mjs";
-import { parseSnapshotEnvelope, serializeSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope, serializeSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { inspectStartupCapsule } from "./startup-capsule-contract.mjs";
 import { measureModelVisibleStartupContext } from "./query-startup-capsule.mjs";
@@ -457,9 +457,9 @@ export function buildSnapshotCandidate(repository, {
     const template = {
       meta: { schema_version: "1.1", generated_at: "", product_version: productVersion, state: "template",
         freshness_seconds: 86400, source_digest: "template-empty", identity_ref: "template" },
-      overview: { product: "AgentCarry", state: "template", domain: "uninstantiated",
+      overview: { product: "AI Carry", state: "template", domain: "uninstantiated",
         startup_chars: measureModelVisibleStartupContext(root).totalCharacters, startup_budget: startupBudget },
-      profile: { display_name: "Agent Carry", mission: "把你的记忆、能力与工作方式沉淀为可迁移的个人助手。",
+      profile: { display_name: "AI Carry", mission: "把你的记忆、能力与工作方式沉淀为可迁移的个人助手。",
         domain_id: "uninstantiated", guidance_mode: "unselected", learning_policy: "unselected", language: "zh-CN" },
       assets: { memory: 0, sops: 0, capabilities: 0, experiences: 0, evolution: 0, todo: 0, governance: 0, skills: 0 },
       memories: [], sops: [], capabilities: [], experiences: [], evolution: [], governance: [], todo: [], deferred: [],
@@ -497,7 +497,7 @@ export function buildSnapshotCandidate(repository, {
   const snapshot = {
     meta: { schema_version: "1.1", generated_at: generatedAt, product_version: productVersion, state: "instance", freshness_seconds: 86400,
       source_digest: sources.digest, identity_ref: `ac-${hash(Buffer.from(identity.instance_id, "utf8")).slice(0, 12)}` },
-    overview: { product: "AgentCarry", state: "instance", domain: direction.type === "general" ? "general" : direction.domain_id,
+    overview: { product: "AI Carry", state: "instance", domain: direction.type === "general" ? "general" : direction.domain_id,
       startup_chars: measureModelVisibleStartupContext(root).totalCharacters, startup_budget: startupBudget },
     profile: { display_name: profile.display_name, mission: profile.mission, domain_id: direction.type === "general" ? "general" : direction.domain_id,
       guidance_mode: profile.guidance_mode, learning_policy: validatedManifest.learningPolicy, language: profile.language ?? "zh-CN" },
@@ -512,7 +512,7 @@ export function buildSnapshotCandidate(repository, {
   if (locateHighConfidenceSecretCandidates(source).blocked || containsForbiddenLocationReference(source)) fail("generated snapshot contains unsafe projected content");
   if (typeof existingSource === "string") {
     try {
-      const existing = parseSnapshotEnvelope(existingSource, "existing instance snapshot");
+      const existing = parseCurrentSnapshotEnvelope(existingSource, "existing current instance snapshot");
       validateSnapshotSemantics(existing, "existing instance snapshot");
       if (existing.meta?.source_digest === snapshot.meta.source_digest
         && JSON.stringify(withoutGeneratedAt(existing)) === JSON.stringify(withoutGeneratedAt(snapshot))) {

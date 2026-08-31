@@ -1,6 +1,6 @@
-// Agent Carry · 离线看板数据层
+// AI Carry · 离线看板数据层
 //
-// 数据来源：运行时读取 window.AGENT_CARRY_SNAPSHOT。
+// 数据来源：运行时读取 window.AI_CARRY_SNAPSHOT。
 // 它由 index.html 里的 <script src="./snapshot.js"> 注入。Agent 在正式状态变化
 // 或用户明确要求 Agent 重建时，按快照契约原子更新 dashboard/dist/snapshot.js。
 // 若没有该脚本（或读取失败），本模块回退到明确标识的空模板状态；
@@ -14,7 +14,7 @@ import { dashboardLanguageTag } from "./i18n";
 import generatedDashboardActions from "../generated/dashboard-actions.json";
 
 function load(): Snap {
-  const g = (window as any).AGENT_CARRY_SNAPSHOT as Snap | undefined;
+  const g = ((window as any).AI_CARRY_SNAPSHOT ?? (window as any).AGENT_CARRY_SNAPSHOT) as Snap | undefined;
   if (g && g.meta && g.profile) return g;
   return fallbackSnapshot();
 }
@@ -32,7 +32,7 @@ function fallbackSnapshot(): Snap {
       identity_ref: "unavailable",
     },
     overview: {
-      product: "AgentCarry",
+      product: "AI Carry",
       state: "snapshot-unavailable",
       domain: "uninstantiated",
       startup_chars: 0,
@@ -97,7 +97,7 @@ function projectProfile(snapshot: Snap) {
     state,
     startupChars: snapshot.overview?.startup_chars ?? 0,
     startupBudget: snapshot.overview?.startup_budget ?? 0,
-    isReal: (window as any).AGENT_CARRY_IS_REAL === true,
+    isReal: (window as any).AI_CARRY_IS_REAL === true || (window as any).AGENT_CARRY_IS_REAL === true,
   };
 }
 
@@ -1058,7 +1058,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   sops: {
     label: "执行这项流程",
     buttonLabel: "复制流程指令",
-    goal: "我现在要让你执行 Agent Carry 中由稳定 ID 指定的固定流程（SOP）。",
+    goal: "我现在要让你执行 AI Carry 中由稳定 ID 指定的固定流程（SOP）。",
     requirements: [
       "读取这个 SOP 的当前正式版本及它明确登记的必要依赖，不要只根据按钮里的一句触发语自由发挥。",
       "先核对当前任务输入和运行环境；确有必要的信息缺失时，把问题合并后一次性询问我。",
@@ -1069,7 +1069,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   capabilities: {
     label: "调用这项能力",
     buttonLabel: "复制能力调用指令",
-    goal: "我现在要让你调用 Agent Carry 中由稳定 ID 指定的能力。",
+    goal: "我现在要让你调用 AI Carry 中由稳定 ID 指定的能力。",
     requirements: [
       "读取该能力的正式定义、输入输出和必要依赖，再把它用于当前任务；不能只复述能力名称。",
       "如果当前对话还没有提供要处理的具体材料或目标，把缺失项合并后一次性问我。",
@@ -1080,9 +1080,9 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   memories: {
     label: "手动指定这条记忆",
     buttonLabel: "手动指定这条记忆",
-    goal: "我现在要手动指定你在相关任务中查阅 Agent Carry 中由稳定 ID 指定的正式记忆。",
+    goal: "我现在要手动指定你在相关任务中查阅 AI Carry 中由稳定 ID 指定的正式记忆。",
     requirements: [
-      "Agent Carry 原本会在任务路由命中时自动按需读取相关记忆；这次按钮请求只是由我明确指定这一条，不得把它理解为以后所有记忆都必须手动调用。",
+      "AI Carry 原本会在任务路由命中时自动按需读取相关记忆；这次按钮请求只是由我明确指定这一条，不得把它理解为以后所有记忆都必须手动调用。",
       "只读取这条记忆和完成当前任务确实需要的少量关联项，不要一次加载整个记忆库。",
       "先检查它是否仍适用于当前时间、对象和任务；若与新事实冲突，向我说明而不是静默沿用旧记忆。",
       "如果当前还没有具体任务，问我希望把这条记忆用于什么工作。",
@@ -1092,7 +1092,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   experiences: {
     label: "参考这条经验",
     buttonLabel: "复制经验参考指令",
-    goal: "我现在要让你在相关任务中参考 Agent Carry 中由稳定 ID 指定的任务经验。",
+    goal: "我现在要让你在相关任务中参考 AI Carry 中由稳定 ID 指定的任务经验。",
     requirements: [
       "只加载这条经验和当前任务必要的依赖，不要批量加载全部历史记录。",
       "先判断旧任务条件与当前任务是否相似；不相似的部分只能作为提示，不能机械照搬。",
@@ -1103,7 +1103,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   todos: {
     label: "处理这项待办",
     buttonLabel: "复制待办处理指令",
-    goal: "我现在要让你处理 Agent Carry 中由稳定 ID 指定的普通待办。",
+    goal: "我现在要让你处理 AI Carry 中由稳定 ID 指定的普通待办。",
     requirements: [
       "只读取这张待办卡和完成它所需的最小充分上下文，不要加载全部 TODO。",
       "先核对当前状态；如果已经完成，不要重复执行，先告诉我完成记录。",
@@ -1114,7 +1114,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   evolution: {
     label: "处理这条学习建议",
     buttonLabel: "复制学习建议处理指令",
-    goal: "我现在要让你判断并按 Agent Carry 的正式生命周期处理由稳定 ID 指定的改进或进化候选。",
+    goal: "我现在要让你判断并按 AI Carry 的正式生命周期处理由稳定 ID 指定的改进或进化候选。",
     requirements: [
       "只读取这条候选及必要证据，不要把其他候选或完整历史一起载入。",
       "分别判断长期价值、真实来源、授权依据、风险等级、冲突情况和证据成熟度，再决定它应当成为记忆、SOP、能力、偏好或经验，还是应当继续候选、修改、延期、合并、归档或清理。授权不等于成熟，来源可信也不等于已经获得授权。",
@@ -1146,7 +1146,7 @@ ${assetLocator(p.target, p.route.expectedKind)}
 
 先校验 asset_id 语法，再从正式地图按稳定 ID 定位；目标正文的 id 与 kind 必须分别与 JSON 的 asset_id、expected_kind 完全一致。定位数据为 null、目标不存在、类型不符或状态无法核对时立即停止并报告，不得从标题、摘要或相邻文件猜测目标。
 
-请先在 Agent Carry 根地图中选择根分类「${rootRef(p.route.rootCategory)}」，再选择路线「${p.route.routeId}」，先读取 ${p.route.firstRead}；${p.route.lookup}。找到目标后只加载该目标登记的正文和完成本次操作所必需的依赖；如果物理路径已经变化，以当前地图登记为准。不要无目的地把全仓所有正文一次性塞进上下文，也不要凭经验临时编一套流程；但你可以查看整个助手的目录、地图、登记、引用和必要源码。
+请先在 AI Carry 根地图中选择根分类「${rootRef(p.route.rootCategory)}」，再选择路线「${p.route.routeId}」，先读取 ${p.route.firstRead}；${p.route.lookup}。找到目标后只加载该目标登记的正文和完成本次操作所必需的依赖；如果物理路径已经变化，以当前地图登记为准。不要无目的地把全仓所有正文一次性塞进上下文，也不要凭经验临时编一套流程；但你可以查看整个助手的目录、地图、登记、引用和必要源码。
 
 执行要求：
 ${p.requirements.map((r) => `- ${r}`).join("\n")}
@@ -1197,7 +1197,7 @@ function buildGovernanceAction(target: DashboardActionTarget): DashboardCopyActi
     buttonLabel: "复制长期改进指令",
     text: buildAssetRequest({
       buttonLabel: "开始这项长期改进",
-      goal: "我现在明确要求由 Level 3 启动 Agent Carry 中由稳定 ID 指定的长期改进项目，并完成这一轮调研。",
+      goal: "我现在明确要求由 Level 3 启动 AI Carry 中由稳定 ID 指定的长期改进项目，并完成这一轮调研。",
       route,
       target,
       requirements,
@@ -1233,7 +1233,7 @@ export function buildDashboardAction(kind: DashboardActionKind, target: Dashboar
       buttonLabel: "复制从看板隐藏指令",
       text: buildAssetRequest({
         buttonLabel: "从看板隐藏已完成待办",
-        goal: "我现在要把 Agent Carry 中由稳定 ID 指定、且已经完成的待办从看板隐藏。",
+        goal: "我现在要把 AI Carry 中由稳定 ID 指定、且已经完成的待办从看板隐藏。",
         route: ASSET_ROUTES.todos,
         target,
         requirements: [
@@ -1267,7 +1267,7 @@ export function buildDashboardAction(kind: DashboardActionKind, target: Dashboar
         buttonLabel: state.actionLabel,
         text: buildAssetRequest({
           buttonLabel: state.actionLabel,
-          goal: "我现在要核对 Agent Carry 中由稳定 ID 指定的资产状态；在状态、授权与适用范围确认前，不执行、调用、参考或应用其正文。",
+          goal: "我现在要核对 AI Carry 中由稳定 ID 指定的资产状态；在状态、授权与适用范围确认前，不执行、调用、参考或应用其正文。",
           route,
           target,
           requirements: [

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { access, readFile, readdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parseSnapshotEnvelope } from './snapshot-envelope.mjs'
+import { parseCurrentSnapshotEnvelope } from './snapshot-envelope.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const dashboardRoot = resolve(here, '..')
@@ -32,11 +32,11 @@ function sha256(buffer) {
 }
 
 const html = await readFile(indexPath, 'utf8')
-assert(html.includes('data-agent-carry-inline'), 'Offline index is missing the inlined application marker.')
+assert(html.includes('data-ai-carry-inline'), 'Offline index is missing the inlined application marker.')
 assert(await exists(resolve(dist, 'snapshot.js')), 'Offline dashboard is missing its local snapshot.js.')
 
 const snapshotSource = await readFile(resolve(dist, 'snapshot.js'), 'utf8')
-const snapshot = parseSnapshotEnvelope(snapshotSource, 'offline formal snapshot')
+const snapshot = parseCurrentSnapshotEnvelope(snapshotSource, 'offline formal snapshot')
 assert(snapshot?.meta?.schema_version === '1.1', 'Formal dashboard snapshot is not Schema 1.1.')
 assert(snapshot?.meta?.state === 'template' && snapshot?.overview?.state === 'template', 'Formal dashboard snapshot is not a template.')
 assert(snapshot?.meta?.identity_ref === 'template', 'Formal template snapshot has the wrong dashboard identity ref.')

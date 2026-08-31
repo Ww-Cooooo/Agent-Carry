@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"],
-      "agent-carry-jsx/*": ["./src/lib/localized-jsx/*"]
+      "ai-carry-jsx/*": ["./src/lib/localized-jsx/*"]
     },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -17,7 +17,7 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "agent-carry-jsx",
+    "jsxImportSource": "ai-carry-jsx",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

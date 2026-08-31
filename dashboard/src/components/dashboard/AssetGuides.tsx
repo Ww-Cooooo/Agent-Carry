@@ -38,7 +38,7 @@ export function MemoryAccessGuide() {
         <div>
           <SectionEyebrow icon={Brain}>记忆怎样参与任务</SectionEyebrow>
           <h2 id="memory-access-guide-title">直接说想做什么，不必记住记忆或流程的准确名称</h2>
-          <p>Agent Carry 会先用极小目录理解你的日常说法，只比较少量标题、摘要和适用范围；找到以后才读取真正相关的正文。</p>
+          <p>AI Carry 会先用极小目录理解你的日常说法，只比较少量标题、摘要和适用范围；找到以后才读取真正相关的正文。</p>
         </div>
         <span className="memory-access-guide__default">默认自动进行</span>
       </div>
@@ -92,7 +92,7 @@ export function HabitLearningGuide({ count }: { count: number }) {
         <div>
           <SectionEyebrow icon={Sparkles}>我的习惯</SectionEyebrow>
           <h2 id="habit-learning-guide-title">你只管正常做事，值得留下的习惯会先问过你</h2>
-          <p>不需要说“写入记忆”或“形成 SOP”。Agent Carry 负责发现和分类，你只需确认内容是否正确、以后哪些情况要沿用。</p>
+          <p>不需要说“写入记忆”或“形成 SOP”。AI Carry 负责发现和分类，你只需确认内容是否正确、以后哪些情况要沿用。</p>
         </div>
         <span className={count ? "habit-learning-guide__count is-active" : "habit-learning-guide__count"}>
           <strong>{count}</strong>
@@ -114,7 +114,7 @@ export function HabitLearningGuide({ count }: { count: number }) {
           </motion.article>
         ))}
       </div>
-      <p className="habit-learning-guide__note"><CheckCircle2 aria-hidden="true" />保存后会出现在下面的“我的习惯”分组；换 Agent 或换电脑时，它会和其他 Agent Carry 记忆一起带走。</p>
+      <p className="habit-learning-guide__note"><CheckCircle2 aria-hidden="true" />保存后会出现在下面的“我的习惯”分组；换 Agent 或换电脑时，它会和其他 AI Carry 记忆一起带走。</p>
     </section>
   );
 }

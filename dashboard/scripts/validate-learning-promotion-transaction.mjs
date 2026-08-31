@@ -14,7 +14,7 @@ import {
 } from "./learning-capture-transaction.mjs";
 import { parseMarkdownFrontmatterHead } from "./asset-route-contract.mjs";
 import { buildStartupCapsule } from "./startup-capsule-contract.mjs";
-import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import {
   cleanupPersistentPromotionTransactions,
   cleanupPromotionProjectionResidue,
@@ -30,7 +30,7 @@ const expect = (condition, message) => { if (!condition) throw new Error(`Learni
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 
 function createFixture(name) {
-  const root = mkdtempSync(join(tmpdir(), `agent-carry-promotion-${name}-`)); temporaryRoots.push(root);
+  const root = mkdtempSync(join(tmpdir(), `ai-carry-promotion-${name}-`)); temporaryRoots.push(root);
   for (const file of ["assistant.toml", "AGENTS.md", "BOOTSTRAP.md"]) cpSync(join(sourceRoot, file), join(root, file));
   cpSync(join(sourceRoot, "core"), join(root, "core"), { recursive: true });
   cpSync(join(sourceRoot, "instance"), join(root, "instance"), { recursive: true });
@@ -64,7 +64,7 @@ function createFixture(name) {
 }
 
 function cloneFixture(source, name) {
-  const parent = mkdtempSync(join(tmpdir(), `agent-carry-promotion-${name}-`)); temporaryRoots.push(parent);
+  const parent = mkdtempSync(join(tmpdir(), `ai-carry-promotion-${name}-`)); temporaryRoots.push(parent);
   const root = join(parent, "repository"); cpSync(source, root, { recursive: true }); return root;
 }
 
@@ -177,7 +177,7 @@ function captureHandoff(root, suffix) {
 }
 
 function cliCall(command, root, request, env = {}) {
-  const requests = mkdtempSync(join(tmpdir(), "agent-carry-promotion-request-")); temporaryRoots.push(requests);
+  const requests = mkdtempSync(join(tmpdir(), "ai-carry-promotion-request-")); temporaryRoots.push(requests);
   const path = join(requests, `${command}.json`); writeFileSync(path, `${JSON.stringify(request)}\n`, "utf8");
   const result = spawnSync(process.execPath, [cli, command, root, path], {
     encoding: "utf8", windowsHide: true, env: { ...process.env, ...env },
@@ -208,7 +208,7 @@ try {
     expect(executed.decision === "persistent-learning-promotion-execution-complete" && executed.updated === true, "cross-process execution failed");
     const publicSource = readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8");
     const distSource = readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8");
-    const snapshot = parseSnapshotEnvelope(publicSource, "promotion happy snapshot");
+    const snapshot = parseCurrentSnapshotEnvelope(publicSource, "promotion happy snapshot");
     expect(publicSource === distSource, "public/dist snapshots are not byte-identical");
     expect(snapshot.capabilities.filter((item) => item.id === handoff.formal_id).length === 1
       && snapshot.evolution.every((item) => item.id !== handoff.candidate_id), "formal card was duplicated or candidate remained visible");
@@ -261,8 +261,8 @@ try {
       expect(cliCall("persist", root, action).decision === "persistent-learning-promotion-planned", `${label} fault plan did not persist`);
       const exactPreimage = truthTreeDigest(root);
       const faultAt = chooseStep(prepared.stepCount);
-      const interrupted = cliCall("execute", root, action, { AGENT_CARRY_PROMOTION_TEST_FAULTS: "1",
-        AGENT_CARRY_PROMOTION_FAIL_AFTER_STEP: String(faultAt) });
+      const interrupted = cliCall("execute", root, action, { AI_CARRY_PROMOTION_TEST_FAULTS: "1",
+        AI_CARRY_PROMOTION_FAIL_AFTER_STEP: String(faultAt) });
       expect(interrupted.decision === "persistent-learning-promotion-execution-denied", `${label} fault was not injected`);
       const inspected = cliCall("inspect", root, action);
       expect(["persistent-learning-promotion-resume-or-rollback-required", "persistent-learning-promotion-final"].includes(inspected.decision),
@@ -327,8 +327,8 @@ try {
 
   check("promotion-projection-residue-cleanup-is-bounded", () => {
     const root = cloneFixture(seed, "projection-cleanup"); const parent = dirname(root);
-    const residue = join(parent, ".agent-carry-promotion-projection-owned-test"); mkdirSync(residue);
-    writeFileSync(join(residue, ".agent-carry-promotion-projection-owner.json"), `${JSON.stringify({ schema_version: 1,
+    const residue = join(parent, ".ai-carry-promotion-projection-owned-test"); mkdirSync(residue);
+    writeFileSync(join(residue, ".ai-carry-promotion-projection-owner.json"), `${JSON.stringify({ schema_version: 1,
       record_type: "learning-promotion-projection-residue", repository_binding: sha256(root.normalize("NFC")),
       created_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString() })}\n`, "utf8");
     linkSync(join(root, "assistant.toml"), join(residue, "assistant-copy.toml"));
@@ -336,7 +336,7 @@ try {
     expect(cleaned.decision === "learning-promotion-projection-cleanup-complete" && cleaned.removedCount === 1
       && !existsSync(residue) && existsSync(join(root, "assistant.toml")), "owned stale projection was not safely removed");
     const outside = join(parent, "outside-sentinel"); mkdirSync(outside); writeFileSync(join(outside, "keep.txt"), "keep", "utf8");
-    const forged = join(parent, ".agent-carry-promotion-projection-forged-link"); symlinkSync(outside, forged, "junction");
+    const forged = join(parent, ".ai-carry-promotion-projection-forged-link"); symlinkSync(outside, forged, "junction");
     const denied = cleanupPromotionProjectionResidue(root, { now: new Date() });
     expect(denied.decision === "learning-promotion-projection-cleanup-denied" && existsSync(join(outside, "keep.txt")),
       "forged projection link was followed or deleted");
@@ -353,7 +353,7 @@ try {
     const planned = preparePersistentPromotionFromHandoff(plannedRoot, handoff, { now: old });
     const action = { transaction_id: planned.transactionId, transaction_nonce: planned.transactionNonce };
     expect(cliCall("persist", plannedRoot, action).decision === "persistent-learning-promotion-planned", "planned evidence fixture did not persist");
-    cliCall("execute", plannedRoot, action, { AGENT_CARRY_PROMOTION_TEST_FAULTS: "1", AGENT_CARRY_PROMOTION_FAIL_AFTER_STEP: "1" });
+    cliCall("execute", plannedRoot, action, { AI_CARRY_PROMOTION_TEST_FAULTS: "1", AI_CARRY_PROMOTION_FAIL_AFTER_STEP: "1" });
     const preserved = cleanupPersistentPromotionTransactions(plannedRoot, { now: new Date() });
     expect(preserved.decision === "persistent-learning-promotion-cleanup-recovery-required" && preserved.preservedCount === 1
       && existsSync(join(plannedRoot, ".assistant-local/learning-promotion-transactions", planned.transactionId)),

@@ -18,7 +18,7 @@ learning_signal_items = []
 host_memory_deltas = []
 
 [persistence]
-agent_carry_written = false
+ai_carry_written = false
 host_memory_written = false
 written_refs = []
 claim_basis = ""

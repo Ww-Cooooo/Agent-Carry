@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
-const SCROLL_STATE_EVENT = "agent-carry:scroll-state";
+const SCROLL_STATE_EVENT = "ai-carry:scroll-state";
 const IDLE_FRAME_INTERVAL = 1000 / 60;
 const SCROLL_FRAME_INTERVAL = 1000 / 30;
 
@@ -105,7 +105,7 @@ function createCoreTexture() {
   ctx.textBaseline = "middle";
   ctx.font = '600 17px "Space Grotesk", "Segoe UI", sans-serif';
   ctx.fillStyle = "rgba(33, 63, 124, 0.86)";
-  ctx.fillText("Agent Carry", 128, 130);
+  ctx.fillText("AI Carry", 128, 130);
   ctx.restore();
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -869,7 +869,7 @@ export default function Core({
           <div className="core-orbit-fallback__system">
             <span className="core-orbit-fallback__ring core-orbit-fallback__ring--one" />
             <span className="core-orbit-fallback__ring core-orbit-fallback__ring--two" />
-            <span className="core-orbit-fallback__core">Agent Carry</span>
+            <span className="core-orbit-fallback__core">AI Carry</span>
             {planets.map((planet, index) => (
               <span
                 key={planet.key}

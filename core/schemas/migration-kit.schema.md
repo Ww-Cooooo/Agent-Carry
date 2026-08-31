@@ -1,6 +1,8 @@
 # 完整迁移套件 Schema 2.0
 
-本 Schema 只在用户明确要求把整个 Agent Carry 迁移到另一台电脑、生成完整迁移套件或恢复该套件时读取。普通启动、同一台电脑换 Agent、GitHub 私有仓库脱敏备份和单独的日常隐私读取都不加载它。
+本 Schema 只在用户明确要求把整个 AI Carry 迁移到另一台电脑、生成完整迁移套件或恢复该套件时读取。普通启动、同一台电脑换 Agent、GitHub 私有仓库脱敏备份和单独的日常隐私读取都不加载它。
+
+2.0.0 新生成的套件、主体包、隐私分卷和目录名使用本文件列出的 AI Carry 规范名称。已经生成的 Agent Carry 1.x 套件仍是外部不可信输入：只有旧 Schema、摘要、路径、实例身份和内容边界全部通过时，才把逐字登记的旧 record／package 类型和旧 `body-package/Agent Carry` 根作为迁移兼容别名读取。兼容读取不改原包，不跳过摘要，不执行脚本，也不把未知类型猜成旧包；恢复后的新派生输出使用 AI Carry 名称。
 
 它固定跨宿主可理解的文件结构、覆盖证明、分卷方式、校验顺序和失败条件，不绑定 Windows、macOS、Linux、某个 Agent、压缩工具或按钮位置。生成与恢复必须同时遵守 `core/protocols/PRIVACY_IMPORT_EXPORT_SOP.md` 与 `core/schemas/private-asset-catalog.schema.md`，不能临时发明另一套格式。
 
@@ -8,17 +10,17 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 
 ## 1. 套件根目录
 
-一次迁移产生一个全新目录 `Agent-Carry-Migration-<kit-id>/`。小型实例仍正好包含五个文件：
+一次迁移产生一个全新目录 `AI-Carry-Migration-<kit-id>/`。旧版已存在的 `Agent-Carry-Migration-*` 目录仍可读取，但新迁移不得继续生成旧品牌目录名。小型实例仍正好包含五个文件：
 
 1. `START-RESTORE.md`
 2. `MIGRATION-MANIFEST.toml`
 3. `CHECKSUMS.sha256`
-4. `agent-carry-body-<kit-id>.zip`
-5. `agent-carry-private-<kit-id>-part-0001-of-0001.zip`
+4. `ai-carry-body-<kit-id>.zip`
+5. `ai-carry-private-<kit-id>-part-0001-of-0001.zip`
 
 当私密内容需要分卷时，第 5 项变成一个或多个连续编号的私密 ZIP；因此根目录文件总数固定为 `4 + private_part_count`。不得把日志、扫描报告、密码、临时解压目录或第三个混合包放进套件。顶层只允许普通文件，不允许目录、链接、快捷方式、重解析点或未在清单中声明的附件。
 
-单独的 Schema 2.0 隐私导出不是残缺的完整迁移套件。它固定生成 `Agent-Carry-Private-Export-<export-id>/`，根目录只含 `PRIVATE-EXPORT-MANIFEST.toml`、`CHECKSUMS.sha256` 和一个或多个连续私密分卷，文件总数为 `2 + part_count`。顶层清单由 `core/templates/migration/PRIVATE-EXPORT-MANIFEST.template.toml` 生成，`record_type = "agent-carry-private-export"`；字段与完整迁移 `[private_package]` 相同，并额外记录 `export_id`、创建时间、源实例与产品／资产 Schema。`coverage_omissions` 在顶层使用 TOML 数组表，在各卷使用 JSON 数组，规范化后必须表达同一组缺项。私密导出的校验文件依次校验顶层清单和全部分卷，条目数为 `1 + part_count`，不校验自身。导入方据根清单和分卷内部 `export_scope = "private-only"` 区分它，不把它显示成完整迁移。
+单独的 Schema 2.0 隐私导出不是残缺的完整迁移套件。它固定生成 `AI-Carry-Private-Export-<export-id>/`；旧版已存在的 `Agent-Carry-Private-Export-*` 只作为读取兼容名。根目录只含 `PRIVATE-EXPORT-MANIFEST.toml`、`CHECKSUMS.sha256` 和一个或多个连续私密分卷，文件总数为 `2 + part_count`。顶层清单由 `core/templates/migration/PRIVATE-EXPORT-MANIFEST.template.toml` 生成，`record_type = "ai-carry-private-export"`；字段与完整迁移 `[private_package]` 相同，并额外记录 `export_id`、创建时间、源实例与产品／资产 Schema。`coverage_omissions` 在顶层使用 TOML 数组表，在各卷使用 JSON 数组，规范化后必须表达同一组缺项。私密导出的校验文件依次校验顶层清单和全部分卷，条目数为 `1 + part_count`，不校验自身。导入方据根清单和分卷内部 `export_scope = "private-only"` 区分它，不把它显示成完整迁移。
 
 `kit-id` 使用不含真实姓名的随机稳定 ID。所有文件名必须是单一根目录文件名，不得含路径分隔符、绝对路径、`..` 或控制字符。
 
@@ -27,7 +29,7 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 顶层字段：
 
 - `schema_version = 2`
-- `record_type = "agent-carry-complete-migration"`
+- `record_type = "ai-carry-complete-migration"`
 - `kit_id`、`created_at`、`source_instance_id`、`product_version`、`asset_schema`
 - `private_asset_catalog_schema = 1`
 - `github_private_backup = false`
@@ -60,9 +62,9 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 主体 ZIP 只允许：
 
 - `body-package/manifest.json`
-- `body-package/Agent Carry/<relative-path>`
+- `body-package/AI Carry/<relative-path>`
 
-内部 JSON 清单至少包含 `schema_version`、`package_type = "agent-carry-body"`、`kit_id`、`source_instance_id`、`product_version`、`archive_root`、`file_count`、`uncompressed_bytes`、`credentials_included = false` 和 `entries`。
+内部 JSON 清单至少包含 `schema_version`、`package_type = "ai-carry-body"`、`kit_id`、`source_instance_id`、`product_version`、`archive_root`、`file_count`、`uncompressed_bytes`、`credentials_included = false` 和 `entries`。
 
 每个 `entries` 项包含 `relative_path`、`size` 与 `sha256`。相对路径必须来自实例正式组件允许集合，不能是绝对路径、`..`、重复规范化路径、链接、Git 元数据、本地隐私正文、维护者材料、缓存、日志、回滚副本、构建依赖或无关工具。清单项与 ZIP 内普通正文一一对应；解压后的根目录必须仍能通过 `BOOTSTRAP.md`、`assistant.toml`、`instance/manifest.toml` 和模板正式地图识别。
 
@@ -78,7 +80,7 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 - `private-package/assets/<collection-id>/<relative-path>`（完整存储的逻辑文件）
 - `private-package/chunks/<object-id>/<chunk-number>.bin`（超大逻辑文件的分块）
 
-每个分卷内部清单至少包含 `schema_version = 2`、`package_type = "agent-carry-private-part"`、`export_scope`、源实例 ID、当前分卷编号／总数、目录修订号／摘要、`catalog_snapshot`、`coverage_snapshot`、`coverage_status`、`coverage_omissions`、本卷逻辑出现数／本卷拥有数／存储条目数、展开字节、`credentials_included = false` 和 `entries`。身份字段由范围唯一决定：`complete-migration` 分卷必须有且只有 `kit_id`，并与顶层完整迁移清单一致；`private-only` 分卷必须有且只有 `export_id`，并与 `PRIVATE-EXPORT-MANIFEST.toml` 顶层 `export_id` 一致。二者不得同时出现，也不得用泛化 `transfer_id` 代替。全部分卷中的 `catalog_snapshot`、`coverage_snapshot`、`coverage_status` 和 `coverage_omissions` 必须逐字节规范化一致，避免目标设备只拿到文件却丢失集合名称、用途、恢复结构、导出一致性证据或已批准缺项。
+每个分卷内部清单至少包含 `schema_version = 2`、`package_type = "ai-carry-private-part"`、`export_scope`、源实例 ID、当前分卷编号／总数、目录修订号／摘要、`catalog_snapshot`、`coverage_snapshot`、`coverage_status`、`coverage_omissions`、本卷逻辑出现数／本卷拥有数／存储条目数、展开字节、`credentials_included = false` 和 `entries`。身份字段由范围唯一决定：`complete-migration` 分卷必须有且只有 `kit_id`，并与顶层完整迁移清单一致；`private-only` 分卷必须有且只有 `export_id`，并与 `PRIVATE-EXPORT-MANIFEST.toml` 顶层 `export_id` 一致。二者不得同时出现，也不得用泛化 `transfer_id` 代替。全部分卷中的 `catalog_snapshot`、`coverage_snapshot`、`coverage_status` 和 `coverage_omissions` 必须逐字节规范化一致，避免目标设备只拿到文件却丢失集合名称、用途、恢复结构、导出一致性证据或已批准缺项。
 
 - `export_scope = "complete-migration"` 时，`coverage_status` 固定为 `complete`，`coverage_omissions = []`，`kit_id` 与顶层一致，并且分卷必须由顶层完整迁移清单声明。
 - `export_scope = "private-only"` 时，可以为 `complete` 或 `partial-approved`，`export_id` 与单独隐私导出顶层一致。`partial-approved` 只表示用户明确选择的单独隐私导出，不得被恢复方显示成“完整换机迁移”。
@@ -88,7 +90,7 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 
 `catalog_snapshot` 是迁移专用的便携逻辑目录，不是旧设备 `bindings.toml` 的副本。它包含：
 
-- `schema_version = 1`、`record_type = "agent-carry-private-asset-catalog-export"`、源实例 ID 和目录修订号；
+- `schema_version = 1`、`record_type = "ai-carry-private-asset-catalog-export"`、源实例 ID 和目录修订号；
 - 按 `id` 排序的集合；每项只保留 `id`、低敏 `title`／`purpose`、`source_kind_at_export`、`include_mode`、`include`／`exclude`、`future_files`、`restore_mode`、`restore_relative_root`、`risk_tier`、`approved_by_user`、`approval_ref` 和 `status`；
 - `approval_ref` 只能是已验证存在、与本次批准范围一致的稳定事件或正式资产 ID，只允许 ASCII 字母、数字、点、冒号、下划线和连字符，最长 128 字符；不能把用户原话、路径、姓名或时间戳塞进该字段；
 - 不包含 `binding_id`、`source_path`、设备名、用户名、盘符、旧电脑绝对路径、更新时间或审批正文。
@@ -119,7 +121,7 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 4. 每个分卷都有独立清单和顶层摘要；任一分卷缺失或失败只允许报告不完整，不能恢复其余内容后声称完整成功。
 5. 即使没有可迁移隐私正文，也生成一个只有内部清单的 `part-0001-of-0001.zip`，`entry_count = 0`；内部清单仍携带经过对账的空或仅含 0 项集合的 `catalog_snapshot`，覆盖状态仍需由对账得出。
 
-绝对源路径和当前设备 `bindings.toml` 不进入任何分卷。目标设备默认把各集合恢复为 Agent Carry 管理副本；用户以后明确选择外部位置时再创建新设备绑定。
+绝对源路径和当前设备 `bindings.toml` 不进入任何分卷。目标设备默认把各集合恢复为 AI Carry 管理副本；用户以后明确选择外部位置时再创建新设备绑定。
 
 ## 5. 覆盖证明
 
@@ -174,10 +176,10 @@ Schema 2.0 在 1.0 的“主体包与隐私包分开”基础上增加私密资�
 
 Schema 1.0 的合法套件仍按以下完整旧契约读取；不能用“原有规则”代替可执行字段，也不能要求旧套件重打包：
 
-1. 根目录正好包含 `START-RESTORE.md`、`MIGRATION-MANIFEST.toml`、`CHECKSUMS.sha256`、`agent-carry-body-<kit-id>.zip` 和 `agent-carry-private-<kit-id>.zip` 五个普通文件。额外条目、目录、链接和占位符均失败关闭。
-2. 顶层清单必须有 `schema_version = 1`、`record_type = "agent-carry-complete-migration"`、`kit_id`、`created_at`、`source_instance_id`、`product_version`、`asset_schema`、`github_private_backup`、`credentials_included = false`、`included_categories`、`excluded_categories` 与 `[asset_counts]`。`[body_package]` 必须有 `file`、`sha256`、`archive_root = "body-package/Agent Carry"`、`manifest_path = "body-package/manifest.json"`、`file_count`、`uncompressed_bytes`、`private_content_included = false`、`credentials_included = false`；`[private_package]` 必须有单一 `file`、`sha256`、`manifest_path = "private-package/manifest.json"`、`entry_count`、`uncompressed_bytes`、`credentials_included = false`。`[restore]` 必须逐项为 `entry = "START-RESTORE.md"`、`checksum_file = "CHECKSUMS.sha256"`、`target_existing_policy = "preview-before-overwrite"`、`secrets = "reconfigure-on-target-with-host-secret-mechanism"` 和 `host_attachment = "after-restore-rebuild-and-validation"`；不得依赖仓库外或已经被 2.0 替换的旧模板解释这些字段。
-3. 主体 ZIP 只允许 `body-package/manifest.json` 与 `body-package/Agent Carry/<relative-path>`。内部清单必须有 `schema_version = 1`、`package_type = "agent-carry-body-migration"`、`package_id`、套件／实例／产品／资产 Schema／创建时间、固定 `archive_root`、资产计数、两个 `false` 安全标志和 `entries`；每项为 `relative_path`、`size`、`sha256`，与实际普通文件一一对应。
-4. 隐私 ZIP 只允许 `private-package/manifest.json` 与 `private-package/assets/<relative-path>`。内部清单必须有 `schema_version = 1`、`package_type = "agent-carry-private-migration"`、`package_id`、套件／实例／产品／资产 Schema／创建时间、`credentials_included = false` 和 `entries`；每项为 `relative_path`、位于 `.assistant-private/assets/` 下的 `restore_path`、稳定 `asset_ref`、`size`、`sha256`、`conflict_policy = "preview-before-overwrite"`，与实际普通文件一一对应。空包只含清单和空数组。
+1. 根目录正好包含 `START-RESTORE.md`、`MIGRATION-MANIFEST.toml`、`CHECKSUMS.sha256`、`ai-carry-body-<kit-id>.zip` 和 `ai-carry-private-<kit-id>.zip` 五个普通文件。额外条目、目录、链接和占位符均失败关闭。
+2. 顶层清单必须有 `schema_version = 1`、`record_type = "ai-carry-complete-migration"`、`kit_id`、`created_at`、`source_instance_id`、`product_version`、`asset_schema`、`github_private_backup`、`credentials_included = false`、`included_categories`、`excluded_categories` 与 `[asset_counts]`。`[body_package]` 必须有 `file`、`sha256`、`archive_root = "body-package/AI Carry"`、`manifest_path = "body-package/manifest.json"`、`file_count`、`uncompressed_bytes`、`private_content_included = false`、`credentials_included = false`；`[private_package]` 必须有单一 `file`、`sha256`、`manifest_path = "private-package/manifest.json"`、`entry_count`、`uncompressed_bytes`、`credentials_included = false`。`[restore]` 必须逐项为 `entry = "START-RESTORE.md"`、`checksum_file = "CHECKSUMS.sha256"`、`target_existing_policy = "preview-before-overwrite"`、`secrets = "reconfigure-on-target-with-host-secret-mechanism"` 和 `host_attachment = "after-restore-rebuild-and-validation"`；不得依赖仓库外或已经被 2.0 替换的旧模板解释这些字段。
+3. 主体 ZIP 只允许 `body-package/manifest.json` 与 `body-package/AI Carry/<relative-path>`。内部清单必须有 `schema_version = 1`、`package_type = "ai-carry-body-migration"`、`package_id`、套件／实例／产品／资产 Schema／创建时间、固定 `archive_root`、资产计数、两个 `false` 安全标志和 `entries`；每项为 `relative_path`、`size`、`sha256`，与实际普通文件一一对应。
+4. 隐私 ZIP 只允许 `private-package/manifest.json` 与 `private-package/assets/<relative-path>`。内部清单必须有 `schema_version = 1`、`package_type = "ai-carry-private-migration"`、`package_id`、套件／实例／产品／资产 Schema／创建时间、`credentials_included = false` 和 `entries`；每项为 `relative_path`、位于 `.assistant-private/assets/` 下的 `restore_path`、稳定 `asset_ref`、`size`、`sha256`、`conflict_policy = "preview-before-overwrite"`，与实际普通文件一一对应。空包只含清单和空数组。
 5. `CHECKSUMS.sha256` 正好四行，依次校验入口、顶层清单、主体 ZIP、隐私 ZIP；每行仍是 64 位小写摘要、两个空格和单一文件名。顶层两个 ZIP 摘要、校验表和实际文件必须三方一致；校验文件不校验自身。
 
 通过以上身份、路径、计数、展开量、链接、秘密与摘要检查后，把旧隐私条目视为 `legacy-private-ref`，只为实际命中的条目渐进建立目录项；不伪造 2.0 的历史覆盖证明，而是报告 `coverage_status = "legacy-manifest-only"`。缺少 2.0 的目录、分卷、便携审批引用或覆盖字段本身不是拒绝合法 1.0 套件的理由。

@@ -2,6 +2,15 @@ schema_version = 1
 map_id = "assistant-maintenance"
 
 [[routes]]
+id = "product-identity"
+summary = "看到 Agent Carry 旧名时先按已登记兼容身份继续；只有当前产品自有输出仍写旧身份、名称证据冲突或明确审查改名时，才加载产品身份协议并局部修正，不因单个旧名让整个 Agent 停止。"
+triggers = ["产品改名", "Agent Carry 旧名", "AI Carry 名称冲突", "旧品牌残留", "仓库名没改", "新输出仍写旧名"]
+target = "core/protocols/PRODUCT_IDENTITY.md"
+state = "on-demand"
+minimum_level = 1
+confirmation = "none"
+
+[[routes]]
 id = "component-change"
 summary = "正式新增、修改、删除、重命名、移动、迁移、升级或发布前，先读取共同质量原则；协议再按目标类型与风险决定模型等级，稳定低风险实例资产不会因此一律要求 Level 3。"
 triggers = ["修改助手", "修改正式内容", "新增功能", "删除功能", "移动文件", "重命名组件", "迁移正式内容", "准备升级", "准备发布"]
@@ -12,7 +21,7 @@ confirmation = "target-and-risk-dependent-before-durable-change"
 
 [[routes]]
 id = "territory-terminology"
-summary = "新增、翻译、审查或发布涉及国家、地区、行政区划、地图和旗帜的 Agent Carry 自有内容时，使用固定中英文称谓并保护用户原文。"
+summary = "新增、翻译、审查或发布涉及国家、地区、行政区划、地图和旗帜的 AI Carry 自有内容时，使用固定中英文称谓并保护用户原文。"
 triggers = ["地域称谓", "中国台湾", "中国香港", "中国澳门", "中英文地区名称", "国家和地区选择器", "地图", "旗帜", "版图表达"]
 target = "core/protocols/TERRITORY_TERMINOLOGY.md"
 state = "maintenance-only"

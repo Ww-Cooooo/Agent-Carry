@@ -114,7 +114,7 @@ summary = ""
 - `task_id`：运行时根据受信宿主提供的稳定任务依据生成的不透明 ID，调用者不能直接填写。它决定是否增加 `independent_event_count`；同一宿主任务的重复修正、重试与原样回传必须生成同一 ID。宿主无法提供稳定任务依据时，该观察必须标为非独立，不推进计数。
 - `context_id`：运行时根据受信宿主提供的实质使用情境依据生成的不透明 ID，与任务 ID 分开去重。一个新任务观察可以发生在已有情境中，因此可以增加任务观察数但不能制造新的情境；候选的 `distinct_context_count` 只按不同 `context_id` 去重。这个字段同样不是任务结果验证。
 - `source_ref`：低敏证据回执 ID，不是文件路径、原始对话或外部正文。当前用户消息只作为宿主确认过的观察证据，不能增加 `successful_event_count` 或 `failed_event_count`；只有闭合的结果验证机制才能改变验证成功/失败计数。
-- `event_source` 与 `source_kind` 的规范枚举以 `HOST_INTEGRATION` 为真源：`current-user`、`agent-carry-asset`、`connected-host-observation`、`host-collaborative-memory`、`model-inference`、`external-content`、`unknown`。新捕获、新宿主回执和 proposed bytes 只能写这些值。
+- `event_source` 与 `source_kind` 的规范枚举以 `HOST_INTEGRATION` 为真源：`current-user`、`ai-carry-asset`、`connected-host-observation`、`host-collaborative-memory`、`model-inference`、`external-content`、`unknown`。新捕获、新宿主回执和 proposed bytes 只能写这些值。
 - 1.3 旧记录中的 `connected-host-task` 只可在读取已有 signal 时单向归一化为 `connected-host-observation`；旧拼写 `host-collaboration-memory` 同样只可单向归一化为 `host-collaborative-memory`。旧别名不能由公开输入或新 producer 接受，不能再次写回，也不能作为第二套长期语义；同一事件用旧／新名字出现时按规范值去重。
 - `relation`：`supporting`、`contradicting`、`neutral` 或 `superseding`。
 

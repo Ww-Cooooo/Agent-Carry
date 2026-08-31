@@ -1,7 +1,7 @@
 // Build-time portability adapter.
 // It inlines Vite's generated module and stylesheet so dashboard/dist/index.html
 // works under file:// on Windows, macOS and Linux without a local server.
-// snapshot.js remains external because Agent Carry replaces that small derivative.
+// snapshot.js remains external because AI Carry replaces that small derivative.
 
 import { readFile, unlink, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
@@ -32,8 +32,8 @@ const safeInlineJs = js.replaceAll('</script', '<\\/script')
 html = html
   // Function replacements are required: generated CSS/JS can contain `$&`,
   // which String.replace would otherwise expand back into the matched tag.
-  .replace(styleMatch[0], () => `<style data-agent-carry-inline>\n${css}\n</style>`)
-  .replace(scriptMatch[0], () => `<script type="module" data-agent-carry-inline>\n${safeInlineJs}\n</script>`)
+  .replace(styleMatch[0], () => `<style data-ai-carry-inline>\n${css}\n</style>`)
+  .replace(scriptMatch[0], () => `<script type="module" data-ai-carry-inline>\n${safeInlineJs}\n</script>`)
 
 // Vite preserves the checkout's shell line endings while generated assets use
 // LF. Normalize the final single-file artifact so Windows builds do not create

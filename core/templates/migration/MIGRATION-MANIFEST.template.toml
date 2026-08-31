@@ -1,5 +1,5 @@
 schema_version = 2
-record_type = "agent-carry-complete-migration"
+record_type = "ai-carry-complete-migration"
 kit_id = "{{KIT_ID}}"
 created_at = "{{CREATED_AT}}"
 source_instance_id = "{{SOURCE_INSTANCE_ID}}"
@@ -29,7 +29,7 @@ excluded_categories = [
 [body_package]
 file = "{{BODY_PACKAGE_FILE}}"
 sha256 = "{{BODY_PACKAGE_SHA256}}"
-archive_root = "body-package/Agent Carry"
+archive_root = "body-package/AI Carry"
 manifest_path = "body-package/manifest.json"
 file_count = 0 # 生成时替换为 {{BODY_FILE_COUNT}} 整数
 uncompressed_bytes = 0 # 生成时替换为 {{BODY_UNCOMPRESSED_BYTES}} 整数

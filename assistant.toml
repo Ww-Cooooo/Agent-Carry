@@ -1,12 +1,27 @@
 schema_version = 1
-product_id = "agent-carry"
-product_name = "Agent Carry"
-product_version = "1.4.8"
-core_version = "1.4.8"
+product_id = "ai-carry"
+product_name = "AI Carry"
+product_version = "2.0.0"
+core_version = "2.0.0"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
 disposable_derivatives = ["startup-capsule", "signal-map", "time-trigger-map", "local-index", "cache", "vector-store", "dashboard-snapshot", "report", "log", "platform-memory", "session-receipt", "task-capsule", "return-envelope"]
+
+[identity_compatibility]
+current_component_interface = "ai-carry.instance-component@1"
+legacy_product_ids = ["agent-carry"]
+legacy_product_names = ["Agent Carry"]
+legacy_component_interfaces = ["agent-carry.instance-component@1"]
+legacy_professional_extension_record_types = ["agent-carry-professional-extension"]
+legacy_private_package_types = ["agent-carry-private-migration"]
+legacy_host_sources = ["agent-carry"]
+legacy_host_access_scopes = ["agent-carry-root"]
+legacy_snapshot_globals = ["AGENT_CARRY_SNAPSHOT", "AGENT_CARRY_IS_REAL", "AGENT_CARRY_DEMO"]
+repository = "https://github.com/Ww-Cooooo/Agent-Carry"
+repository_slug_state = "legacy-slug-until-separately-authorized-rename"
+read_policy = "accept-known-legacy-identities-with-bounded-migration-or-alias"
+write_policy = "new-product-owned-output-uses-ai-carry-identities"
 
 [bootstrap]
 entry = "BOOTSTRAP.md"
@@ -126,11 +141,11 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-1.4.8.toml"
+release_manifest = "core/upgrade/release-manifest-2.0.0.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"
 instance_compatibility_protocol = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"
 instance_compatibility_load_policy = "only-before-and-after-a-durable-instance-change-first-adoption-upgrade-migration-or-repair; never-for-read-only-ordinary-startup-or-normal-use"
 territory_terminology = "core/protocols/TERRITORY_TERMINOLOGY.md"
-territory_terminology_load_policy = "only-when-agent-carry-authored-content-or-publication-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping; never-rewrite-user-or-source-text"
+territory_terminology_load_policy = "only-when-ai-carry-authored-content-or-publication-mentions-geography-jurisdiction-maps-flags-or-country-region-grouping; never-rewrite-user-or-source-text"

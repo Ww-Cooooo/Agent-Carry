@@ -1,5 +1,5 @@
 schema_version = 1
-record_type = "agent-carry-instance-component"
+record_type = "ai-carry-instance-component"
 component_id = "component.replace-me"
 instance_id = ""
 kind = "instance-module"
@@ -19,7 +19,7 @@ unclassified_policy = "stop-and-preview"
 
 [interfaces]
 provides = []
-requires = ["agent-carry.instance-component@1"]
+requires = ["ai-carry.instance-component@1"]
 
 [upgrade]
 criticality = "optional"

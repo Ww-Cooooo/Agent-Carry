@@ -210,7 +210,7 @@ function resolveIndex(repository) {
   for (const part of ["instance", "evolution", "index.toml"]) { cursor = resolve(cursor, part); const info = lstatSync(cursor); if (info.isSymbolicLink()) fail("index path crosses a link or reparse point"); }
   if (!lstatSync(cursor).isFile()) fail("index is not a regular file");
   const fromRoot = relative(root, realpathSync(cursor));
-  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail("index escapes Agent Carry");
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`)) fail("index escapes AI Carry");
   return cursor;
 }
 
@@ -385,7 +385,7 @@ export function loadCandidateIndex(repository, { instanceContext, explicitReques
 export function loadTrustedPromotionCandidateRecord(repository, { instanceContext, candidateId } = {}) {
   if (!stableAssetId.test(candidateId ?? "")) fail("promotion candidate ID is invalid");
   const trustedIdentity = readTrustedInstanceIdentity(repository, instanceContext);
-  if (!trustedIdentity || trustedIdentity.manifestState !== "instance") fail("promotion requires a trusted instantiated Agent Carry");
+  if (!trustedIdentity || trustedIdentity.manifestState !== "instance") fail("promotion requires a trusted instantiated AI Carry");
   const indexRead = readIndexSnapshot(repository);
   const parsedIndex = parseArrayTableDocument(indexRead.text, "candidates", "candidate index");
   const index = { ...parsedIndex.root, candidates: parsedIndex.entries };

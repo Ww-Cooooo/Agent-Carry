@@ -97,7 +97,7 @@ includesAll(lifecycle, [
 ], "asset lifecycle");
 
 includesAll(evolutionGuide, [
-  "Agent Carry 负责在有价值的小阶段或任务结束时发现重复习惯、可复用方法和重要纠正",
+  "AI Carry 负责在有价值的小阶段或任务结束时发现重复习惯、可复用方法和重要纠正",
   "用户无需回答“这是记忆、能力还是 SOP”",
   "如果有真实价值，Agent 不应等待用户准确说“请形成 SOP”",
   "只有正式资产写入、回读和日常说法召回都通过",

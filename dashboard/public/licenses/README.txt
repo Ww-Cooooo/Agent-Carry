@@ -1,4 +1,4 @@
-Agent Carry dashboard license bundle
+AI Carry dashboard license bundle
 ====================================
 
 This directory is copied into dashboard/dist during every production build, so

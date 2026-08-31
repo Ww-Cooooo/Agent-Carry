@@ -75,13 +75,13 @@ export function SourceText({
     {
       className,
       translate: "no",
-      "data-agent-carry-source-text": "true",
+      "data-ai-carry-source-text": "true",
     },
     children,
   );
 }
 
-Object.defineProperty(SourceText, "agentCarrySourceText", { value: true });
+Object.defineProperty(SourceText, "aiCarrySourceText", { value: true });
 
 export function LogoMark({ className = "" }: { className?: string }) {
   return (
@@ -170,7 +170,7 @@ const STATUS_HELP: Record<string, string> = {
   "稍后处理": "现在不处理，之后仍可回来继续。",
   "待观察": "目前证据还不够，先保留观察。",
   "进行中": "这项内容正在处理。",
-  "暂不可用": "这个 Skill 当前不能使用，但其他 Skill 和 Agent Carry 主体不受影响。",
+  "暂不可用": "这个 Skill 当前不能使用，但其他 Skill 和 AI Carry 主体不受影响。",
   "本地草稿": "这个 Skill 仍是本地草稿，没有自动上传、发送或公开。",
   "可以分享": "这个本地 Skill 已通过当前检查；发送或公开仍需要你指定目标并授权。",
   "已启用": "这项习惯已经由你确认，并会在适用任务命中时按需沿用。",
@@ -311,7 +311,7 @@ export function CopyDialog({ state, onClose }: { state: CopyState; onClose: () =
     try {
       await navigator.clipboard.writeText(state.text);
     } catch {
-      document.getElementById("agent-carry-copy-text")?.focus();
+      document.getElementById("ai-carry-copy-text")?.focus();
     }
   }
 
@@ -327,8 +327,8 @@ export function CopyDialog({ state, onClose }: { state: CopyState; onClose: () =
             把它发给当前 Agent 即可。看板只负责生成指令，不会直接修改文件或执行操作。
           </DialogDescription>
         </DialogHeader>
-        <label className="sr-only" htmlFor="agent-carry-copy-text">要发送给 Agent 的完整指令</label>
-        <textarea id="agent-carry-copy-text" className="copy-dialog__text" readOnly value={state.text} />
+        <label className="sr-only" htmlFor="ai-carry-copy-text">要发送给 Agent 的完整指令</label>
+        <textarea id="ai-carry-copy-text" className="copy-dialog__text" readOnly value={state.text} />
         <DialogFooter className="copy-dialog__footer">
           <Button variant="outline" className="control-button" onClick={onClose}>关闭</Button>
           <Button className="control-button" onClick={() => void copyAgain()}>

@@ -65,17 +65,17 @@ function expectedCapsule(input: DashboardIdentityInput): DashboardIdentityCapsul
 
 function baseTitle(input: DashboardIdentityInput, kind: DashboardIdentityKind): string {
   if (getDashboardLocale() === "en") {
-    if (kind === "demo") return "Online demo · Agent Carry";
-    if (kind === "template") return "No assistant yet · Agent Carry";
-    if (kind === "unavailable") return "Dashboard data unavailable · Agent Carry";
+    if (kind === "demo") return "Online demo · AI Carry";
+    if (kind === "template") return "No assistant yet · AI Carry";
+    if (kind === "unavailable") return "Dashboard data unavailable · AI Carry";
     const displayName = input.displayName.trim() || "Unnamed assistant";
-    return `${displayName} · Agent Carry`;
+    return `${displayName} · AI Carry`;
   }
-  if (kind === "demo") return "在线演示 · Agent Carry";
-  if (kind === "template") return "尚未创建助手 · Agent Carry";
-  if (kind === "unavailable") return "看板数据不可用 · Agent Carry";
+  if (kind === "demo") return "在线演示 · AI Carry";
+  if (kind === "template") return "尚未创建助手 · AI Carry";
+  if (kind === "unavailable") return "看板数据不可用 · AI Carry";
   const displayName = input.displayName.trim() || "未命名助手";
-  return `${displayName} · Agent Carry`;
+  return `${displayName} · AI Carry`;
 }
 
 function readIncoming(url: URL): {

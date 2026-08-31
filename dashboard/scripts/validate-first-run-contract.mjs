@@ -10,7 +10,7 @@ import {
   normalizeFirstInstantiationRequest,
 } from "./first-instantiation-transaction.mjs";
 import { inspectInstanceComponentCompatibility, inspectInstanceComponents } from "./instance-component-contract.mjs";
-import { parseSnapshotEnvelope } from "./snapshot-envelope.mjs";
+import { parseCurrentSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { inspectStartupCapsule } from "./startup-capsule-contract.mjs";
 
@@ -91,7 +91,7 @@ requireFragments("BOOTSTRAP.md", [
 
 requireFragments("core/guides/instantiation-guide.md", [
   "## 安装成功后的第一条回复（强制）",
-  "接下来，我带你把这份空白模板创建成真正属于你的 Agent Carry 助手",
+  "接下来，我带你把这份空白模板创建成真正属于你的 AI Carry 助手",
   "首页右侧的“第一次使用”卡片",
   "两个入口会进入同一套创建流程",
   "第一次接触 Agent",
@@ -180,7 +180,7 @@ requireFragments("core/guides/first-use-execution-gates.md", [
   "不能只在原任务族上追加 `related_asset_ids`",
   "不能复用实例创建时间、旧快照时间或治理锚点",
   "不要填十五段空样板",
-  "这次方法尚未保存进 Agent Carry",
+  "这次方法尚未保存进 AI Carry",
 ]);
 
 requireFragments("core/guides/skill-init-guide.md", [
@@ -605,7 +605,7 @@ function requestForScenario(scenario) {
     },
     host: {
       label: scenario.hostLabel,
-      product_name: "Agent Carry isolated test",
+      product_name: "AI Carry isolated test",
       product_version: "1",
       model_name: "",
       model_selection_label: "",
@@ -926,7 +926,7 @@ overflow = false
 record_count = 0
 `);
   fixtureWrite(root, "instance/components/registry.toml", `schema_version = 1
-record_type = "agent-carry-instance-component-registry"
+record_type = "ai-carry-instance-component-registry"
 instance_id = "${scenario.instanceId}"
 adoption_state = "current"
 revision = 1
@@ -955,7 +955,7 @@ record_type = "host-profile"
 record_id = "${scenario.hostProfileId}"
 profile_id = "${scenario.hostProfileId}"
 instance_id = "${scenario.instanceId}"
-source = "agent-carry"
+source = "ai-carry"
 label = "${scenario.hostLabel}"
 status = "active"
 protocol_version = "1.0"
@@ -1099,7 +1099,7 @@ function verifyInstantiatedFixture(root, scenario) {
   const publicBytes = readFileSync(resolve(root, "dashboard/public/snapshot.js"));
   const distBytes = readFileSync(resolve(root, "dashboard/dist/snapshot.js"));
   integrationAssert(Buffer.compare(publicBytes, distBytes) === 0, "public and dist snapshots are not byte-identical");
-  const snapshot = parseSnapshotEnvelope(publicBytes.toString("utf8"), "first-instantiation integration snapshot");
+  const snapshot = parseCurrentSnapshotEnvelope(publicBytes.toString("utf8"), "first-instantiation integration snapshot");
   validateSnapshotSemantics(snapshot, "first-instantiation integration snapshot");
   const expectedIdentityRef = `ac-${sha256(Buffer.from(scenario.instanceId, "utf8")).slice(0, 12)}`;
   integrationAssert(snapshot.meta.state === "instance" && snapshot.meta.identity_ref === expectedIdentityRef
@@ -1132,7 +1132,7 @@ function verifyTemplateFixture(root, expectedTreeFingerprint, scenario) {
     "fault recovery did not restore the strict template capsule");
   const publicSource = fixtureRead(root, "dashboard/public/snapshot.js");
   const distSource = fixtureRead(root, "dashboard/dist/snapshot.js");
-  integrationAssert(publicSource === distSource && parseSnapshotEnvelope(publicSource, "restored template snapshot").meta.state === "template",
+  integrationAssert(publicSource === distSource && parseCurrentSnapshotEnvelope(publicSource, "restored template snapshot").meta.state === "template",
     "fault recovery did not restore both template snapshots");
 }
 
@@ -1185,7 +1185,7 @@ function executeFirstInstantiation(liveRoot, scenario, { injectAfterCapsule = fa
 }
 
 function validateRealFirstInstantiationChain() {
-  const integrationRoot = mkdtempSync(join(tmpdir(), "agent-carry-first-instantiation-integration-"));
+  const integrationRoot = mkdtempSync(join(tmpdir(), "ai-carry-first-instantiation-integration-"));
   let completed = false;
   try {
     const faultScenario = fixtureScenarios[0];

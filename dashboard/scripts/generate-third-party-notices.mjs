@@ -145,7 +145,7 @@ const inventory = {
 
 const divider = '='.repeat(78)
 const notices = [
-  'Agent Carry Dashboard - Production Dependency Notices',
+  'AI Carry Dashboard - Production Dependency Notices',
   '',
   'This file travels with the offline dashboard. It is generated from installed',
   'non-dev entries in package-lock.json. Exact dependency resolution is recorded in',

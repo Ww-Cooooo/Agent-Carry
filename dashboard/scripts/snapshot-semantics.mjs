@@ -83,7 +83,7 @@ function validateFormalItem(item, kind, label, path, requireMaturity) {
   object(item, label, path);
   exactKeys(item, formalItemKeys, ["id", "title", "summary", "status", "approval_state", "activation_basis", "risk_tier", "approved_by_user"], label, path);
   text(item.id, label, `${path}.id`, { max: 160 });
-  if (!stableId.test(item.id)) fail(label, `${path}.id is not a stable Agent Carry ID`);
+  if (!stableId.test(item.id)) fail(label, `${path}.id is not a stable AI Carry ID`);
   text(item.title, label, `${path}.title`, { max: 160 });
   text(item.summary, label, `${path}.summary`, { max: 1000 });
   if (Object.hasOwn(item, "subtype")) {
@@ -125,7 +125,7 @@ function validateCandidate(item, label, path) {
   object(item, label, path);
   exactKeys(item, candidateItemKeys, ["id", "title", "summary", "status", "source_summary", "target_kind", "next_step", "observation_state", "observation_basis"], label, path);
   text(item.id, label, `${path}.id`, { max: 160 });
-  if (!stableId.test(item.id)) fail(label, `${path}.id is not a stable Agent Carry ID`);
+  if (!stableId.test(item.id)) fail(label, `${path}.id is not a stable AI Carry ID`);
   text(item.title, label, `${path}.title`, { max: 160 });
   text(item.summary, label, `${path}.summary`, { max: 1000 });
   text(item.status, label, `${path}.status`, { max: 32 });

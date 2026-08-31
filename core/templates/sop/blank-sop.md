@@ -56,7 +56,7 @@ updated_at = ""
 
 - 基础模型：
 - 宿主 Agent：
-- Agent Carry：
+- AI Carry：
 - 用户必须决定的事项：
 
 # 6. 宿主能力需求与使用时验证

@@ -49,11 +49,11 @@ const PUBLIC_SNAPSHOT_REF = "dashboard/public/snapshot.js";
 const DIST_SNAPSHOT_REF = "dashboard/dist/snapshot.js";
 const DIRECT_KEEP_LEVEL_PURPOSE = "direct-learning-capture-formal-write";
 const PERSISTENT_CAPTURE_DIR = ".assistant-local/runtime/learning-capture";
-const PROJECTION_MARKER = ".agent-carry-projection-owner.json";
+const PROJECTION_MARKER = ".ai-carry-projection-owner.json";
 const PROJECTION_TTL_MS = 30 * 60_000;
 const projectionPrefixes = Object.freeze({
-  "direct-keep": ".agent-carry-direct-keep-projection-",
-  "candidate-snapshot": ".agent-carry-learning-capture-snapshot-",
+  "direct-keep": ".ai-carry-direct-keep-projection-",
+  "candidate-snapshot": ".ai-carry-learning-capture-snapshot-",
 });
 const projectionMarkerFields = new Set([
   "schema_version", "record_type", "repository_binding", "projection_kind", "created_at", "nonce", "state",
@@ -227,7 +227,7 @@ function decode(buffer, label) {
 function ensureInside(repositoryReal, absolute) {
   const rel = relative(repositoryReal, absolute);
   if (rel === "") return;
-  if (isAbsolute(rel) || rel === ".." || rel.startsWith(`..${sep}`)) throw new Error("target escaped the Agent Carry repository");
+  if (isAbsolute(rel) || rel === ".." || rel.startsWith(`..${sep}`)) throw new Error("target escaped the AI Carry repository");
   if (resolve(repositoryReal, rel) !== resolve(absolute)) throw new Error("target containment cannot be proved");
 }
 
@@ -626,7 +626,7 @@ function validateOwnedProjectionTree(root) {
 function readOwnedProjectionMarker(repositoryReal, projectionRoot, expectedKind = "") {
   const marker = readBoundedPhysicalJson(resolve(projectionRoot, PROJECTION_MARKER), 4096, "projection owner marker");
   if (!exactObject(marker, projectionMarkerFields) || marker.schema_version !== 1
-    || marker.record_type !== "agent-carry-learning-projection-owner" || marker.state !== "projection-only"
+    || marker.record_type !== "ai-carry-learning-projection-owner" || marker.state !== "projection-only"
     || marker.repository_binding !== sha256(repositoryReal.normalize("NFC"))
     || !Object.hasOwn(projectionPrefixes, marker.projection_kind)
     || (expectedKind !== "" && marker.projection_kind !== expectedKind)
@@ -645,7 +645,7 @@ function createOwnedProjectionRoot(repositoryReal, kind) {
   if (!prefix) throw new Error("projection kind is invalid");
   const projectionRoot = mkdtempSync(join(dirname(repositoryReal), prefix));
   const marker = {
-    schema_version: 1, record_type: "agent-carry-learning-projection-owner",
+    schema_version: 1, record_type: "ai-carry-learning-projection-owner",
     repository_binding: sha256(repositoryReal.normalize("NFC")), projection_kind: kind,
     created_at: new Date().toISOString(), nonce: randomBytes(12).toString("hex"), state: "projection-only",
   };
@@ -847,7 +847,7 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
     const repositoryReal = realpathSync(repository);
     const manifestRead = stableRead(repositoryReal, MANIFEST_REF, limits.manifest);
     const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
-    if (manifest.root.state !== "instance") throw new Error("an instantiated Agent Carry is required");
+    if (manifest.root.state !== "instance") throw new Error("an instantiated AI Carry is required");
     const checked = validateProposal(proposal);
     const observationTrust = trustedObservationReceipts.get(observationReceipt);
     if (!observationTrust || consumedObservationReceipts.has(observationReceipt)
@@ -1328,7 +1328,7 @@ function reminderStateDigest(state) {
 function loadReminderState(repositoryReal, candidateId) {
   const manifestRead = stableRead(repositoryReal, MANIFEST_REF, limits.manifest);
   const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
-  if (manifest.root.state !== "instance") throw new Error("an instantiated Agent Carry is required");
+  if (manifest.root.state !== "instance") throw new Error("an instantiated AI Carry is required");
   const controlRead = stableRead(repositoryReal, CONTROL_REF, limits.control);
   const control = validateControl(rootOnly(controlRead.text, "signal control"), manifest.root.instance_id);
   const indexRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, limits.candidateIndex);
@@ -1369,7 +1369,7 @@ export function shortlistLearningReminderCancellations(repository, { query } = {
       || containsForbiddenLocationReference(query)) throw new Error("a short non-sensitive natural-language reminder description is required");
     const manifestRead = stableRead(repositoryReal, MANIFEST_REF, limits.manifest);
     const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
-    if (manifest.root.state !== "instance") throw new Error("an instantiated Agent Carry is required");
+    if (manifest.root.state !== "instance") throw new Error("an instantiated AI Carry is required");
     const controlRead = stableRead(repositoryReal, CONTROL_REF, limits.control);
     const control = validateControl(rootOnly(controlRead.text, "signal control"), manifest.root.instance_id);
     const indexRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, limits.candidateIndex);
@@ -1524,7 +1524,7 @@ function candidateBody(proposal, { choice, formalDigest, sourceKind, resultState
     : choice === "remind"
       ? "用户选择以后提醒；当前建立可撤销观察候选与时间提醒，尚未成为正式资产。"
       : "用户选择先观察；当前只建立可撤销观察候选，尚未成为正式资产。";
-  return `# 核心主张与未来价值\n\n${proposal.claim_summary}\n\n# 来源、独立证据与限制\n\n${intended}\n主张来源类别为 ${sourceKind}，任务结果状态为 ${resultState}；保存授权来自随后单独的用户选择，两者没有混成同一条证据。该来源仍只是宿主断言，不是独立验证事实；首次只记录 1 个任务事件和 1 个情境，成功次数仍为 0。外部内容、其他 Agent 内容或未知来源不会因本记录被洗白成当前宿主事实。未保存对话正文、秘密或设备绝对路径。\n\n# 同类匹配与关系判断\n\n主题：${proposal.topic_key || "未命名主题"}；对象：${proposal.subject_key || "未命名对象"}。创建前比较了候选极小索引和可信正式资产地图；若存在同 ID 或高置信同类内容，事务会失败关闭。\n\n# 风险与建议动作\n\n建议风险为 ${proposal.proposed_risk_tier}。候选目标由 Agent Carry 内部归类为 ${proposal.target_kind}，用户不需要理解或选择内部资产类型。\n\n# 给用户的简短说明\n\n${proposal.summary}\n正式预览摘要：${formalDigest}。选择“不保存”或没有回答时不会生成本文件；选择提醒后可直接用日常语言说“取消刚才那条学习提醒”。`;
+  return `# 核心主张与未来价值\n\n${proposal.claim_summary}\n\n# 来源、独立证据与限制\n\n${intended}\n主张来源类别为 ${sourceKind}，任务结果状态为 ${resultState}；保存授权来自随后单独的用户选择，两者没有混成同一条证据。该来源仍只是宿主断言，不是独立验证事实；首次只记录 1 个任务事件和 1 个情境，成功次数仍为 0。外部内容、其他 Agent 内容或未知来源不会因本记录被洗白成当前宿主事实。未保存对话正文、秘密或设备绝对路径。\n\n# 同类匹配与关系判断\n\n主题：${proposal.topic_key || "未命名主题"}；对象：${proposal.subject_key || "未命名对象"}。创建前比较了候选极小索引和可信正式资产地图；若存在同 ID 或高置信同类内容，事务会失败关闭。\n\n# 风险与建议动作\n\n建议风险为 ${proposal.proposed_risk_tier}。候选目标由 AI Carry 内部归类为 ${proposal.target_kind}，用户不需要理解或选择内部资产类型。\n\n# 给用户的简短说明\n\n${proposal.summary}\n正式预览摘要：${formalDigest}。选择“不保存”或没有回答时不会生成本文件；选择提醒后可直接用日常语言说“取消刚才那条学习提醒”。`;
 }
 
 function buildState(repositoryReal, trust) {

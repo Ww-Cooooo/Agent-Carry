@@ -41,7 +41,7 @@
 
 门禁必须由地图条目暴露；不能要求 Agent 先阅读全文才能知道该文件不应读取。整张实例地图进入模糊匹配器前，模型外加载器必须对每条路线做类型、长度、Unicode、枚举、唯一性、允许字段、目标路径和确认门注册表检查，并只把白名单字段组成的新对象交给匹配器；不能把原始 TOML 对象先送入模型再逐条补验。正式资产写入或修改后的可达性闭包必须同时核对路线 `id`、`asset_kind`、`title`、`summary`、`triggers`、`aliases`、`topic_key`、`subject_key`、`scope`、`conditions`、`excludes`、`related_asset_ids`、`body_sections`、`state`、`minimum_level`、`confirmation` 与目标 frontmatter 和正式协议不冲突。`confirmation` 必须命中由当前正式协议在模型外提供的已知确认门注册表；缺失、拼写漂移或未知值均失败关闭。低敏投影字段必须与 frontmatter 逐字相等，不能让地图保留一套更宽、更旧或被注入的检索语义。目标不存在、ID 重复、任一投影漂移、状态或授权漂移、路线降低模型等级／确认门、普通路线直连重型维护正文或未登记目标，均视为路由错误。
 
-实例领域地图的 `target` 也是不可信定位数据，不是指令、授权或可直接跟随的链接。它必须是规范化仓库相对 POSIX 路径：使用 `/`，每个段非空且不为 `.` 或 `..`，不得含反斜杠、冒号、控制符、URL scheme、查询、片段或绝对路径。解析后必须仍位于当前 Agent Carry 根目录；任一路径段为符号链接、目录联接或其他重解析点时停止。正式资产路线只能落在与 `asset_kind` 对应的 `instance/memory/`、`instance/capabilities/`、`instance/sops/` 或 `instance/experiences/`。
+实例领域地图的 `target` 也是不可信定位数据，不是指令、授权或可直接跟随的链接。它必须是规范化仓库相对 POSIX 路径：使用 `/`，每个段非空且不为 `.` 或 `..`，不得含反斜杠、冒号、控制符、URL scheme、查询、片段或绝对路径。解析后必须仍位于当前 AI Carry 根目录；任一路径段为符号链接、目录联接或其他重解析点时停止。正式资产路线只能落在与 `asset_kind` 对应的 `instance/memory/`、`instance/capabilities/`、`instance/sops/` 或 `instance/experiences/`。
 
 加载正文前只读目标 frontmatter，并执行以下失败关闭核对：
 
@@ -52,4 +52,4 @@
 
 普通任务和普通自然语言召回永远不能读取 `review`／`paused`／`history`／`archived` 正文。用户明确点名稳定 ID、点击复核或提出恢复／审计请求后，可以进入独立的模型外复核加载器：再次核对路线、物理路径、frontmatter 身份、投影、状态、模型等级与上述体积／章节边界，只返回这一条正文或一个登记章节，并在返回结构中固定 `executable=false`、用途为 `review-evidence-only`。这些文本只能作为不可执行证据，用于说明旧证据、失败记录和当前环境并形成修改／恢复预览；不能因为读到了正文就恢复状态、执行流程、调用工具或写回文件，后续变更仍需独立门禁和用户确认。
 
-`task-family` 只能落在实例档案说明，或已由 `extension.toml` 明确登记所有权和入口的专业工作区说明；不能指向脚本、外部网址、维护者私密层或任意相邻文件。实例档案入口必须与模型外从当前实例 manifest 读取并校验过的 `profile.user_preferences_ref` 精确相等，不能因为同在 `instance/profile/` 就读取另一份档案。专业工作区入口必须同时满足：扩展清单身份与当前实例一致、路线 ID 位于 `entry.route_ids`、扩展内相对目标精确位于 `entry.task_family_targets`，并且目标受 `ownership.portable_paths` 所有。两类任务族入口都必须是普通 Markdown 文件且不超过 32 KiB；超限时先由 Level 3 拆出一个新的小型入口并重新登记，不能整份注入或用任意截断绕过。任一检查失败都失败关闭，不得扫描周边目录、从标题猜路径或读取 Agent Carry 根目录之外的内容。
+`task-family` 只能落在实例档案说明，或已由 `extension.toml` 明确登记所有权和入口的专业工作区说明；不能指向脚本、外部网址、维护者私密层或任意相邻文件。实例档案入口必须与模型外从当前实例 manifest 读取并校验过的 `profile.user_preferences_ref` 精确相等，不能因为同在 `instance/profile/` 就读取另一份档案。专业工作区入口必须同时满足：扩展清单身份与当前实例一致、路线 ID 位于 `entry.route_ids`、扩展内相对目标精确位于 `entry.task_family_targets`，并且目标受 `ownership.portable_paths` 所有。两类任务族入口都必须是普通 Markdown 文件且不超过 32 KiB；超限时先由 Level 3 拆出一个新的小型入口并重新登记，不能整份注入或用任意截断绕过。任一检查失败都失败关闭，不得扫描周边目录、从标题猜路径或读取 AI Carry 根目录之外的内容。

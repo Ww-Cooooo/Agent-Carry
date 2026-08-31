@@ -75,13 +75,13 @@ assert(workBlockedByUser[0]?.evidence.reuseStopOrCorrectionRequested && !workBlo
 const negativeRuleEntry = {
   id: "habit.negative-rule", title: "看板避免同质化", summary: "看板应保持独立的信息骨架",
   triggers: ["别和其他看板长得一样"], aliases: ["界面相似要换骨架"], topic_key: "看板设计",
-  subject_key: "Agent Carry", scope: ["Agent Carry 看板设计"], conditions: [], excludes: [], state: "active",
+  subject_key: "AI Carry", scope: ["AI Carry 看板设计"], conditions: [], excludes: [], state: "active",
 };
 const negativeRuleRecall = rankRetrievalEntries([negativeRuleEntry], normalizeRetrievalRequest("别和其他看板长得一样"));
 assert(negativeRuleRecall[0] && !negativeRuleRecall[0].evidence.reuseStopOrCorrectionRequested,
   "a saved rule whose own wording starts with a negation was mistaken for a request to disable that memory");
 const negativeRuleOptOut = rankRetrievalEntries([negativeRuleEntry],
-  normalizeRetrievalRequest("这次不要使用别和其他看板长得一样这条习惯", [], ["别和其他看板长得一样", "看板设计", "Agent Carry", "Agent Carry 看板设计"]));
+  normalizeRetrievalRequest("这次不要使用别和其他看板长得一样这条习惯", [], ["别和其他看板长得一样", "看板设计", "AI Carry", "AI Carry 看板设计"]));
 assert(negativeRuleOptOut[0]?.evidence.reuseStopOrCorrectionRequested && !negativeRuleOptOut[0].evidence.automaticScopeEvidence,
   "an explicit meta-level opt-out did not override a saved negative rule");
 assert(!normalizeRetrievalRequest("", [], []).ok && normalizeRetrievalRequest("", [], []).reason === "query-empty",

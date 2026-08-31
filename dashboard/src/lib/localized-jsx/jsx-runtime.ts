@@ -33,7 +33,7 @@ function localizeProps(props: Record<string, unknown> | null): Record<string, un
 }
 
 export function localizeJsxProps(type: unknown, props: Record<string, unknown> | null) {
-  const sourceText = typeof type === "function" && (type as { agentCarrySourceText?: boolean }).agentCarrySourceText === true;
+  const sourceText = typeof type === "function" && (type as { aiCarrySourceText?: boolean }).aiCarrySourceText === true;
   return sourceText ? props : localizeProps(props);
 }
 

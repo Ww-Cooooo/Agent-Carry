@@ -39,7 +39,7 @@ function routeBlock(relativePath, routeId) {
 }
 
 requireFragments("AGENTS.md", [
-  "准备对 Agent Carry 的正式内容执行新增、修改、删除、重命名、移动、迁移、升级或发布时",
+  "准备对 AI Carry 的正式内容执行新增、修改、删除、重命名、移动、迁移、升级或发布时",
   "core/protocols/COMPONENT_CHANGE.md",
   "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md",
   "原生正式资产仍走资产生命周期",
@@ -102,7 +102,7 @@ requireFragments("assistant.toml", [
 ]);
 
 requireFragments("core/protocols/USER_GUIDANCE.md", [
-  "本协议是 Agent Carry 的全局人机交流原则",
+  "本协议是 AI Carry 的全局人机交流原则",
   "整个交流过程都要让用户知道下一步",
   "开始任务时",
   "完成任务时",
@@ -539,12 +539,12 @@ requireFragments("core/protocols/DASHBOARD_ACTIONS.md", [
   "不使用面向数千行同高数据的虚拟列表",
   "content-visibility: auto",
   "电脑端主内容只有一个平滑滚动所有者",
-  "agent-carry:scroll-state",
+  "ai-carry:scroll-state",
   "动画推进按真实时间差计算",
 ]);
 
 requireFragments("dashboard/src/Dashboard.tsx", [
-  'const SCROLL_STATE_EVENT = "agent-carry:scroll-state"',
+  'const SCROLL_STATE_EVENT = "ai-carry:scroll-state"',
   'wrapper.dataset.scrollState = active ? "active" : "idle"',
   'wrapper.addEventListener("scroll", onScroll, { passive: true })',
   "new CustomEvent(SCROLL_STATE_EVENT, { detail: active })",
@@ -595,7 +595,7 @@ for (const oversizedDeferredClass of ["assistant-relocation render-deferred", "t
 }
 
 requireFragments("dashboard/src/components/three/Core.tsx", [
-  'const SCROLL_STATE_EVENT = "agent-carry:scroll-state"',
+  'const SCROLL_STATE_EVENT = "ai-carry:scroll-state"',
   "const IDLE_FRAME_INTERVAL = 1000 / 60",
   "const SCROLL_FRAME_INTERVAL = 1000 / 30",
   "const frameScale = lastFrameAt === 0",
@@ -828,6 +828,36 @@ requireFragments("core/upgrade/release-manifest-1.4.8.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-1.4.9.toml", [
+  'release = "1.4.9"',
+  'from_versions = ["1.4.8"]',
+  'id = "skill-upgrade-and-problem-report-1.4.9"',
+  '"explicit-higher-version-same-skill-preview-lists-bounded-added-changed-and-removed-paths"',
+  '"same-skill-upgrade-preserves-old-preimage-installs-registers-and-reads-back-without-executing-package-code"',
+  '"problem-report-action-starts-from-earliest-user-observed-problem-and-does-not-require-hidden-logs-or-a-new-conversation"',
+  '"instantiated-1.4.8-identity-assets-validation-evolution-components-extensions-workspace-local-private-skills-requirements-exports-editable-sources-carriers-problem-reports-task-handoffs-and-unknown-fields-are-byte-preserved"',
+  'status = "local-unreleased-candidate"',
+  'release_ref = "v1.4.9"',
+  'publication_authorized = false',
+  'repository_operation_authorized = false',
+  'instance_replacement_authorized = false',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
+requireFragments("core/upgrade/release-manifest-2.0.0.toml", [
+  'release = "2.0.0"',
+  'from_versions = ["1.4.8", "1.4.9"]',
+  'id = "agent-carry-to-ai-carry-product-identity-2.0.0"',
+  '"legacy-component-record-types-and-agent-carry-interface-remain-compatible-while-new-components-use-ai-carry-interface"',
+  '"fault-before-switch-leaves-source-usable-and-fault-after-first-product-mutation-restores-all-touched-paths-and-empty-created-directories"',
+  'status = "published-release"',
+  'release_ref = "v2.0.0"',
+  'publication_authorized = true',
+  'repository_operation_authorized = true',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -868,44 +898,27 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`1.4.8`",
-  "点击展开：1.4.8 主要改了什么",
-  "随包可执行的本地入口",
-  "绑定内容摘要的预览",
-  "本次未核对",
-  "固定 `v1.4.8` 标签",
-  "点击展开：1.4.7 主要改了什么",
-  "一次性本地动作",
-  "缺少一块，只修当前回复",
-  "业务结果、文件、对话和无关能力继续可用",
-  "`👉 接下来` 仍是最后一个用户可见区块",
-  "点击展开：1.4.6 主要改了什么",
-  "可编辑 Skill 文件夹是唯一内容真源",
-  "分享方式待选择",
-  "ZIP 先安全解压到新的隔离目录",
-  "旧实例里的 `draft`、`review` 和 `ready` 原样保留",
-  "一个载体缺失、过期、损坏或字段不完整",
-  "每个新的实质目标开始前",
-  "当前原子操作安全结束",
-  "自动验证一项真实、无破坏的代表行为",
-  "新任务只是用户希望立即使用该行为时的最后兼容路线",
-  "Agent 推荐整理的 Skill、已生成的 Skill、已安装 Skill、接入 Skill",
-  "本地隔离草稿",
-  "原方法始终保持不变",
-  "检查期间不执行脚本、不安装依赖、不登录账号",
-  "一个包失败不会让整个 Agent 停止",
-  "固定 `v1.4.6` 标签",
+  "当前版本：`2.0.0`",
+  "点击展开：2.0.0 主要改了什么",
+  "稳定身份和三段版本",
+  "新增、修改和删除了哪些文件",
+  "最早觉得不对",
+  "不会自动上传",
+  "固定 `v2.0.0` 标签",
+  "Agent Carry 已更名为 **AI Carry**",
+  "旧组件记录",
   "🧠 这次用上了",
   "🌱 这一步我学到了",
-  "💡 新发现",
-  "📌 当前状态",
-  "➡️ 以后会这样用",
+  "学习表稳定用 `💡` 标出新发现",
+  "`📌` 标出当前状态",
+  "`➡️` 标出以后用途",
   "👉 接下来",
-  "同一次可恢复写入",
-  "一个通用实例和一个完全虚构的剪辑领域实例",
-  "经过结构校验的 `private_collection_refs`",
-  "统一的升级兼容协定",
-  "复用当前动作已经获得的授权，不额外再问一次",
+  "按钮只复制请求",
+  "Agent 会在副本里自动去掉身份、路径和私密内容",
+  "当前宿主不能读取本地文件时，它不能完成本地安装",
+  "只暂停这一项 Skill",
+  "不会让对话、已有结果和其他能力一起停下来",
+  "完整变化、修复与升级边界见 [GitHub Releases]",
 ]);
 
-console.log("Formal change-quality contract validated: hit/non-hit routing, Level 3 ownership, root-cause priority, novice-safe guidance, non-blocking complex-task closeout, instance evolution compatibility without a second confirmation, one-time isolated adoption, visually distinct explanation/choice/review steps, continuous private export/import guidance, progressive offscreen rendering, visible card entry rooted to the main scroll container, one scroll owner, adaptive Three.js cadence, known-file handoff, cross-host propagation, instance-asset reachability, template distribution sync, migration safety, startup budget, and idempotence.");
+console.log("Formal change-quality contract validated: current-version README guidance, on-demand release history, hit/non-hit routing, Level 3 ownership, root-cause priority, novice-safe guidance, non-blocking complex-task closeout, instance evolution compatibility without a second confirmation, one-time isolated adoption, visually distinct explanation/choice/review steps, continuous private export/import guidance, progressive offscreen rendering, visible card entry rooted to the main scroll container, one scroll owner, adaptive Three.js cadence, known-file handoff, cross-host propagation, instance-asset reachability, template distribution sync, migration safety, startup budget, and idempotence.");

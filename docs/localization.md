@@ -1,6 +1,6 @@
 # Localization policy
 
-Agent Carry uses a Chinese-canonical, multilingual-user-layer design.
+AI Carry uses a Chinese-canonical, multilingual-user-layer design.
 
 ## Product rules
 
@@ -17,7 +17,7 @@ Agent Carry uses a Chinese-canonical, multilingual-user-layer design.
 
 | Chinese canonical term | English user term |
 | --- | --- |
-| Agent Carry | Agent Carry |
+| AI Carry | AI Carry |
 | 宿主 Agent | host Agent |
 | 模型或模型 API | model or model API |
 | 便携式 AI 助手 | portable AI assistant |
@@ -34,9 +34,9 @@ Use “assistant,” never “companion.” Use ordinary language before technic
 
 ## Sensitive naming and regional content
 
-Localization must not invent political, territorial, legal, or regional claims. Agent Carry-owned Chinese product copy uses `中国台湾`、`中国香港`、`中国澳门`; reviewed English product copy uses `Taiwan, China`, `Hong Kong SAR, China`, and `Macao SAR, China`. These regions must not be presented as sovereign states. A mixed selector is labelled “国家和地区” / `countries and regions`, and its grouping, flags, maps, accessibility text, and generated requests must preserve the same meaning.
+Localization must not invent political, territorial, legal, or regional claims. AI Carry-owned Chinese product copy uses `中国台湾`、`中国香港`、`中国澳门`; reviewed English product copy uses `Taiwan, China`, `Hong Kong SAR, China`, and `Macao SAR, China`. These regions must not be presented as sovereign states. A mixed selector is labelled “国家和地区” / `countries and regions`, and its grouping, flags, maps, accessibility text, and generated requests must preserve the same meaning.
 
-The complete formal owner is [`core/protocols/TERRITORY_TERMINOLOGY.md`](../core/protocols/TERRITORY_TERMINOLOGY.md). It loads only when Agent Carry-authored content actually mentions geography, jurisdiction, maps, flags, or country/region grouping. User-authored memories, filenames, imported evidence, legal names, and direct quotations remain source text; Agent Carry-generated labels and summaries around them follow the reviewed terminology. Automated translation cannot decide these names or silently rewrite source evidence.
+The complete formal owner is [`core/protocols/TERRITORY_TERMINOLOGY.md`](../core/protocols/TERRITORY_TERMINOLOGY.md). It loads only when AI Carry-authored content actually mentions geography, jurisdiction, maps, flags, or country/region grouping. User-authored memories, filenames, imported evidence, legal names, and direct quotations remain source text; AI Carry-generated labels and summaries around them follow the reviewed terminology. Automated translation cannot decide these names or silently rewrite source evidence.
 
 ## Release checks
 
@@ -48,6 +48,6 @@ A public candidate must verify:
 - snapshot-origin content remains unchanged in English mode, including the collision case where a user title is exactly the same as a translated interface term such as `记忆`, `能力`, or `固定流程（SOP）`;
 - English copied requests keep the canonical request and require English user communication;
 - README, install entry, root dashboard entry, Pages demo, release manifest, ownership map, and public allowlist agree;
-- Agent Carry-owned Chinese and English text passes the territory terminology validator, while source-text projections remain unchanged;
+- AI Carry-owned Chinese and English text passes the territory terminology validator, while source-text projections remain unchanged;
 - maps, flags, country/region grouping, accessibility labels, and generated requests receive Level 3 semantic review whenever present;
 - no private maintainer workflow or mock user data is exposed in the public package.

@@ -282,7 +282,7 @@ function prepare(repositoryReal, requestRead) {
       decision: "learning-save-already-current", executable: false, updated: false,
       assetId: existing.id, target: existing.target,
       userSummary: "这套做法已经完整保存，本次没有重复写入、增加计数或刷新时间。",
-      nextStep: "可以继续当前任务；以后出现相近说法时，Agent Carry 会从正式路线按需召回它。",
+      nextStep: "可以继续当前任务；以后出现相近说法时，AI Carry 会从正式路线按需召回它。",
     });
   }
   const observation = buildObservation(requestRead);
@@ -400,8 +400,8 @@ function help() {
     purpose: "把一份简短业务含义预览并保存为可召回的学习资产；产品负责正式字段、原子写入和回读。",
     commands: Object.freeze([
       "example",
-      "prepare --root <Agent Carry 根目录> --request-file <简短 JSON>",
-      "confirm --root <Agent Carry 根目录> --request-file <同一 JSON> --confirmation-ref <预览返回值> --user-reply <用户原话>",
+      "prepare --root <AI Carry 根目录> --request-file <简短 JSON>",
+      "confirm --root <AI Carry 根目录> --request-file <同一 JSON> --confirmation-ref <预览返回值> --user-reply <用户原话>",
     ]),
     compatibility: "旧参数 --request、--confirm-ref、--choice 和 --message 仍可使用。",
   });
@@ -426,7 +426,7 @@ function run() {
   if (["help", "--help", "-h"].includes(command) || process.argv.includes("--help") || process.argv.includes("-h")) return help();
   if (command === "example") return Object.freeze({ decision: "learning-save-example", request: example() });
   const root = argument("--root"); const requestPath = firstArgument("--request-file", "--request");
-  if (!root || !requestPath) throw new Error("用法：learning-save-cli <prepare|confirm> --root <Agent Carry 根目录> --request-file <简短 JSON>；使用 --help 查看确认示例");
+  if (!root || !requestPath) throw new Error("用法：learning-save-cli <prepare|confirm> --root <AI Carry 根目录> --request-file <简短 JSON>；使用 --help 查看确认示例");
   const repositoryReal = realpathSync(resolve(root));
   const requestRead = stableReadJson(requestPath, "简短学习请求");
   if (command === "prepare") return prepare(repositoryReal, requestRead);
