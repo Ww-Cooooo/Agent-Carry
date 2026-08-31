@@ -1,0 +1,97 @@
+schema_version = 2
+release = "2.0.1"
+core = "2.0.1"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.3"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+extension_manifest_schema = "1.0"
+instance_component_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"
+from_versions = ["1.4.8", "1.4.9", "2.0.0"]
+required_preview_executor = "dashboard/scripts/ai-carry-upgrade-cli.mjs"
+required_preview_command = "prepare --source <current-instance-root> --target <verified-extracted-target-root>"
+required_preview_policy = "on an explicit update check the CLI must use GitHub HTTPS API live verification to bind the latest non-draft non-prerelease Release exact versioned Release direct lightweight tag commit public main exact Git tree target bytes and release manifest; caller-authored JSON and target self-report are not authority; prepare remains read-only and displays returned userPreview verbatim"
+required_confirm_policy = "after displaying the exact bound preview the host Agent must wait for the user's next independent reply to be exactly upgrade or confirm-upgrade before running the returned confirmCommand; confirm repeats the full live verification but compares only a stable authority fingerprint that excludes observation time; the user does not operate a terminal and the CLI does not pretend to authenticate chat roles"
+required_session_reentry_policy = "after a file switch run only the returned sessionReentryCommand; it validates target runtime files and the rollback package but keeps current-session activation and behavior acceptance pending; the generic JSON evaluator never promotes caller-authored passed fields to completion"
+notes = "Published AI Carry 2.0.1 upgrade-continuity hotfix. Version 2.0.0 kept verified_at inside the full audit record, then used the digest of that changing record in the user confirmation reference. Confirm correctly repeated live GitHub verification, but a new observation time changed the reference even when the Release tag commit main tree target bytes manifest source instance and write set were identical. Version 2.0.1 keeps the real observation time and full audit digest, adds a separately versioned stable authority fingerprint over only safety-relevant official facts, and binds confirmation to that stable fingerprint. Real source target instance Release commit tree manifest or byte drift still invalidates the old confirmation. Published 1.4.8, retained local 1.4.9 and AI Carry 2.0.0 are direct sources. The patch creates changes promotes resets removes or rewrites no user asset Skill component workspace binding private content report handoff or unknown file."
+asset_changes = "Asset Schema remains 1.3. This patch changes no memory capability SOP experience candidate validation record component Skill export carrier problem report receipt or user-owned file. Existing generated-but-unshared and installed Skill states remain byte-preserved."
+dashboard_changes = "Dashboard Snapshot Schema remains 1.1 and Dashboard Action Schema remains 1.0. The dashboard product version advances to 2.0.1; instance snapshots are rebuilt from merged formal truth only after a confirmed file transaction. No new user workflow or mobile layout is introduced."
+extension_changes = "Extension API Extension Manifest Schema and Instance Component Schema remain 1.0. Existing current and legacy component interfaces registries extensions workspaces local bindings Skills exports carriers and unknown fields stay byte-preserved; one incompatible optional component remains locally isolated rather than stopping the assistant."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md", "instance/components/README.md"]
+migrate = ["instance/manifest.toml", "instance/startup-capsule.toml"]
+preserve = ["workspace/**", "instance/components/**", "instance/maps/**", "instance/profile/**", "instance/governance/**", "instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", "instance/validations/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "Only the exact README files in replace_instance_guides are target-template guides. Every sibling profile map governance Skill component validation candidate report and user file remains instance-owned."
+validation_overlap_note = "A clean template uses the target empty validation index. An existing instance keeps instance/validations/index.toml and every real validation record byte-for-byte; no record is invented by this patch."
+evolution_overlap_note = "A clean template uses the target empty candidate index. An existing instance keeps instance/evolution/index.toml candidate sources and generated_at byte-for-byte because the indexed business projection does not change."
+component_overlap_note = "A clean template uses the target ai-carry registry. An existing instance keeps current or legacy registry and component bytes, including unknown fields and interface requirements."
+skill_overlap_note = "instance/skills/** is instance-owned and preserved. A template remains empty; an existing instance keeps requirements installed routes export indexes editable sources generated packages delivery carriers and unknown fields byte-for-byte. Upgrade does not infer versions rewrite entries or install a package."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+allow_overrides_deny_for_exact_paths = [".assistant-local/.gitkeep", ".assistant-local/dashboard/.gitkeep", ".assistant-local/indexes/.gitkeep", ".assistant-local/skills/.gitkeep", ".assistant-local/task-handoffs/.gitkeep", ".assistant-local/upgrade-inbox/.gitkeep", ".assistant-private/.gitkeep", ".assistant-private/assets/.gitkeep", ".assistant-private/inbox/.gitkeep"]
+exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"
+broad_globs_are_copy_commands = false
+
+[instance_component_changes]
+schema = "1.0"
+registry = "instance/components/registry.toml"
+target_interfaces = ["ai-carry.instance-component@1", "agent-carry.instance-component@1"]
+migration_ids = ["stable-upgrade-confirmation-authority-2.0.1"]
+native_asset_policy = "reuse-existing-formal-owners-never-create-duplicate-component-manifests"
+professional_extension_policy = "reuse-extension-toml-never-duplicate-in-generic-registry"
+unregistered_policy = "preserve-and-stop-with-preview"
+optional_incompatible_action = "disable-and-preserve"
+required_incompatible_action = "stop-and-preserve"
+device_local_policy = "preserve-in-place-on-same-device-never-copy-to-public-or-complete-migration-reverify-before-use"
+ordinary_startup = "never-read-registry-enumerate-components-or-load-component-bodies"
+authorization = "reuse-the-current-durable-action-authorization-never-add-a-compatibility-only-user-confirmation"
+
+[[migration_rules]]
+id = "stable-upgrade-confirmation-authority-2.0.1"
+from_versions = ["1.4.8", "1.4.9", "2.0.0"]
+when_all = ["source reports product 1.4.8 retained local 1.4.9 or AI Carry 2.0.0 with a recognized product identity", "the official latest Release versioned v2.0.1 Release direct lightweight tag public main manifest and extracted public tree agree and the user authorizes that exact upgrade", "upgrade runs through dashboard/scripts/ai-carry-upgrade-cli.mjs against a physical archive instance or verified official public clone and a separate pure public target"]
+source = "bounded product-owned path preimages plus the strict instance formal tree needed to rebuild manifest capsule and snapshots; workspace local private and unknown root bodies remain outside the read and write set"
+destination = "an atomically updated stable-root AI Carry 2.0.1 instance whose manifest-owned product paths use current bytes while all unowned source paths remain in place; changed product preimages are retained in a manifest-bound rollback package"
+operation_order = ["on an explicit update check use GitHub HTTPS API live verification to require the latest non-draft non-prerelease Release to be v2.0.1 require the fixed v2.0.1 tag to point directly to one commit require public main to equal that commit and compare every target file with its Git tree", "retain verified_at and the complete live verification record for audit but derive a separate schema-versioned authority fingerprint only from repository Release IDs tag commit public main Git tree target tree target file count and release manifest", "bind the confirmation reference to the stable authority fingerprint plus source target instance component workspace profile and write-set facts; never bind it to observation time", "after the user's exact independent confirmation repeat all six live GitHub API checks and reject the old reference when any stable authority source target or instance fact changed", "require the target release_boundary to be published and to authorize instance replacement", "parse release classifications and reject forbidden unlisted conflicting or nonzero private/local target paths before selecting a write set", "prepare remains read-only and never creates a candidate rollback package or source mutation", "for an instance overlay only the source instance formal tree into an isolated target candidate then restore target-owned instance guide READMEs", "preserve instance_id created_from direction profile learning policy maps signals governance hosts assets validation records candidates components extensions workspaces local bindings private references Skills requirements exports editable sources carriers reports handoffs future fields and unknown files", "update only the instantiated manifest product version to 2.0.1 while leaving created_from history unchanged", "rebuild the strict startup capsule from merged manifest bytes and rebuild byte-identical public and dist snapshots from merged formal truth", "read back candidate-consumed instance paths byte-for-byte before switching", "keep the current source root stable and transactionally replace only manifest-classified files whose candidate bytes differ; never infer removals", "retain every changed product preimage in a bounded rollback package and restore completed operations in reverse order on failure", "a second invocation against an installed 2.0.1 root live-verifies official authority and local static product bytes before returning already-current without refreshing time or user content", "after a verified switch the returned reentry command validates only target runtime files; session activation and behavior acceptance remain host facts"]
+forbidden = ["using verified_at observation time or the full changing audit-record digest as a confirmation authority fingerprint", "freezing or reusing an old verification time to manufacture a stable reference", "skipping the second live verification during confirm", "accepting caller-authored authority JSON fixture markers or target self-report as official source authority", "upgrading from an unfixed branch archive or a tag without the matching official Release object", "using a Git worktree development checkout or dependency tree as the live source", "re-running first instantiation against an existing instance", "changing instance identity direction profile learning policy created_from or user-owned fields", "creating rewriting deleting or promoting any memory capability SOP experience candidate validation record Skill requirement export editable source carrier problem report task handoff or unknown field during upgrade", "executing a shared Skill component or workspace script or installing its dependencies", "automatically uploading sending filing committing publishing renaming a GitHub repository or deleting the retained rollback root", "turning one optional component stale snapshot old generated-but-unshared Skill or recoverable network failure into a whole-assistant failure", "weakening startup capsule snapshot candidate component result-validation privacy secret archive-path or Skill package checks", "modifying a real installed instance during rehearsal"]
+unknown_or_ambiguous = "leave unknown source paths in place and outside the write set; preserve candidate rollback package and failure scene; report the exact authority identity ownership control path or runtime fact that is missing; isolate only this upgrade or optional component while the original assistant conversation completed results and unrelated capabilities remain usable"
+idempotence = "same-installed-source-second-run-first-live-verifies-the-official-release-fixed-tag-target-tree-and-static-product-bytes-then-returns-already-current-with-no-file-record-asset-timestamp-package-report-or-snapshot-byte-change"
+
+[verification]
+stable_authority_fingerprint = "same authoritative facts with different verified_at values must produce the same fingerprint and confirmation reference; full audit record digests must remain different"
+real_authority_drift = "Release ID commit public main Git tree target tree target file count or release manifest drift must change the fingerprint and reject the old confirmation"
+request_budget = "one live verification uses exactly six bounded GitHub API requests; prepare plus confirm uses at most twelve and records both observations"
+network_failure = "HTTP 403 timeout or other live verification failure writes neither source nor target and returns a recoverable reason while the installed assistant remains usable"
+copied_target_closure = "confirm must re-hash the isolated copied target before instance overlay and reject any drift from the prepared target tree fingerprint"
+staging_recovery = "each same-directory staging file is recorded before copy and includes the numbered attempt so validation failures clean it and an interrupted old attempt cannot block the next attempt"
+network_reporting = "prepare confirm and same-version official checks report network use truthfully"
+windows_metadata_closure = "touched hardlinks named streams and failures to enumerate either are review-required before switch; never silently break hardlink topology or treat an inspection failure as absence"
+checks = ["manifest-parses", "version-2.0.1-and-existing-schema-versions-aligned", "direct-sources-include-published-1.4.8-retained-local-1.4.9-and-ai-carry-2.0.0", "published-2.0.0-history-remains-auditable", "published-2.0.1-authority-requires-latest-release-versioned-release-lightweight-tag-public-main-matching-tree-and-user-authorization", "different-observation-times-with-identical-authoritative-facts-produce-one-confirmation-reference", "exact-confirmation-enters-the-isolated-candidate-and-file-transaction", "real-release-tag-tree-target-manifest-or-source-drift-rejects-the-old-reference", "vague-prepreview-or-wrong-reference-confirmation-writes-nothing", "network-403-or-timeout-writes-nothing-and-keeps-the-old-instance-usable", "prepare-plus-confirm-api-request-count-is-bounded", "manifest-driven-write-set-rejects-unlisted-forbidden-private-and-local-target-content", "blank-2.0.1-template-remains-empty", "complex-source-identity-created-from-assets-validation-evolution-components-extensions-workspace-local-private-skills-requirements-exports-editable-sources-carriers-problem-reports-task-handoffs-future-fields-and-unknown-files-remain-preserved", "startup-capsule-and-byte-identical-snapshots-rebuild-from-merged-truth", "fault-before-switch-leaves-source-usable-and-fault-after-first-product-mutation-restores-all-touched-paths", "already-current-live-validates-authority-static-product-startup-and-snapshot-closure-before-zero-change-return", "generic-session-json-never-self-attests-session-or-behavior", "public-distribution-excludes-private-maintainer-assets-real-instances-learning-skills-carriers-links-reports-and-private-data"]
+risk_policy = "run one focused authority-time test one complex synthetic upgrade transaction with exact confirmation and two real drift counterexamples one network refusal one switch rollback point one same-version check one pure public build and one post-release real authoritative prepare-confirm acceptance; do not add a host matrix background service database log collector or enterprise regression suite"
+
+[release_boundary]
+status = "published-release"
+release_ref = "v2.0.1"
+publication_authorized = true
+repository_operation_authorized = true
+instance_replacement_authorized = true
+future_publication_or_repository_operation_authorized = false
+authority_requires = ["official-latest-release-is-v2.0.1", "official-release-object-v2.0.1", "official-lightweight-tag-v2.0.1", "official-public-main-equals-v2.0.1-tag", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]
+authority_scope = "this-fixed-release-may-be-used-for-instance-replacement; never-authorizes-future-repository-release-publication-or-rename-actions"
+maintainer_private_paths = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**", "workspace/**"]

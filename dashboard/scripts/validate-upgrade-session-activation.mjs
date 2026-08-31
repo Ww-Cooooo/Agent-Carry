@@ -109,7 +109,7 @@ expect(machineContract.includes("target-runtime-validated")
 expect(upgradeCli.includes('decision: "ai-carry-upgrade-target-runtime-validated"')
   && upgradeCli.includes("sessionActivated: false") && upgradeCli.includes("behaviorAccepted: false")
   && !upgradeCli.includes("sessionActivated: true") && !upgradeCli.includes("behaviorAccepted: true"),
-  "2.0.0 upgrade CLI self-attests current-session activation or behavior acceptance");
+  "2.0.1 upgrade CLI self-attests current-session activation or behavior acceptance");
 expect(hostResume.includes("升级后的新运行接续") && hostResume.includes("不是每次升级都必须执行"),
   "new-run resume still presents itself as a mandatory upgrade path");
 expect(protocol.includes("宿主产品版本属于宿主观察")
@@ -121,4 +121,4 @@ for (const source of [agentsEntry, bootstrap]) {
   "the stable entry describes a mismatch route but never performs the bounded version comparison");
 }
 
-console.log("Upgrade session activation passed high-information invalid, rollback, continuity, and generic-JSON no-self-attestation cases plus the 2.0.0 local-CLI boundary.");
+console.log("Upgrade session activation passed high-information invalid, rollback, continuity, and generic-JSON no-self-attestation cases plus the 2.0.1 local-CLI boundary.");

@@ -25,7 +25,8 @@ const compatibilityAliasPaths = new Set([
   "core/schemas/private-asset-catalog.schema.md", "core/schemas/startup-capsule.schema.md",
   "core/tools/private_data_migration.py", "core/tools/tests/test_private_data_migration.py",
   "core/upgrade/official-source.toml", "core/upgrade/release-manifest-2.0.0.toml",
-  "core/upgrade/upgrade-1.4.8-to-2.0.0.md", "dashboard.html", "dashboard.en.html",
+  "core/upgrade/release-manifest-2.0.1.toml", "core/upgrade/upgrade-1.4.8-to-2.0.0.md",
+  "core/upgrade/upgrade-2.0.0-to-2.0.1.md", "dashboard.html", "dashboard.en.html",
   "dashboard/scripts/ai-carry-upgrade-cli.mjs", "dashboard/scripts/product-identity.mjs",
   "dashboard/scripts/snapshot-envelope.mjs", "dashboard/scripts/validate-change-quality-contract.mjs",
   "dashboard/scripts/validate-instance-component-contract.mjs", "dashboard/scripts/validate-product-identity-contract.mjs",
@@ -126,13 +127,18 @@ const historicalFragmentsByPath = new Map([
     "历史里的 Agent Carry",
     "AI Carry／Agent Carry",
   ]],
+  ["core/upgrade/upgrade-2.0.0-to-2.0.1.md", [
+    "Agent Carry 1.4.8／本地 1.4.9",
+    "Agent Carry 1.4.8",
+    "Agent Carry 1.4.9",
+  ]],
   ["dashboard/scripts/ai-carry-upgrade-cli.mjs", ["Agent Carry 1.4.8／本地 1.4.9"]],
   ["dashboard/scripts/product-identity.mjs", ['"Agent Carry"']],
   ["dashboard/scripts/snapshot-envelope.mjs", [
     "Agent Carry snapshot envelope v1",
     "Agent Carry demo snapshot envelope v1",
   ]],
-  ["dashboard/scripts/validate-change-quality-contract.mjs", ["Agent Carry 已更名为 **AI Carry**"]],
+  ["dashboard/scripts/validate-change-quality-contract.mjs", ["Agent Carry 已更名为 **AI Carry**", "产品从 Agent Carry 更名为 AI Carry"]],
   ["dashboard/scripts/validate-instance-component-contract.mjs", ["valid Agent Carry component"]],
   ["dashboard/scripts/validate-product-identity-contract.mjs", [
     '"Agent Carry"',
@@ -142,9 +148,12 @@ const historicalFragmentsByPath = new Map([
     "current-output gate accepted Agent Carry as the new product identity",
   ]],
   ["dashboard/scripts/validate-snapshot-source-builder.mjs", ["Agent Carry snapshot envelope v1", "legacy Agent Carry envelope"]],
-  ["dashboard/scripts/validate-release-authority.mjs", ["Agent Carry 1.4.8／1.4.9 升级到 AI Carry 2.0.0"]],
+  ["dashboard/scripts/validate-release-authority.mjs", [
+    "Agent Carry 1.4.8／1.4.9 升级到 AI Carry 2.0.0",
+    "Agent Carry 1.4.8／本地 1.4.9／AI Carry 2.0.0",
+  ]],
   ["docs/architecture.md", ["由 Agent Carry 改名"]],
-  ["docs/architecture.en.md", ["renames Agent Carry to AI Carry", "`Agent-Carry` address"]],
+  ["docs/architecture.en.md", ["renames Agent Carry to AI Carry", "renamed Agent Carry to AI Carry", "`Agent-Carry` address"]],
 ]);
 
 function normalized(path) { return relative(repository, path).split(sep).join("/"); }

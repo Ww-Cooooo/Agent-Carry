@@ -7,7 +7,7 @@ if (!window.AI_CARRY_SNAPSHOT) {
     meta: {
       schema_version: "1.1",
       generated_at: "",
-      product_version: "2.0.0",
+      product_version: "2.0.1",
       state: "template",
       freshness_seconds: 86400,
       source_digest: "template-empty",

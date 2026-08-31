@@ -858,6 +858,19 @@ requireFragments("core/upgrade/release-manifest-2.0.0.toml", [
   'future_publication_or_repository_operation_authorized = false',
 ]);
 
+requireFragments("core/upgrade/release-manifest-2.0.1.toml", [
+  'release = "2.0.1"',
+  'from_versions = ["1.4.8", "1.4.9", "2.0.0"]',
+  'id = "stable-upgrade-confirmation-authority-2.0.1"',
+  'stable_authority_fingerprint = "same authoritative facts with different verified_at values must produce the same fingerprint',
+  'request_budget = "one live verification uses exactly six bounded GitHub API requests; prepare plus confirm uses at most twelve',
+  'network_failure = "HTTP 403 timeout or other live verification failure writes neither source nor target',
+  'status = "published-release"',
+  'release_ref = "v2.0.1"',
+  'instance_replacement_authorized = true',
+  'future_publication_or_repository_operation_authorized = false',
+]);
+
 requireFragments("core/schemas/README.md", [
   "instance-component.schema.md",
   "原生资产与专业扩展继续复用各自已有的正式所有者",
@@ -898,14 +911,15 @@ requireFragments("core/protocols/USER_GUIDANCE.md", [
 requireFragments("README.md", [
   "卡片真正滚动进屏幕时逐张、平顺地出现",
   "三维核心会自动让出资源",
-  "当前版本：`2.0.0`",
+  "当前版本：`2.0.1`",
+  "点击展开：2.0.1 修复了什么",
   "点击展开：2.0.0 主要改了什么",
   "稳定身份和三段版本",
   "新增、修改和删除了哪些文件",
   "最早觉得不对",
   "不会自动上传",
-  "固定 `v2.0.0` 标签",
-  "Agent Carry 已更名为 **AI Carry**",
+  "固定到 `v2.0.1` 标签",
+  "产品从 Agent Carry 更名为 AI Carry",
   "旧组件记录",
   "🧠 这次用上了",
   "🌱 这一步我学到了",

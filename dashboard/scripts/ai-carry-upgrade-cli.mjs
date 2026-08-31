@@ -27,9 +27,13 @@ import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { buildSnapshotCandidate } from "./snapshot-source-builder.mjs";
 import { inspectStartupCapsule } from "./startup-capsule-contract.mjs";
 import { syncStartupCapsule } from "./sync-startup-capsule.mjs";
+import {
+  OFFICIAL_RELEASE_REQUEST_BUDGET,
+  officialAuthorityFingerprint,
+} from "./verify-official-ai-carry-release.mjs";
 
-const TARGET_VERSION = "2.0.0";
-const DIRECT_SOURCE_VERSIONS = new Set(["1.4.8", "1.4.9"]);
+const TARGET_VERSION = "2.0.1";
+const DIRECT_SOURCE_VERSIONS = new Set(["1.4.8", "1.4.9", "2.0.0"]);
 const MAX_TARGET_FILES = 8192;
 const MAX_TARGET_BYTES = 1024 * 1024 * 1024;
 const MAX_INSTANCE_FILES = 32768;
@@ -189,7 +193,7 @@ function validateSource(source) {
     validateInstalledCurrentHealth(source, instance);
     return Object.freeze({ assistant, instance, sourceLayout, alreadyCurrent: true });
   }
-  if (!DIRECT_SOURCE_VERSIONS.has(instance.version)) fail(`source version ${instance.version} is not a direct 2.0.0 source`);
+  if (!DIRECT_SOURCE_VERSIONS.has(instance.version)) fail(`source version ${instance.version} is not a direct ${TARGET_VERSION} source`);
   return Object.freeze({ assistant, instance, sourceLayout, alreadyCurrent: false });
 }
 
@@ -301,10 +305,10 @@ function validateTarget(target, sourceVersion) {
   if (assistant.productId !== PRODUCT_IDENTITY.productId || assistant.productName !== PRODUCT_IDENTITY.productName
     || assistant.version !== TARGET_VERSION || instance.version !== TARGET_VERSION
     || instance.state !== "template" || instance.instanceId !== "template") {
-    fail("target is not the clean AI Carry 2.0.0 template");
+    fail(`target is not the clean AI Carry ${TARGET_VERSION} template`);
   }
   const releaseRef = assistant.parsed.maintenance?.release_manifest;
-  if (releaseRef !== "core/upgrade/release-manifest-2.0.0.toml") fail("target release manifest pointer is invalid");
+  if (releaseRef !== `core/upgrade/release-manifest-${TARGET_VERSION}.toml`) fail("target release manifest pointer is invalid");
   const releaseSource = readUtf8(resolve(target, ...releaseRef.split("/")), "target release manifest", 256 * 1024);
   const firstTable = releaseSource.search(/^\[/mu);
   const releaseHeader = firstTable < 0 ? releaseSource : releaseSource.slice(0, firstTable);
@@ -493,7 +497,7 @@ function validateCurrentSessionReentry(sourceArgument, transactionRef, expectedI
   }
 
   const actions = JSON.parse(readUtf8(resolve(source, "dashboard/src/generated/dashboard-actions.json"), "session reentry actions", 2 * 1024 * 1024));
-  const releaseManifestSource = readUtf8(resolve(source, "core/upgrade/release-manifest-2.0.0.toml"), "session reentry release manifest", 512 * 1024);
+  const releaseManifestSource = readUtf8(resolve(source, `core/upgrade/release-manifest-${TARGET_VERSION}.toml`), "session reentry release manifest", 512 * 1024);
   validateUpgradeRuntimeContract(releaseManifestSource, actions);
 
   return Object.freeze({
@@ -795,6 +799,7 @@ function validateOfficialReleaseLive(target, targetTree, releaseRef) {
   try { record = JSON.parse(String(output).trim()); }
   catch { fail("live official Release verifier returned invalid JSON"); }
   const releaseManifestDigest = `sha256:${sha256(readFileSync(resolve(target, ...releaseRef.split("/"))))}`;
+  const authorityFingerprint = officialAuthorityFingerprint(record);
   if (record.record_type !== "ai-carry-live-official-release-verification"
     || record.authority !== "github-api-live-https"
     || record.repository !== "Ww-Cooooo/Agent-Carry"
@@ -810,12 +815,17 @@ function validateOfficialReleaseLive(target, targetTree, releaseRef) {
     || record.release_manifest_sha256 !== releaseManifestDigest
     || record.target_file_count !== targetTree.fileCount
     || record.network_used !== true
-    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(record.verified_at ?? "")) {
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(record.verified_at ?? "")
+    || record.authority_fingerprint_schema !== 1
+    || record.authority_fingerprint !== authorityFingerprint
+    || record.request_count !== OFFICIAL_RELEASE_REQUEST_BUDGET
+    || record.request_budget !== OFFICIAL_RELEASE_REQUEST_BUDGET) {
     fail("live official Release result is incomplete or does not bind this exact target tree");
   }
   const digest = `sha256:${sha256(Buffer.from(JSON.stringify(record), "utf8"))}`;
   return Object.freeze({
     digest,
+    authorityFingerprint,
     authority: record.authority,
     releaseId: String(record.release_id),
     latestReleaseId: String(record.latest_release_id),
@@ -824,8 +834,40 @@ function validateOfficialReleaseLive(target, targetTree, releaseRef) {
     gitTreeSha: record.git_tree_sha,
     releaseUrl: record.release_url,
     verifiedAt: record.verified_at,
+    requestCount: record.request_count,
+    requestBudget: record.request_budget,
     networkUsed: true,
   });
+}
+
+function buildUpgradeBinding({
+  source,
+  target,
+  sourceProductFingerprint,
+  targetTreeFingerprint,
+  protectedManifestFingerprint,
+  componentSourceFingerprint,
+  workspaces,
+  profileMigration,
+  authorityFingerprint,
+  instanceId,
+  sourceVersion,
+}) {
+  return sha256(Buffer.from([
+    source,
+    target,
+    sourceProductFingerprint,
+    targetTreeFingerprint,
+    protectedManifestFingerprint,
+    componentSourceFingerprint,
+    JSON.stringify(workspaces),
+    profileMigration.required ? profileMigration.sourceSha256 : "",
+    profileMigration.conflict ? "profile-conflict" : "",
+    authorityFingerprint,
+    instanceId,
+    sourceVersion,
+    TARGET_VERSION,
+  ].join("\0"), "utf8"));
 }
 
 function prepareUpgrade(sourceArgument, targetArgument) {
@@ -866,7 +908,7 @@ function prepareUpgrade(sourceArgument, targetArgument) {
       officialEvidence, targetTreeFingerprint: targetTree.fingerprint,
       verifiedStaticProductFileCount: staticPaths.length,
       authorityVerified: true, networkUsed: true,
-      userSummary: "这份助手已经通过最新正式 Release、固定轻量标签、公开 main 与目标整树的共同回读，是 AI Carry 2.0.0；本次没有重复改文件、刷新时间或生成候选。",
+      userSummary: `这份助手已经通过最新正式 Release、固定轻量标签、公开 main 与目标整树的共同回读，是 AI Carry ${TARGET_VERSION}；本次没有重复改文件、刷新时间或生成候选。`,
       nextStep: "可以继续原来的工作；如果只是看板显示旧状态，让 Agent 重新读取本地快照。",
     });
   }
@@ -883,10 +925,19 @@ function prepareUpgrade(sourceArgument, targetArgument) {
     ? inspectWorkspaceExtensions(source, sourceState.instance.instanceId)
     : Object.freeze({ registered: Object.freeze([]), review: Object.freeze([]) });
   const reviewRequired = !componentSwitchable || workspaces.review.length > 0 || profileMigration.conflict;
-  const binding = sha256(Buffer.from([source, target, sourceProductState.fingerprint, targetTree.fingerprint,
-    manifestFingerprint(protectedEntries), componentPlan.sourceFingerprint ?? "", JSON.stringify(workspaces),
-    profileMigration.required ? profileMigration.sourceSha256 : "", profileMigration.conflict ? "profile-conflict" : "",
-    officialEvidence.digest, sourceState.instance.instanceId, sourceState.instance.version, TARGET_VERSION].join("\0"), "utf8"));
+  const binding = buildUpgradeBinding({
+    source,
+    target,
+    sourceProductFingerprint: sourceProductState.fingerprint,
+    targetTreeFingerprint: targetTree.fingerprint,
+    protectedManifestFingerprint: manifestFingerprint(protectedEntries),
+    componentSourceFingerprint: componentPlan.sourceFingerprint ?? "",
+    workspaces,
+    profileMigration,
+    authorityFingerprint: officialEvidence.authorityFingerprint,
+    instanceId: sourceState.instance.instanceId,
+    sourceVersion: sourceState.instance.version,
+  });
   const token = binding.slice(0, 32); const nonce = binding.slice(32, 64); const paths = chooseOperationPaths(source, binding);
   const confirmationRef = `ai-carry-upgrade.${token}~${nonce}~${paths.attempt}`;
   const changePreview = Object.freeze({
@@ -917,7 +968,7 @@ function prepareUpgrade(sourceArgument, targetArgument) {
     : `【冲突】${boundedIds(changePreview.conflicts.map((value, index) => ({ id: `#${index + 1} ${value}` })))}。这些内容原样保留；只暂停本次升级，不会猜测、删除或拖住 AI Carry 主体。`;
   const extensionText = workspaces.registered.length === 0
     ? `【扩展兼容】没有已登记专业工作区；组件检查结果为 ${componentPlan.decision}。`
-    : `【扩展兼容】已登记工作区 ${boundedIds(workspaces.registered)}，旧记录类型由 2.0.0 兼容读取且文件保持原字节；组件检查结果为 ${componentPlan.decision}。`;
+    : `【扩展兼容】已登记工作区 ${boundedIds(workspaces.registered)}，旧记录类型由 ${TARGET_VERSION} 兼容读取且文件保持原字节；组件检查结果为 ${componentPlan.decision}。`;
   const userPreview = [
     `准备把这份 ${sourceState.assistant.productName} ${sourceState.instance.version} ${sourceState.instance.state === "template" ? "空模板" : "实例"}升级为 AI Carry ${TARGET_VERSION}。`,
     `实例身份保持：${sourceState.instance.instanceId}。CLI 已通过 GitHub HTTPS API 现场核对最新正式 Release ${officialEvidence.latestReleaseId}、固定轻量标签提交 ${officialEvidence.commitSha.slice(0, 12)}、公开 main 和这棵目标树；目标包发布边界允许实例替换。`,
@@ -1084,11 +1135,11 @@ function help() {
   return Object.freeze({
     decision: "ai-carry-upgrade-help",
     commands: Object.freeze([
-      "prepare --source <旧实例根目录> --target <AI Carry 2.0.0 公开模板根目录>（显式检查更新时现场联网核对 GitHub 正式 Release 与固定标签整树）",
+      `prepare --source <旧实例根目录> --target <AI Carry ${TARGET_VERSION} 公开模板根目录>（显式检查更新时现场联网核对 GitHub 正式 Release 与固定标签整树）`,
       "confirm --source <同一旧实例> --target <同一目标模板> --confirmation-ref <预览返回值> --user-reply <用户本次独立确认>（宿主只可在用户看过预览并回复后调用）",
       "reentry --source <已切换实例根> --transaction-ref <同次确认引用> --expected-instance-id <实例 ID> --expected-manifest-digest <confirm 返回摘要> --source-version <升级前版本>",
     ]),
-    boundary: "只支持 Agent Carry 1.4.8／本地 1.4.9 到 AI Carry 2.0.0；CLI 通过 GitHub HTTPS API 现场核对最新正式 Release、固定轻量标签、公开 main 和目标整树，不接受调用者自写来源 JSON。宿主只可在用户看过本次绑定预览并独立确认后调用 confirm；CLI 核对确认字符串但不冒充聊天角色认证器。只切换清单拥有的产品路径，未知路径原地不碰，变化文件保留回滚前像，不执行包内脚本。",
+    boundary: `只支持 Agent Carry 1.4.8／本地 1.4.9／AI Carry 2.0.0 到 AI Carry ${TARGET_VERSION}；CLI 通过 GitHub HTTPS API 现场核对最新正式 Release、固定轻量标签、公开 main 和目标整树，不接受调用者自写来源 JSON。宿主只可在用户看过本次绑定预览并独立确认后调用 confirm；CLI 核对确认字符串但不冒充聊天角色认证器。只切换清单拥有的产品路径，未知路径原地不碰，变化文件保留回滚前像，不执行包内脚本。`,
   });
 }
 
@@ -1114,6 +1165,7 @@ if (invokedDirectly) {
 
 export {
   buildInPlaceSwitchPlan,
+  buildUpgradeBinding,
   chooseOperationPaths,
   confirmUpgrade,
   prepareUpgrade,

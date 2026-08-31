@@ -48,7 +48,7 @@ direct_user_instruction = "direct-authorization"
 evidence_index_ref = "instance/validations/index.toml"
 
 [versions]
-product = "2.0.0"
+product = "2.0.1"
 asset_schema = "1.2"
 evolution_candidate_index_schema = "1.0"
 asset_confirmation_gate_schema = "1.0"
@@ -60,15 +60,15 @@ try {
   write("assistant.toml", `schema_version = 1
 product_id = "ai-carry"
 product_name = "AI Carry"
-product_version = "2.0.0"
-core_version = "2.0.0"
+product_version = "2.0.1"
+core_version = "2.0.1"
 
 [bootstrap]
 maximum_characters = 20000
 `);
   write("core/manifest.toml", `schema_version = 1
 core_id = "ai-carry-core"
-version = "2.0.0"
+version = "2.0.1"
 asset_schema = "1.2"
 evolution_candidate_index_schema = "1.0"
 asset_confirmation_gate_schema = "1.0"

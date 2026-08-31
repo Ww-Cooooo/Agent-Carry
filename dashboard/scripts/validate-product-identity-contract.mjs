@@ -41,7 +41,7 @@ expect(acceptedProfessionalExtensionRecordTypes.has("ai-carry-professional-exten
   && acceptedProfessionalExtensionRecordTypes.has("agent-carry-professional-extension"), "professional extension rename aliases are unavailable");
 
 includesAll(read("assistant.toml"), [
-  'product_id = "ai-carry"', 'product_name = "AI Carry"', 'product_version = "2.0.0"', 'core_version = "2.0.0"',
+  'product_id = "ai-carry"', 'product_name = "AI Carry"', 'product_version = "2.0.1"', 'core_version = "2.0.1"',
   'legacy_product_ids = ["agent-carry"]', 'legacy_component_interfaces = ["agent-carry.instance-component@1"]',
   'legacy_professional_extension_record_types = ["agent-carry-professional-extension"]',
   'legacy_private_package_types = ["agent-carry-private-migration"]',
@@ -50,9 +50,9 @@ includesAll(read("assistant.toml"), [
   'repository_slug_state = "legacy-slug-until-separately-authorized-rename"',
   'write_policy = "new-product-owned-output-uses-ai-carry-identities"',
 ], "assistant identity authority");
-includesAll(read("core/manifest.toml"), ['core_id = "ai-carry-core"', 'version = "2.0.0"'], "core identity authority");
-includesAll(read("instance/manifest.toml"), ['instance_id = "template"', 'created_from = "ai-carry@2.0.0"', 'product = "2.0.0"'], "template identity authority");
-includesAll(read("dashboard/package.json"), ['"name": "ai-carry-dashboard"', '"version": "2.0.0"', '"upgrade": "node scripts/ai-carry-upgrade-cli.mjs"'], "Dashboard identity authority");
+includesAll(read("core/manifest.toml"), ['core_id = "ai-carry-core"', 'version = "2.0.1"'], "core identity authority");
+includesAll(read("instance/manifest.toml"), ['instance_id = "template"', 'created_from = "ai-carry@2.0.1"', 'product = "2.0.1"'], "template identity authority");
+includesAll(read("dashboard/package.json"), ['"name": "ai-carry-dashboard"', '"version": "2.0.1"', '"upgrade": "node scripts/ai-carry-upgrade-cli.mjs"'], "Dashboard identity authority");
 includesAll(read("core/upgrade/official-source.toml"), [
   'source_id = "ai-carry-official-public"', 'product_id = "ai-carry"', 'label = "AI Carry 官方公开发布源"',
   'repository = "https://github.com/Ww-Cooooo/Agent-Carry"',
@@ -88,7 +88,7 @@ expectThrows(
 );
 
 const capsule = buildStartupCapsule(repository);
-expect(capsule.values.capsule_id === "ai-carry-startup" && capsule.values.product_version === "2.0.0", "new startup capsule identity is not generated from current truth");
+expect(capsule.values.capsule_id === "ai-carry-startup" && capsule.values.product_version === "2.0.1", "new startup capsule identity is not generated from current truth");
 expect(inspectStartupCapsule(repository).decision === "startup-capsule-valid", "checked-in template startup capsule is not synchronized");
 expect(typeof prepareUpgrade === "function" && typeof confirmUpgrade === "function", "deterministic upgrade entrypoint is unavailable");
 
