@@ -1,18 +1,18 @@
-// Agent Carry demo snapshot envelope v1
-window.AGENT_CARRY_DEMO = true;
-window.AGENT_CARRY_IS_REAL = true;
-window.AGENT_CARRY_SNAPSHOT = {
+// AI Carry demo snapshot envelope v1
+window.AI_CARRY_DEMO = true;
+window.AI_CARRY_IS_REAL = true;
+window.AI_CARRY_SNAPSHOT = {
   "meta": {
     "schema_version": "1.1",
     "generated_at": "2026-08-23T17:25:16.271Z",
-    "product_version": "1.4.8",
+    "product_version": "2.0.0",
     "state": "instance",
     "freshness_seconds": 86400,
     "source_digest": "github-pages-synthetic-demo-en-v2",
     "identity_ref": "public-demo"
   },
   "overview": {
-    "product": "AgentCarry",
+    "product": "AI Carry",
     "state": "instance",
     "domain": "general-personal-assistant",
     "startup_chars": 6000,
@@ -382,3 +382,6 @@ window.AGENT_CARRY_SNAPSHOT = {
     ]
   }
 };
+window.AGENT_CARRY_DEMO = window.AI_CARRY_DEMO === true;
+window.AGENT_CARRY_IS_REAL = window.AI_CARRY_IS_REAL;
+window.AGENT_CARRY_SNAPSHOT = window.AI_CARRY_SNAPSHOT;

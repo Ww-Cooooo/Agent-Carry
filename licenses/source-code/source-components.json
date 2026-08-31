@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "scope": "Third-party source templates copied or adapted into the Agent Carry repository. npm dependencies and fonts are inventoried separately.",
+  "scope": "Third-party source templates copied or adapted into the AI Carry repository. npm dependencies and fonts are inventoried separately.",
   "components": [
     {
       "name": "shadcn/ui",
@@ -33,7 +33,7 @@
       "relatedScaffoldFiles": [
         "dashboard/src/index.css"
       ],
-      "modifications": "Component styles, sizing, Chinese accessibility copy, theme tokens, layout behavior and application integration were substantially adapted for Agent Carry. The upstream copyright and MIT terms remain attached to the adapted portions."
+      "modifications": "Component styles, sizing, Chinese accessibility copy, theme tokens, layout behavior and application integration were substantially adapted for AI Carry. The upstream copyright and MIT terms remain attached to the adapted portions."
     }
   ]
 }
