@@ -109,7 +109,7 @@ route_id = "template-upgrade"
 target = "core/guides/upgrade-guide.md"
 writes_files = true
 confirmation_point = "before-upgrade"
-request_template = "执行看板动作 instance.upgrade-template。按根地图进入 assistant-maintenance → template-upgrade，读取升级指南、正式契约、官方来源和目标发布清单。本请求授权只读检查官方版本并运行确定性 prepare；只把 prepare 返回的 userPreview 展示给用户。看到绑定预览后的独立‘升级’或‘确认升级’才可执行 confirmCommand。升级必须保留实例资产、Skill、组件、工作区、本机和私密层；普通派生投影失败只标为待刷新，核心来源、用户数据、安全边界或正式切换冲突才暂停本次升级。不得手写清单、整树覆盖、删除未知路径或把文件安装等同于当前会话行为验收。完成后分别说明来源、安装、实例切换、会话采用、代表行为和下一步。"
+request_template = "执行看板动作 instance.upgrade-template。按根地图进入 assistant-maintenance → template-upgrade，同时读取升级指南、正式契约、官方来源、目标发布清单和 core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md。本请求授权只读检查官方版本并运行确定性 prepare；只把 prepare 返回的 userPreview 展示给用户。看到绑定预览后的独立‘升级’或‘确认升级’才可执行 confirmCommand。升级方案由当前实例 Agent 按共同协定自主决定保留、适配、重连、重建或局部隔离；普通派生投影失败只标为待刷新，核心来源、用户数据、安全边界或正式切换冲突才暂停本次升级。不得手写穷尽字段表、整树覆盖、删除未知路径或把文件安装等同于当前会话行为验收。完成后分别说明来源、安装、实例切换、会话采用、代表行为和下一步。"
 
 [[actions]]
 action_id = "preference.reuse-from-instance"

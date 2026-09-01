@@ -30,7 +30,7 @@ confirmation = "before-map-flag-or-public-content-change"
 
 [[routes]]
 id = "template-upgrade"
-summary = "把模板更新安全应用到实例，保护实例资产并提供回退；文件切换后还要由新会话或宿主可验证重载完成真实行为验收，不能把磁盘版本当成当前会话已采用。"
+summary = "把模板更新安全应用到实例时，同时加载实例持续变化兼容协定；由实例 Agent 保留、适配、重连、重建或局部隔离自己的内容，文件切换后再完成真实行为验收。"
 triggers = ["升级模板", "导入升级包", "检查新版本", "检查更新", "官方新版本"]
 target = "core/guides/upgrade-guide.md"
 state = "on-demand"
@@ -39,7 +39,7 @@ confirmation = "before-upgrade"
 
 [[routes]]
 id = "instance-evolution-compatibility"
-summary = "实例安装、学习、进化或增加组件形成正式持久变化时，自动核对所有权、接口和升级闭包；可确定差异自动修复，单项故障局部隔离并自然语言汇报，既有实例首次升级前一次性纳管，普通使用不加载且不增加一轮确认。"
+summary = "实例安装、学习、进化或其他正式持久变化按实际影响自动命中，不依赖用户说出协定名；只核对所有权、以后升级方式和局部回退，可确定差异自动修复，单项故障局部隔离并自然语言汇报，普通使用不加载且不增加一轮确认。"
 triggers = ["实例持久变更", "安装软件", "更新软件", "删除软件", "安装模型", "更新模型", "删除模型", "安装Skill", "更新Skill", "删除Skill", "安装插件", "更新插件", "删除插件", "安装适配器", "更新适配器", "删除适配器", "新增独立功能", "更新独立功能", "删除独立功能", "实例组件", "组件纳管", "自我学习形成资产", "自我进化形成资产", "旧实例纳管", "实例升级兼容"]
 target = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"
 state = "on-demand-before-and-after-durable-instance-change"

@@ -57,11 +57,33 @@ excludesAll("core/guides/first-use-execution-gates.md", [
 ]);
 
 includesAll("core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", [
-  "宽容读取",
-  "只隔离该范围",
-  "空模板中的索引或登记表可以保持未初始化",
-  "摘要是证据，不是产品功能的日常运行门",
+  "按动作影响自动命中",
+  "不规定固定字段名",
+  "只隔离当前项",
+  "不做全量回归",
+  "本机与私密内容没有进入公开",
 ]);
+
+const maintenanceMap = source("core/maps/assistant-maintenance.toml");
+function maintenanceRoute(id) {
+  return maintenanceMap.match(new RegExp(`\\[\\[routes\\]\\]\\s*id = "${id}"[\\s\\S]*?(?=\\n\\[\\[routes\\]\\]|$)`, "u"))?.[0] ?? "";
+}
+const compatibilityRoute = maintenanceRoute("instance-evolution-compatibility");
+if (!compatibilityRoute.includes('target = "core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md"')
+  || !compatibilityRoute.includes("实例持久变更")
+  || !compatibilityRoute.includes("自我学习形成资产")
+  || !compatibilityRoute.includes("实例升级兼容")) {
+  fail("durable instance changes do not converge on the shared compatibility agreement");
+}
+if (!maintenanceRoute("template-upgrade").includes("同时加载实例持续变化兼容协定")) {
+  fail("the mother-template upgrade route does not load the shared compatibility agreement");
+}
+const dashboardActions = JSON.parse(source("dashboard/src/generated/dashboard-actions.json"));
+const upgradeAction = dashboardActions.find((action) => action.action_id === "instance.upgrade-template");
+if (!upgradeAction?.request.includes("core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md")
+  || !upgradeAction.request.includes("保留、适配、重连、重建或局部隔离")) {
+  fail("the executable upgrade request does not use the shared compatibility agreement");
+}
 
 includesAll("core/protocols/TASK_ORCHESTRATION_SOP.md", [
   "普通任务、同一 Agent 内的连续工作和简单验证不创建任务包",

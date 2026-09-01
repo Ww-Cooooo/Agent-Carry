@@ -450,7 +450,7 @@ state = "active"
   for (const [ref, fragments] of [
     ["AGENTS.md", ["INSTANCE_EVOLUTION_COMPATIBILITY.md", "不增加一轮用户确认", "单项故障局部隔离", "自然语言说明影响"]],
     ["assistant.toml", ["instance/components/registry.toml", "never-read-or-enumerate-at-ordinary-startup", "compatibility_registration_adds_user_confirmation = false", "preserve-and-isolate-with-preview"]],
-    ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", ["一次性完成活跃资源纳管", "它不是软件商店", "不触发全产品回归", "auto-repairable", "migration-needed", "component-isolated", "user-decision-needed", "复制实例目录只复制了文件", "copied-instance-runtime-boundary.mjs"]],
+    ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", ["按动作影响自动命中", "不规定固定字段名", "只隔离当前项", "不扫描整台电脑", "实例最了解自己的 Agent", "不做全量回归", "copied-instance-runtime-boundary.mjs"]],
     ["core/schemas/instance-component.schema.md", ["普通启动和首次创建都不读取注册表", "stop-and-preview", "second_run", "严格发布审计", "自然语言用户报告", "目录副本存在", "当前组件标为 `limited`"]],
     ["core/schemas/extension-manifest.schema.md", ["复制目录本身不构成运行时隔离", "copied-instance-runtime-boundary.mjs", "源实例字节不变"]],
     ["core/guides/upgrade-guide.md", ["隔离目录只证明候选文件与正式实例分开", "本次明确使用的少量绑定文件", "用户也不需要手工运行它"]],
