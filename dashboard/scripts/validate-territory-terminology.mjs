@@ -179,8 +179,9 @@ async function validateContractGraph() {
   ])
   await requireContractFragments('core/maps/trigger-registry.toml', [
     'id = "territory-terminology-gate"',
-    'startup_policy = "keep-only-root-map-trigger-terms-never-load-the-full-protocol-for-ordinary-startup-read-only-work-or-unrelated-tasks"',
-    'map-flag-sovereignty-or-public-release-context',
+    'checkpoint = "before-ai-carry-authored-public-geographic-copy"',
+    'route = "core/maps/assistant-maintenance.toml"',
+    'failure = "stop-only-the-affected-public-content"',
   ])
   await requireContractFragments('assistant.toml', [
     'territory_terminology = "core/protocols/TERRITORY_TERMINOLOGY.md"',

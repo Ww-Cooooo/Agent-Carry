@@ -7,7 +7,6 @@
 // treats a caller's model-level claim as an authorization ticket.
 
 import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectShortlistedFormalAsset, queryFormalAssetShortlist, stableAssetId } from "./asset-route-contract.mjs";
@@ -48,10 +47,6 @@ function validateQueryInput(input, { withSelection = false } = {}) {
   if (purpose === "task-recall" && learningSignal !== "none") throw new Error("task-recall-cannot-assert-learning-signal");
   if (withSelection && !stableAssetId.test(input.selectedId ?? "")) throw new Error("selected-id-invalid");
   return Object.freeze({ retrieval, purpose, learningSignal });
-}
-
-function selectionDigest(selected) {
-  return `sha256:${createHash("sha256").update(JSON.stringify(selected)).digest("hex")}`;
 }
 
 function buildBoundedQuery(input, controls) {
@@ -99,31 +94,16 @@ try {
     const candidate = bounded.evolutionCandidates.find((entry) => entry.id === input.selectedId);
     if (!formal && !candidate) throw new Error("selected-id-not-in-current-shortlist");
     if (formal) {
-      const digest = selectionDigest(formal);
-      if (formal.requiredLevel > 1) result = Object.freeze({ decision: "host-level-confirmation-required", executable: false, selected: formal,
-        selectionDigest: digest, recallUse: projectRecallUse(formal, "candidate-found-not-used"),
-        levelTrust: "not-assertable-through-this-cli", disposition: "use-a-host-profile-or-model-level-route-that-can-be-verified-outside-this-cli" });
-      else {
-        const inspected = inspectShortlistedFormalAsset(root, bounded.formal, formal.id);
-        result = inspected.decision === "selection-confirmation-required" || inspected.decision === "read-confirmation-required"
-          ? Object.freeze({
-            ...inspected,
-            selectionDigest: digest,
-            nextOperation: null,
-            recallUse: projectRecallUse(formal, "candidate-found-not-used"),
-            disposition: "this-stateless-cli-cannot-consume-or-resume-confirmations; protected-body-reading-requires-a-stateful-trusted-host-integration-that-keeps-the-challenge-in-the-same-live-process",
-          })
-          : Object.freeze({ ...inspected,
-            recallUse: projectRecallUse(formal, inspected.decision === "load-bounded-body" ? "asset-body-loaded" : "candidate-found-not-used") });
-      }
+      const inspected = inspectShortlistedFormalAsset(root, bounded.formal, formal.id);
+      result = Object.freeze({ ...inspected, selected: formal,
+        modelGuidance: formal.requiredLevel > 1 ? `This asset recommends model level ${formal.requiredLevel}; recall remains available.` : "ordinary-model-suitable",
+        recallUse: projectRecallUse(formal, ["load-bounded-body", "bounded-section-only", "load-bounded-task-family"].includes(inspected.decision)
+          ? "asset-body-loaded" : "candidate-found-not-used") });
     } else {
-      const digest = selectionDigest(candidate);
-      result = Object.freeze({ decision: "candidate-selection-confirmation-required",
-        executable: false, selected: candidate, selectionDigest: digest, contentRole: "candidate-metadata-only", authorizedActions: Object.freeze([]),
+      result = Object.freeze({ decision: "candidate-review-needs-current-conversation",
+        executable: false, selected: candidate, contentRole: "candidate-metadata-only", authorizedActions: Object.freeze([]),
         recallUse: projectRecallUse(candidate, "candidate-found-not-used"),
-        levelTrust: "candidate-evidence-requires-level-2-or-higher-and-is-not-assertable-through-this-cli",
-        nextOperation: null,
-        disposition: "this-stateless-cli-cannot-complete-candidate-selection; use-a-stateful-trusted-host-integration-that-keeps-selection-state-in-the-same-live-process",
+        disposition: "Ask in the current conversation whether the user wants to review this learning candidate.",
       });
     }
   } else {

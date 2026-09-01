@@ -23,7 +23,7 @@
 - `verification`：少量风险对应检查。升级类清单至少覆盖动作级回滚、合并后真实快照双份重建、第二次执行无差异、稳定看板入口和平台完整树身份；Windows 权限策略要区分自然继承、显式／受保护 DACL、SACL 与所有者，不能把复制失败或工具退出码单独当成成功。
 - Asset Schema 1.3 或更高版本的清单必须说明：风险分级只控制候选观察、验证和复核顺序；正式资产仍需用户明确确认或可核验的既有明确批准；旧 `policy-authorized`、孤立的批准布尔值和模型判断不能直接迁成正式授权。
 - 声明能力、SOP 或宿主执行经验成熟度的旧实例必须按已有真实记录建立 `instance/validations/index.toml` 闭包。缺少真实证据时进入 `needs-evidence`／`review`，清单不得授权执行器制造验证记录、批准证据、任务次数或时间。
-- 严格启动胶囊是 manifest 的可重建派生物，并必须满足 `startup-capsule.schema.md`。实例化、升级，以及指导方式、学习政策、语言、版本、档案引用或方向变化时，manifest、胶囊和相关派生投影必须处于同一个可恢复事务；胶囊在模型上下文外生成并核对源摘要，失败时整组回滚。
+- 严格启动胶囊是 manifest 的可重建派生物，并必须满足 `startup-capsule.schema.md`。首次创建和普通指导方式／学习政策调整先提交 manifest，再在模型上下文外尽力重建胶囊；派生失败不回滚已验证的真源，只限制依赖胶囊闭包的持久动作。升级、迁移和正式发布在宣布完成前必须让最终 manifest、胶囊和目标版本闭合。看板等派生物随后刷新；普通刷新失败进入待重试，升级／迁移／发布则保持未完成。
 - `target_selection`：目标模板输入的允许集合策略。广义通配符只用于匹配已经固定身份的发布内容或可信提交中的文件；不得从任意开发工作树递归复制 `.git`、`node_modules`、缓存、临时构建目录或维护者私密层。
 - `target_selection` 下的 `allow_overrides_deny_for_exact_paths`：只用于公开结构必须保留、同时被宽泛私密目录规则命中的精确占位文件。优先级必须是“deny 胜出，只有本字段逐字列出的路径例外”；不接受 Glob、目录、前缀或调用方追加项。每个例外只允许清单逐字列出的普通零字节文件，不能是符号链接、联接、重解析点、目录或含任意正文的文件；归档中的目录记录只是容器元数据，不算额外文件。任何其他 `.assistant-local`／`.assistant-private` 路径继续失败关闭。
 - `[release_boundary]`：Schema 2 的新发布必须区分本地候选与已经存在的官方发布。`status=published-release` 只有在清单来自声明的官方固定标签、相应 Release 对象存在、解压树与固定标签逐路径一致且用户明确授权本次升级时才允许 `instance_replacement_authorized=true`。清单内的历史 `publication_authorized`／`repository_operation_authorized` 只说明形成这一个固定发布的动作已经通过发布门，必须同时声明未来公开动作仍为 false；它不能授权未来的提交、推送、标签、Release 或 Pages，也不能让本地候选冒充已发布来源。

@@ -18,7 +18,7 @@ const snapshotStub = () => ({ decision: "snapshot-pair-installed", byte_identica
 
 try {
   write(root, "instance/manifest.toml", "schema_version = 1\ninstance_id = \"ac-skill-install-fixture\"\nstate = \"active\"\n");
-  write(root, "instance/skills/requirements.toml", "schema_version = 1\ninstance_id = \"ac-skill-install-fixture\"\ngenerated_at = \"\"\nstatus = \"current\"\n");
+  write(root, "instance/skills/requirements.toml", "schema_version = 1\ninstance_id = \"template\"\ngenerated_at = \"\"\nstatus = \"scan-after-instantiation\"\n");
   write(root, ".assistant-local/skills/.gitkeep", "");
 
   // 1. A ready source only creates a local preview receipt; it does not install,
@@ -43,6 +43,8 @@ try {
   assert(installed.decision === "skill-install-complete" && installed.requirementsRegistered
     && existsSync(resolve(root, ".assistant-local/skills/shared-checklist/SKILL.md"))
     && requirementsAfter.includes('id = "skill.shared-checklist"')
+    && requirementsAfter.includes('instance_id = "ac-skill-install-fixture"')
+    && requirementsAfter.includes('status = "current"')
     && requirementsAfter.includes('entry = ".assistant-local/skills/shared-checklist/SKILL.md"')
     && requirementsAfter.includes('source = "shared-local-folder:sha256:')
     && requirementsAfter.includes('version = "1.0.0"')
@@ -135,7 +137,7 @@ try {
     && existsSync(resolve(root, ".assistant-local/skills/shared-checklist/SKILL.md")),
   "an injected local failure was not contained and rolled back without harming the existing Skill");
 
-  console.log("Skill install transaction passed seven high-information cases: preview-only, atomic install, idempotence, complex same-Skill upgrade, conflict/downgrade/local-drift isolation, upgrade rollback, and new-install rollback without package execution.");
+  console.log("Skill install transaction passed seven high-information cases: preview-only, lazy first-use registration, atomic install, idempotence, complex same-Skill upgrade, conflict isolation, and rollback without package execution.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

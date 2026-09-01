@@ -62,7 +62,7 @@ projects_to = ["instance-professional-extensions", "privacy-migration", "dashboa
 [[components]]
 id = "instance-evolution-compatibility"
 owner = "template-core"
-paths = ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", "core/schemas/instance-component.schema.md", "core/templates/component/**", "dashboard/scripts/instance-component-contract.mjs", "dashboard/scripts/validate-instance-component-contract.mjs"]
+paths = ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", "core/schemas/instance-component.schema.md", "core/templates/component/**", "dashboard/scripts/copied-instance-runtime-boundary.mjs", "dashboard/scripts/instance-component-contract.mjs", "dashboard/scripts/validate-instance-component-contract.mjs"]
 depends_on = ["context-routing", "asset-memory", "professional-extension-contract", "host-integration", "external-safety", "result-validation"]
 projects_to = ["instance-components", "instance-professional-extensions", "privacy-migration", "upgrade-system", "architecture-documentation"]
 
@@ -155,7 +155,7 @@ projects_to = ["learning-signal-runtime", "snapshot-runtime", "dashboard-snapsho
 [[components]]
 id = "learning-signal-runtime"
 owner = "dashboard-runtime"
-paths = ["dashboard/scripts/cross-session-signal-transaction.mjs", "dashboard/scripts/cross-session-signal-cli.mjs", "dashboard/scripts/learning-capture-transaction.mjs", "dashboard/scripts/learning-capture-cli.mjs", "dashboard/scripts/learning-save-cli.mjs", "dashboard/scripts/learning-promotion-transaction.mjs", "dashboard/scripts/learning-promotion-cli.mjs", "dashboard/scripts/operational-user-report.mjs", "dashboard/scripts/task-closeout-contract.mjs", "dashboard/scripts/validate-cross-session-signal-transaction.mjs", "dashboard/scripts/validate-learning-capture-transaction.mjs", "dashboard/scripts/validate-learning-promotion-transaction.mjs", "dashboard/scripts/validate-operational-user-report.mjs", "dashboard/scripts/validate-proactive-learning-guidance.mjs", "dashboard/scripts/validate-task-closeout-contract.mjs", "dashboard/package.json"]
+paths = ["dashboard/scripts/cross-session-signal-transaction.mjs", "dashboard/scripts/cross-session-signal-cli.mjs", "dashboard/scripts/learning-capture-transaction.mjs", "dashboard/scripts/learning-capture-cli.mjs", "dashboard/scripts/learning-save-cli.mjs", "dashboard/scripts/learning-promotion-transaction.mjs", "dashboard/scripts/learning-promotion-cli.mjs", "dashboard/scripts/operational-user-report.mjs", "dashboard/scripts/task-closeout-contract.mjs", "dashboard/scripts/validate-cross-session-signal-transaction.mjs", "dashboard/scripts/validate-learning-capture-journey.mjs", "dashboard/scripts/validate-learning-capture-transaction.mjs", "dashboard/scripts/validate-learning-promotion-transaction.mjs", "dashboard/scripts/validate-operational-user-report.mjs", "dashboard/scripts/validate-proactive-learning-guidance.mjs", "dashboard/scripts/validate-task-closeout-contract.mjs", "dashboard/package.json"]
 depends_on = ["cross-session-signals", "asset-retrieval-runtime", "snapshot-runtime", "result-validation"]
 projects_to = ["instance-signal-projection", "dashboard-snapshot-projection", "upgrade-system", "architecture-documentation"]
 
@@ -282,6 +282,6 @@ projects_to = []
 [change_rule]
 operations = ["add", "modify", "delete", "rename", "move", "migrate", "upgrade", "optimize", "publish"]
 formal_scopes = ["template-component", "instance-identity", "instance-formal-asset", "instance-formal-state", "instance-component", "derived-projection-contract", "release-candidate"]
-required_steps = ["load-durable-change-protocol", "load-instance-compatibility-protocol-for-durable-instance-changes", "locate-formal-owner", "prove-root-cause-and-user-visible-risk", "follow-depends-on-and-projects-to", "define-acceptance-and-rollback", "update-formal-owner", "classify-trigger-if-condition-to-action-behavior-changed", "update-references-and-schemas", "verify-instance-component-ownership-and-interface-closure-if-affected", "verify-formal-asset-reachability-if-affected", "update-dashboard-action-or-snapshot-if-affected", "write-version-specific-migration-if-existing-instances-can-differ", "run-risk-proportionate-internal-validation", "show-user-a-compact-completion-list"]
+required_steps = ["load-relevant-owner-and-boundary", "state-user-visible-change-and-local-failure-scope", "update-smallest-true-source", "preserve-instance-private-and-unknown-content", "verify-affected-user-journey", "add-migration-or-release-work-only-when-existing-users-differ", "report-result-learning-and-next-step"]
 ordinary_context = "metadata-only"
 full_protocol = "core/protocols/COMPONENT_CHANGE.md"

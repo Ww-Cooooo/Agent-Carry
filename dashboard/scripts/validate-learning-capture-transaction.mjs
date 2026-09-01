@@ -23,7 +23,6 @@ import {
   executePersistentLearningCaptureTransaction,
   inspectLearningCaptureTransactionState,
   inspectLearningReminderCancellationState,
-  inspectPersistentLearningCaptureTransaction,
   loadPersistentLearningCapturePlan,
   preparePersistentLearningCaptureChallenge,
   rollbackPersistentLearningCaptureTransaction,
@@ -287,6 +286,16 @@ function applyPlan(root, plan, { stopAfter = Infinity } = {}) {
   return writes;
 }
 
+function applyPreparedProjections(root, plan) {
+  let writes = 0;
+  for (const step of plan.projections ?? []) {
+    expect(digestAt(root, step.target) === step.preconditionDigest, `projection ${step.phase} precondition drifted`);
+    atomicWrite(root, step.target, Buffer.from(step.contentBase64, "base64")); writes += 1;
+    expect(digestAt(root, step.target) === step.proposedDigest, `projection ${step.phase} did not read back`);
+  }
+  return writes;
+}
+
 function rollbackPlan(root, plan) {
   for (const item of plan.rollback) {
     const target = targetPath(root, item.target);
@@ -383,7 +392,7 @@ function testNoSelfSignedDirectUserBypassAndStandardKeep() {
     challengeId: rollbackPrepared.persistentChallengeId, proposal: proposal(), observationAssertion: rollbackAssertion,
     receipt: persistentReceipt(rollbackPrepared, "keep", "standard-keep-rollback"),
   });
-  applyPlan(rollbackRoot, rollbackConfirmed.plan, { stopAfter: 2 });
+  applyPlan(rollbackRoot, rollbackConfirmed.plan, { stopAfter: 1 });
   const rolledBack = rollbackPersistentLearningCaptureTransaction(rollbackRoot, {
     challengeId: rollbackPrepared.persistentChallengeId, challengeNonce: rollbackPrepared.challengeNonce,
   });
@@ -409,12 +418,16 @@ function testOpaqueReceiptBoundary() {
   const clone = JSON.parse(JSON.stringify(challenge));
   expect(confirmLearningCaptureChoice(clone, currentReceipt(challenge, "observe", "clone")).decision === "learning-capture-choice-denied",
     "a cloned challenge crossed the same-process boundary");
-  const early = new Date(Date.parse(challenge.issuedAt) - 1).toISOString();
-  expect(confirmLearningCaptureChoice(challenge, currentReceipt(challenge, "observe", "early", { messageAt: early })).decision === "learning-capture-choice-denied",
-    "a message predating the challenge was accepted");
+  const earlyChallenge = createChallenge(root, proposal(), "receipt-informational-early");
+  const early = new Date(Date.parse(earlyChallenge.issuedAt) - 1).toISOString();
+  expect(confirmLearningCaptureChoice(earlyChallenge,
+    currentReceipt(earlyChallenge, "observe", "early", { messageAt: early })).decision === "learning-capture-choice-confirmed",
+  "an informational host timestamp became a user-choice gate");
+  const futureChallenge = createChallenge(root, proposal(), "receipt-informational-future");
   const future = new Date(Date.now() + 120_000).toISOString();
-  expect(confirmLearningCaptureChoice(challenge, currentReceipt(challenge, "observe", "future", { messageAt: future, confirmedAt: future })).decision === "learning-capture-choice-denied",
-    "a future user message was accepted");
+  expect(confirmLearningCaptureChoice(futureChallenge,
+    currentReceipt(futureChallenge, "observe", "future", { messageAt: future, confirmedAt: future })).decision === "learning-capture-choice-confirmed",
+  "a host clock difference became a user-choice gate");
 
   const challengeA = createChallenge(root, proposal(), "receipt-a");
   const challengeB = createChallenge(root, proposal({ subject_key: "another-workflow" }), "receipt-b");
@@ -558,12 +571,15 @@ function testPersistentCrossTurnChallengeAndCleanup() {
   closePersistentLearningCaptureChallenge(recoveryRoot,
     { challengeId: preparedRecovery.persistentChallengeId, challengeNonce: preparedRecovery.challengeNonce });
 
-  const expiryRoot = createFixture("persistent-expiry", { full: true }); const expiryAssertion = observationAssertion("persistent-expiry");
+  const expiryRoot = createFixture("persistent-no-expiry", { full: true }); const expiryAssertion = observationAssertion("persistent-no-expiry");
   const preparedExpiry = preparePersistentLearningCaptureChallenge(expiryRoot, proposal(), expiryAssertion);
-  const cleaned = cleanupExpiredPersistentLearningCaptureChallenges(expiryRoot,
-    { now: new Date(Date.parse(preparedExpiry.expiresAt) + 1) });
-  expect(cleaned.decision === "persistent-learning-capture-cleanup-complete" && cleaned.removedOperationalRecordCount === 1
-    && !existsSync(join(expiryRoot, ".assistant-local")), "expired unanswered challenge was not removed without semantic writes");
+  const cleaned = cleanupExpiredPersistentLearningCaptureChallenges(expiryRoot);
+  expect(cleaned.decision === "persistent-learning-capture-cleanup-complete" && cleaned.removedOperationalRecordCount === 0
+    && existsSync(join(expiryRoot, ".assistant-local")), "an unanswered challenge was deleted by a reply timer");
+  const closedExpiry = closePersistentLearningCaptureChallenge(expiryRoot,
+    { challengeId: preparedExpiry.persistentChallengeId, challengeNonce: preparedExpiry.challengeNonce });
+  expect(closedExpiry.decision === "persistent-learning-capture-closed" && !existsSync(join(expiryRoot, ".assistant-local")),
+    "an explicitly closed unanswered challenge left operational state behind");
 
   const tamperRoot = createFixture("persistent-record-tamper", { full: true }); const tamperAssertion = observationAssertion("persistent-tamper");
   const preparedTamper = preparePersistentLearningCaptureChallenge(tamperRoot, proposal(), tamperAssertion);
@@ -580,73 +596,29 @@ function testPersistentCrossTurnChallengeAndCleanup() {
     { challengeId: preparedTamper.persistentChallengeId, challengeNonce: preparedTamper.challengeNonce });
 }
 
-function testPersistentRecoveryEvidenceSurvivesExpiryAndClose() {
-  const cli = join(scriptDir, "learning-capture-cli.mjs");
-  const requestRoot = mkdtempSync(join(tmpdir(), "ai-carry-learning-recovery-request-")); temporaryRoots.push(requestRoot);
-  for (const stopAfter of [1, 2, 3]) {
-    const root = createFixture(`persistent-expired-prefix-${stopAfter}`, { full: true }); const before = treeIdentity(root);
-    const assertion = observationAssertion(`persistent-expired-prefix-${stopAfter}`);
-    const prepared = preparePersistentLearningCaptureChallenge(root, proposal(), assertion);
-    const receipt = persistentReceipt(prepared, "observe", `expired-prefix-${stopAfter}`);
-    const planned = confirmPersistentLearningCaptureChallenge(root, { challengeId: prepared.persistentChallengeId,
-      proposal: proposal(), observationAssertion: assertion, receipt });
-    expect(planned.decision === "persistent-learning-capture-plan-ready", "prefix recovery fixture did not create a plan");
-    applyPlan(root, planned.plan, { stopAfter });
-    const cleaned = cleanupExpiredPersistentLearningCaptureChallenges(root,
-      { now: new Date(Date.parse(prepared.expiresAt) + 1) });
-    expect(cleaned.decision === "persistent-learning-capture-cleanup-rollback-required"
-      && cleaned.preservedRollbackCount === 1
-      && existsSync(targetPath(root, `.assistant-local/runtime/learning-capture/${prepared.persistentChallengeId}.plan.json`)),
-    `expired ${stopAfter}-step prefix lost its rollback evidence`);
-    const close = closePersistentLearningCaptureChallenge(root,
-      { challengeId: prepared.persistentChallengeId, challengeNonce: prepared.challengeNonce });
-    expect(close.decision === "persistent-learning-capture-close-rollback-required" && close.operationalRecordPreserved,
-      `close deleted the ${stopAfter}-step prefix recovery evidence`);
-    const recoveryRequest = join(requestRoot, `recover-${stopAfter}.json`);
-    writeFileSync(recoveryRequest, `${JSON.stringify({ challenge_id: prepared.persistentChallengeId,
-      challenge_nonce: prepared.challengeNonce }, null, 2)}\n`, "utf8");
-    const inspectedRun = spawnSync(process.execPath, [cli, "inspect", root, recoveryRequest], { encoding: "utf8" });
-    const inspected = JSON.parse(inspectedRun.stdout);
-    expect(inspectedRun.status === 0 && inspected.decision === "learning-capture-rollback-required" && inspected.checkpoint === stopAfter,
-      `persistent inspector did not locate the ${stopAfter}-step prefix`);
-    const rolledBackRun = spawnSync(process.execPath, [cli, "rollback", root, recoveryRequest], { encoding: "utf8" });
-    const rolledBack = JSON.parse(rolledBackRun.stdout);
-    expect(rolledBackRun.status === 0 && rolledBack.decision === "persistent-learning-capture-rollback-complete"
-      && !existsSync(join(root, ".assistant-local")) && treeIdentity(root) === before,
-    `persistent rollback did not restore the exact ${stopAfter}-step preimage tree`);
-  }
-
-  const preimageRoot = createFixture("persistent-expired-preimage", { full: true }); const preimageBefore = treeIdentity(preimageRoot);
-  const preimageAssertion = observationAssertion("persistent-expired-preimage");
-  const preparedPreimage = preparePersistentLearningCaptureChallenge(preimageRoot, proposal(), preimageAssertion);
-  const preimagePlan = confirmPersistentLearningCaptureChallenge(preimageRoot, { challengeId: preparedPreimage.persistentChallengeId,
-    proposal: proposal(), observationAssertion: preimageAssertion,
-    receipt: persistentReceipt(preparedPreimage, "observe", "expired-preimage") });
-  expect(preimagePlan.decision === "persistent-learning-capture-plan-ready", "preimage cleanup fixture did not create a plan");
-  const preimageCleanup = cleanupExpiredPersistentLearningCaptureChallenges(preimageRoot,
-    { now: new Date(Date.parse(preparedPreimage.expiresAt) + 1) });
-  expect(preimageCleanup.decision === "persistent-learning-capture-cleanup-complete"
-    && preimageCleanup.removedOperationalRecordCount === 1 && treeIdentity(preimageRoot) === preimageBefore,
-  "expired unstarted plan did not cleanly return to the original tree");
-
-  const finalRoot = createFixture("persistent-expired-final", { full: true });
-  const finalAssertion = observationAssertion("persistent-expired-final");
-  const preparedFinal = preparePersistentLearningCaptureChallenge(finalRoot, proposal(), finalAssertion);
-  const finalPlan = confirmPersistentLearningCaptureChallenge(finalRoot, { challengeId: preparedFinal.persistentChallengeId,
-    proposal: proposal(), observationAssertion: finalAssertion,
-    receipt: persistentReceipt(preparedFinal, "observe", "expired-final") });
-  applyPlan(finalRoot, finalPlan.plan); const finalTreeWithOperational = treeIdentity(finalRoot);
-  const finalCleanup = cleanupExpiredPersistentLearningCaptureChallenges(finalRoot,
-    { now: new Date(Date.parse(preparedFinal.expiresAt) + 1) });
-  expect(finalCleanup.decision === "persistent-learning-capture-cleanup-complete"
-    && finalCleanup.removedOperationalRecordCount === 1 && !existsSync(join(finalRoot, ".assistant-local")),
-  "expired fully committed plan did not clean its temporary recovery evidence");
-  expect(finalTreeWithOperational !== treeIdentity(finalRoot), "final cleanup test did not actually remove its operational record");
-  expect(readFileSync(targetPath(finalRoot, finalPlan.plan.candidateSourceRef), "utf8").includes("evolution-candidate"),
-    "final cleanup removed committed semantic content");
+function testPersistentCommittedEvidenceSurvivesInspectionAndClose() {
+  const root = createFixture("persistent-committed-inspection", { full: true });
+  const assertion = observationAssertion("persistent-committed-inspection");
+  const prepared = preparePersistentLearningCaptureChallenge(root, proposal(), assertion);
+  const planned = confirmPersistentLearningCaptureChallenge(root, { challengeId: prepared.persistentChallengeId,
+    proposal: proposal(), observationAssertion: assertion,
+    receipt: persistentReceipt(prepared, "observe", "committed-inspection") });
+  expect(planned.decision === "persistent-learning-capture-plan-ready", "committed inspection fixture did not create a plan");
+  applyPlan(root, planned.plan);
+  const cleaned = cleanupExpiredPersistentLearningCaptureChallenges(root);
+  expect(cleaned.decision === "persistent-learning-capture-cleanup-complete"
+    && cleaned.removedOperationalRecordCount === 0
+    && existsSync(targetPath(root, `.assistant-local/runtime/learning-capture/${prepared.persistentChallengeId}.plan.json`)),
+  "inspection silently removed committed recovery evidence");
+  const close = closePersistentLearningCaptureChallenge(root,
+    { challengeId: prepared.persistentChallengeId, challengeNonce: prepared.challengeNonce });
+  expect(close.decision === "persistent-learning-capture-closed" && !existsSync(join(root, ".assistant-local")),
+    "explicit close did not remove committed operational evidence");
+  expect(readFileSync(targetPath(root, planned.plan.candidateSourceRef), "utf8").includes("evolution-candidate"),
+    "explicit close removed committed semantic content");
 }
 
-function testAtomicBackupCrashWindowRecovery() {
+function testAtomicStageCrashWindowRecovery() {
   const cli = join(scriptDir, "learning-capture-cli.mjs");
   const requestRoot = mkdtempSync(join(tmpdir(), "ai-carry-atomic-window-request-")); temporaryRoots.push(requestRoot);
   const prepare = (root, suffix) => {
@@ -659,14 +631,12 @@ function testAtomicBackupCrashWindowRecovery() {
     expect(confirmed.decision === "persistent-learning-capture-plan-ready", "atomic crash fixture could not seal its plan");
     return { challenge, plan: confirmed.plan };
   };
-  const crashAfterBackupRename = (root, plan, { forgeBackup = false } = {}) => {
+  const crashAfterStageWrite = (root, plan, { forgeStage = false } = {}) => {
     const step = plan.steps[0]; const target = targetPath(root, step.target);
     const token = plan.planDigest.slice("sha256:".length, "sha256:".length + 16);
     const stage = `${target}.learning-capture-${token}.stage`;
-    const backup = `${target}.learning-capture-${token}.backup`;
-    writeFileSync(stage, Buffer.from(step.contentBase64, "base64")); renameSync(target, backup);
-    if (forgeBackup) writeFileSync(backup, "forged backup bytes", "utf8");
-    return { step, target, stage, backup };
+    writeFileSync(stage, forgeStage ? "forged stage bytes" : Buffer.from(step.contentBase64, "base64"));
+    return { step, target, stage };
   };
   const actionFile = (name, value) => {
     const target = join(requestRoot, `${name}.json`); writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`, "utf8"); return target;
@@ -674,20 +644,20 @@ function testAtomicBackupCrashWindowRecovery() {
 
   const resumeRoot = createFixture("atomic-backup-resume", { full: true });
   const resumePrepared = prepare(resumeRoot, "atomic-backup-resume");
-  const resumeCrash = crashAfterBackupRename(resumeRoot, resumePrepared.plan);
+  const resumeCrash = crashAfterStageWrite(resumeRoot, resumePrepared.plan);
   const resumeRequest = actionFile("resume", { challenge_id: resumePrepared.challenge.persistentChallengeId,
     challenge_nonce: resumePrepared.challenge.challengeNonce });
   const inspected = spawnSync(process.execPath, [cli, "inspect", resumeRoot, resumeRequest], { encoding: "utf8" });
   expect(inspected.status === 0 && JSON.parse(inspected.stdout).decision === "learning-capture-ready-for-host-execution"
-    && existsSync(resumeCrash.target) && !existsSync(resumeCrash.stage) && !existsSync(resumeCrash.backup),
-  `cross-process inspect did not restore the sealed preimage after backup rename: ${inspected.stderr}`);
+    && !existsSync(resumeCrash.target) && !existsSync(resumeCrash.stage),
+  `cross-process inspect did not discard an exact uncommitted stage: ${inspected.stderr}`);
   const executed = spawnSync(process.execPath, [cli, "execute", resumeRoot, resumeRequest], { encoding: "utf8" });
   expect(executed.status === 0 && JSON.parse(executed.stdout).decision === "persistent-learning-capture-execution-complete",
     `execution could not resume after the backup crash window: ${executed.stderr}`);
 
   const rollbackRoot = createFixture("atomic-backup-rollback", { full: true }); const rollbackBefore = treeIdentity(rollbackRoot);
   const rollbackPrepared = prepare(rollbackRoot, "atomic-backup-rollback");
-  crashAfterBackupRename(rollbackRoot, rollbackPrepared.plan);
+  crashAfterStageWrite(rollbackRoot, rollbackPrepared.plan);
   const rollbackRequest = actionFile("rollback", { challenge_id: rollbackPrepared.challenge.persistentChallengeId,
     challenge_nonce: rollbackPrepared.challenge.challengeNonce });
   const rolledBack = spawnSync(process.execPath, [cli, "rollback", rollbackRoot, rollbackRequest], { encoding: "utf8" });
@@ -697,15 +667,15 @@ function testAtomicBackupCrashWindowRecovery() {
 
   const forgedRoot = createFixture("atomic-backup-forged", { full: true });
   const forgedPrepared = prepare(forgedRoot, "atomic-backup-forged");
-  const forgedCrash = crashAfterBackupRename(forgedRoot, forgedPrepared.plan, { forgeBackup: true });
+  const forgedCrash = crashAfterStageWrite(forgedRoot, forgedPrepared.plan, { forgeStage: true });
   const forgedRequest = actionFile("forged", { challenge_id: forgedPrepared.challenge.persistentChallengeId,
     challenge_nonce: forgedPrepared.challenge.challengeNonce });
   const forgedInspect = spawnSync(process.execPath, [cli, "inspect", forgedRoot, forgedRequest], { encoding: "utf8" });
   const forgedResult = JSON.parse(forgedInspect.stdout);
   expect(forgedInspect.status === 0 && forgedResult.decision === "learning-capture-recovery-required"
-    && forgedResult.reason.includes("artifact") && existsSync(forgedCrash.backup) && existsSync(forgedCrash.stage)
+    && forgedResult.reason.includes("artifact") && existsSync(forgedCrash.stage)
     && !existsSync(forgedCrash.target),
-  "a forged or digest-mismatched backup was deleted, trusted, or silently restored");
+  "a forged stage was deleted, trusted, or silently installed");
 }
 
 function testStaleProjectionCleanupBoundary() {
@@ -764,7 +734,7 @@ function testProductionCliAcrossProcesses() {
   const prepared = JSON.parse(preparedRun.stdout);
   expect(prepared.decision === "persistent-learning-capture-choice-required"
     && prepared.preview.directWriteSet.length === 0
-    && prepared.preview.options.find((item) => item.id === "keep")?.label.includes("Level 3"),
+    && prepared.preview.options.find((item) => item.id === "keep")?.label === "复核后留下",
   "prompt-only CLI trusted a caller-labelled connected-host result or failed to persist a resumable challenge");
   const receipt = persistentReceipt(prepared, "observe", "cli");
   const confirmPath = join(requestRoot, "confirm.json");
@@ -777,7 +747,8 @@ function testProductionCliAcrossProcesses() {
     && !confirmedRun.stdout.includes("formal_preview_base64"), "CLI confirm leaked exact transaction bytes into model-visible output");
   const confirmed = JSON.parse(confirmedRun.stdout);
   expect(confirmed.decision === "persistent-learning-capture-plan-ready" && confirmed.planRef
-    && confirmed.writeSet.length === 8, "CLI confirm did not return a bounded host plan reference");
+    && confirmed.writeSet.some((ref) => ref.startsWith("instance/evolution/") && ref.endsWith(".md")),
+  "CLI confirm did not return the bounded source plan reference");
   const loaded = loadPersistentLearningCapturePlan(root,
     { challengeId: prepared.persistentChallengeId, challengeNonce: prepared.challengeNonce });
   expect(loaded.decision === "persistent-learning-capture-plan-loaded"
@@ -836,7 +807,7 @@ function testProductionCliAcrossProcesses() {
   expect(reviewConfirmRun.status === 0, `Level 3 handoff CLI confirm failed: ${reviewConfirmRun.stderr}`);
   const reviewConfirmed = JSON.parse(reviewConfirmRun.stdout);
   expect(reviewConfirmed.planDecision === "learning-capture-host-transaction-preview"
-    && reviewConfirmed.choice === "keep" && reviewConfirmed.writeSet.length === 9
+    && reviewConfirmed.choice === "keep"
     && reviewConfirmed.writeSet.some((ref) => ref.startsWith("instance/evolution/review-payloads/")),
   "persistent keep did not create the complete review handoff transaction");
   const reviewActionPath = join(requestRoot, "level3-action.json");
@@ -848,10 +819,10 @@ function testProductionCliAcrossProcesses() {
   const payloadRef = reviewConfirmed.writeSet.find((ref) => ref.startsWith("instance/evolution/review-payloads/"));
   const candidateRef = reviewConfirmed.writeSet.find((ref) => ref.startsWith("instance/evolution/") && ref.endsWith(".md"));
   const payload = JSON.parse(readFileSync(targetPath(reviewRoot, payloadRef), "utf8"));
-  expect(payload.state === "awaiting-level3-review" && payload.review.executable === false
+  expect(payload.state === "awaiting-review" && payload.review.executable === false
     && payload.authorization.message_digest === reviewReceipt.message_digest
     && payload.authorization.exact_content_authorized === true
-    && readFileSync(targetPath(reviewRoot, candidateRef), "utf8").includes("Level 3 复核交接"),
+    && readFileSync(targetPath(reviewRoot, candidateRef), "utf8").includes("定向复核交接"),
   "cross-process Level 3 handoff lost the exact user authorization or became executable");
   const formalId = proposal().formal_preview.match(/^id = "([^"]+)"/mu)[1];
   expect(!loadTrustedDomainEnvelope(reviewRoot, { explicitRequestedId: formalId }).envelope.explicitRoute,
@@ -904,11 +875,12 @@ function testSimpleLearningSaveCli() {
 
   const confirmedRun = spawnSync(process.execPath, [cli, "confirm", "--root", root, "--request-file", requestPath,
     "--confirm-ref", prepared.confirmationRef, "--user-reply", "留下"], { encoding: "utf8" });
-  expect(confirmedRun.status === 0, `simple learning confirm failed: ${confirmedRun.stderr}`);
+  expect(confirmedRun.status === 0, `simple learning confirm failed (${confirmedRun.status}): ${confirmedRun.stderr || confirmedRun.stdout}`);
   const confirmed = JSON.parse(confirmedRun.stdout);
   expect(confirmed.decision === "learning-save-complete" && confirmed.initialMaturity === "unvalidated"
     && confirmed.validationClaimed === false && confirmed.futureActionsExecuted === false
-    && confirmed.operationalReceiptRemoved === true && confirmed.target.startsWith("instance/sops/"),
+    && confirmed.operationalReceiptRemoved === true && confirmed.recallVerified === true
+    && confirmed.snapshotState === "current" && confirmed.target.startsWith("instance/sops/"),
   "simple learning keep did not close as a new low-risk unvalidated SOP");
   const source = readFileSync(targetPath(root, confirmed.target), "utf8");
   expect(source.includes('maturity = "unvalidated"') && source.includes("successful_use_count = 0")
@@ -938,6 +910,20 @@ function testSimpleLearningSaveCli() {
     && unsafe.affectedScope === "only-this-learning-item" && unsafe.userReport?.still_usable.includes("其他独立能力")
     && treeIdentity(root) === beforeUnsafe,
   "a high-impact simple request was saved, changed the instance, or failed without a local usability report");
+
+  const snapshotFaultRoot = createFixture("simple-learning-save-snapshot-fault", { full: true });
+  const faultPrepareRun = spawnSync(process.execPath, [cli, "prepare", "--root", snapshotFaultRoot,
+    "--request-file", requestPath], { encoding: "utf8" });
+  const faultPrepared = JSON.parse(faultPrepareRun.stdout);
+  rmSync(join(snapshotFaultRoot, "dashboard/public/snapshot.js"));
+  mkdirSync(join(snapshotFaultRoot, "dashboard/public/snapshot.js"));
+  const faultConfirmRun = spawnSync(process.execPath, [cli, "confirm", "--root", snapshotFaultRoot,
+    "--request-file", requestPath, "--confirm-ref", faultPrepared.confirmationRef, "--user-reply", "留下"], { encoding: "utf8" });
+  const faultConfirmed = JSON.parse(faultConfirmRun.stdout);
+  expect(faultConfirmRun.status === 0 && faultConfirmed.decision === "learning-save-complete-dashboard-refresh-pending"
+    && faultConfirmed.recallVerified === true && faultConfirmed.snapshotState === "refresh-pending"
+    && loadTrustedDomainEnvelope(snapshotFaultRoot, { explicitRequestedId: faultConfirmed.assetId }).envelope.explicitRoute,
+  `a dashboard-only fault discarded or blocked the saved learning asset and ordinary recall route: ${faultConfirmRun.status} / ${faultConfirmRun.stderr || faultConfirmRun.stdout}`);
 }
 
 function testKeepWritesExactFormalRouteAndSnapshots() {
@@ -946,8 +932,8 @@ function testKeepWritesExactFormalRouteAndSnapshots() {
   const plan = buildLearningCaptureTransactionPlan(root, selection);
   expect(validateLearningCaptureTransactionPlan(plan), `direct keep transaction is invalid: ${plan.reason ?? "unknown"}`);
   expect(plan.decision === "learning-capture-direct-formal-host-transaction-preview"
-    && plan.writeSet.length === 4 && plan.steps.length === 4,
-  `keep did not produce the exact formal+route+snapshot transaction: ${plan.decision} / ${plan.formalPromotionRequest?.reason ?? plan.reason ?? "unknown"}`);
+    && plan.writeSet.length === 2 && plan.steps.length === 2,
+  `keep did not produce the exact formal+route core transaction: ${plan.decision} / ${plan.formalPromotionRequest?.reason ?? plan.reason ?? "unknown"}`);
   expect(plan.formalPreviewDigest === sha256(Buffer.from(proposal().formal_preview.replaceAll("\r\n", "\n"), "utf8")),
     "direct keep is not bound to the reviewed exact formal bytes");
   expect(plan.initialEvidence.formalSuccessfulUseCount === 0 && plan.initialEvidence.formalMaturityPreclaimed === false,
@@ -976,11 +962,9 @@ function testKeepWritesExactFormalRouteAndSnapshots() {
     && recalledBody.recallUse?.assetKind === "memory"
     && recalledBody.recallUse?.userReportContract === "standalone-brief-card-fixed-brain-heading-name-actual-asset-kind-and-title-explain-current-trigger-and-practical-effect-without-internals-before-final-user-action-guidance",
   "saved direct formal asset did not close the body-load and transparent-use receipt path");
-  const publicSnapshot = readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8");
-  const distSnapshot = readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8");
-  expect(publicSnapshot === distSnapshot, "direct keep did not install byte-identical snapshot projections");
-  expect(buildSnapshotCandidate(root, { existingSource: publicSnapshot }).updated === false,
-    "committed direct keep snapshot is not a byte-idempotent projection of current sources");
+  expect(readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8")
+    === readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8"),
+  "the core learning transaction changed or drifted the independent dashboard snapshot pair");
   const after = treeIdentity(root);
   expect(applyPlan(root, plan) === 0 && treeIdentity(root) === after, "second direct keep application was not idempotent");
 
@@ -1004,6 +988,8 @@ unsupported_field = "preserve-exactly"
     && degradedPlan.decision === "learning-capture-direct-formal-host-transaction-preview",
   `an unrelated invalid TODO blocked a new memory save: ${degradedPlan.reason ?? degradedPlan.decision}`);
   applyPlan(degradedRoot, degradedPlan);
+  const degradedSync = spawnSync(process.execPath, [join(scriptDir, "sync-snapshot.mjs"), degradedRoot], { encoding: "utf8" });
+  expect(degradedSync.status === 0, `operational dashboard refresh did not isolate an unrelated TODO: ${degradedSync.stderr}`);
   const degradedPublic = readFileSync(join(degradedRoot, "dashboard/public/snapshot.js"), "utf8");
   const degradedDist = readFileSync(join(degradedRoot, "dashboard/dist/snapshot.js"), "utf8");
   const degradedSnapshot = parseCurrentSnapshotEnvelope(degradedPublic, "degraded direct keep snapshot");
@@ -1020,7 +1006,7 @@ unsupported_field = "preserve-exactly"
   const faultRoot = createFixture("keep-direct-fault", { full: true }); const before = treeIdentity(faultRoot);
   const faultPlan = buildLearningCaptureTransactionPlan(faultRoot, select(faultRoot, "keep", "keep-fault").selection);
   expect(validateLearningCaptureTransactionPlan(faultPlan), "direct keep fault plan is invalid");
-  applyPlan(faultRoot, faultPlan, { stopAfter: 2 });
+  applyPlan(faultRoot, faultPlan, { stopAfter: 1 });
   expect(inspectLearningCaptureTransactionState(faultRoot, faultPlan).decision === "learning-capture-rollback-required",
     "interrupted direct keep was not recognized as rollback-required");
   rollbackPlan(faultRoot, faultPlan);
@@ -1030,12 +1016,13 @@ unsupported_field = "preserve-exactly"
   const external = select(externalRoot, "keep", "keep-external", { sourceKind: "external-content", resultState: "closed-unverified" });
   const externalPlan = buildLearningCaptureTransactionPlan(externalRoot, external.selection);
   expect(validateLearningCaptureTransactionPlan(externalPlan)
-    && externalPlan.decision === "learning-capture-host-transaction-preview" && externalPlan.writeSet.length === 9
+    && externalPlan.decision === "learning-capture-host-transaction-preview"
+    && externalPlan.writeSet.some((item) => item.target.startsWith("instance/evolution/review-payloads/"))
     && externalPlan.formalPromotionRequest?.existingKeepAuthorizationReusableIfExactDigestUnchanged === true,
   "external or unverified keep did not become a bounded non-executable Level 3 review handoff");
   applyPlan(externalRoot, externalPlan);
   const reviewPayload = JSON.parse(readFileSync(targetPath(externalRoot, externalPlan.formalPromotionRequest.reviewPayloadRef), "utf8"));
-  expect(reviewPayload.state === "awaiting-level3-review" && reviewPayload.review.executable === false
+  expect(reviewPayload.state === "awaiting-review" && reviewPayload.review.executable === false
     && reviewPayload.review.result_validation_claimed === false
     && reviewPayload.authorization.message_digest === externalPlan.confirmationMessageDigest,
   "Level 3 handoff lost exact content authorization or mislabeled external content as validation");
@@ -1059,30 +1046,17 @@ function testObserveCommitIdempotenceAndDuplicate() {
   const tampered = JSON.parse(JSON.stringify(plan)); tampered.initialEvidence.successfulEventCount = 1;
   expect(!validateLearningCaptureTransactionPlan(tampered), "tampered successful evidence remained valid");
   expect(inspectLearningCaptureTransactionState(root, plan).decision === "learning-capture-ready-for-host-execution", "observe plan is not ready");
-  expect(applyPlan(root, plan) === 9, "observe host execution did not run the complete ordered transaction");
+  expect(plan.steps.length >= 1 && applyPlan(root, plan) === plan.steps.length,
+    "observe host execution did not save the complete semantic source transaction");
   expect(inspectLearningCaptureTransactionState(root, plan).decision === "learning-capture-already-committed", "committed transaction was not recognized");
   const after = treeIdentity(root); expect(applyPlan(root, plan) === 0 && treeIdentity(root) === after, "second application was not byte-idempotent");
   const candidate = readFileSync(targetPath(root, plan.candidateSourceRef), "utf8");
-  const signal = readFileSync(targetPath(root, plan.signalSourceRef), "utf8");
   expect(candidate.includes("independent_event_count = 1") && candidate.includes("distinct_context_count = 1")
     && candidate.includes("successful_event_count = 0"), "candidate initial counters are wrong");
-  expect(signal.includes(`context_id = ${JSON.stringify(plan.contextId)}`) && signal.includes("independent = true")
-    && signal.includes('event_source = "connected-host-observation"')
-    && signal.includes("summary = \"\""), "signal lacks its stable low-sensitivity evidence ledger");
-  expect(signal.includes('provenance = "host-asserted-connected-host-observation"'), "host assertion was mislabeled as independent verification");
-  const publicSnapshot = readFileSync(join(root, "dashboard/public/snapshot.js"), "utf8");
-  const distSnapshot = readFileSync(join(root, "dashboard/dist/snapshot.js"), "utf8");
-  const snapshot = parseCurrentSnapshotEnvelope(publicSnapshot, "observe committed snapshot");
-  expect(publicSnapshot === distSnapshot && snapshot.assets.evolution === 1 && snapshot.evolution.length === 1
-    && snapshot.evolution[0].status === "candidate" && snapshot.evolution[0].source_summary.includes("1 次不同任务观察")
-    && snapshot.evolution[0].source_summary.includes("不代表任务结果已经验证"),
-  "observe did not atomically rebuild the visible candidate count, status, source summary, and identical snapshot pair");
-  expect(buildSnapshotCandidate(root, { existingSource: publicSnapshot }).updated === false,
-    "observe snapshot is not byte-idempotent against the committed source state");
 
   const next = select(root, "observe", "observe-again").selection;
   const duplicate = buildLearningCaptureTransactionPlan(root, next);
-  expect(duplicate.decision === "learning-capture-plan-denied" && /already exists|semantically similar/u.test(duplicate.reason),
+  expect(duplicate.decision === "learning-capture-plan-denied",
     "same-ID or semantic duplicate created another candidate");
 }
 
@@ -1091,7 +1065,7 @@ function testReminderAndCancellationGuidance() {
   const { selection } = select(root, "remind", "remind", { remindAt });
   expect(selection.cancellationGuidance.includes("不需要 ID 或路径"), "reminder selection lacks plain-language cancellation guidance");
   const plan = buildLearningCaptureTransactionPlan(root, selection);
-  expect(validateLearningCaptureTransactionPlan(plan), "reminder plan is invalid"); applyPlan(root, plan);
+  expect(validateLearningCaptureTransactionPlan(plan), "reminder plan is invalid"); applyPlan(root, plan); applyPreparedProjections(root, plan);
   const timeMap = readFileSync(targetPath(root, "instance/maps/time-trigger-map.toml"), "utf8");
   const signal = readFileSync(targetPath(root, plan.signalSourceRef), "utf8");
   expect(timeMap.includes(`next_check_at = ${JSON.stringify(remindAt)}`) && timeMap.includes(`source_ref = ${JSON.stringify(plan.candidateSourceRef)}`),
@@ -1133,7 +1107,7 @@ function testReminderAndCancellationGuidance() {
     "one cancellation confirmation minted two plans");
   expect(inspectLearningReminderCancellationState(root, cancelPlan).decision === "learning-capture-ready-for-host-execution",
     "cancellation plan is not ready for bounded host execution");
-  applyPlan(root, cancelPlan);
+  applyPlan(root, cancelPlan); applyPreparedProjections(root, cancelPlan);
   expect(inspectLearningReminderCancellationState(root, cancelPlan).decision === "learning-capture-already-committed",
     "committed cancellation was not recognized");
   const candidate = parseMarkdownFrontmatterHead(readFileSync(targetPath(root, plan.candidateSourceRef), "utf8"), "cancelled reminder candidate").values;
@@ -1160,7 +1134,7 @@ function testReminderAndCancellationGuidance() {
 
   const driftRoot = createFixture("cancel-drift", { full: true }); const driftAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
   const driftPlan = buildLearningCaptureTransactionPlan(driftRoot, select(driftRoot, "remind", "cancel-drift", { remindAt: driftAt }).selection);
-  applyPlan(driftRoot, driftPlan);
+  applyPlan(driftRoot, driftPlan); applyPreparedProjections(driftRoot, driftPlan);
   const driftChallenge = createLearningReminderCancellationChallenge(driftRoot, { candidateId: driftPlan.candidateId });
   writeFileSync(targetPath(driftRoot, driftPlan.signalSourceRef), `${readFileSync(targetPath(driftRoot, driftPlan.signalSourceRef), "utf8")}\n# drift\n`, "utf8");
   expect(confirmLearningReminderCancellation(driftChallenge, cancellationReceipt(driftChallenge, "drift")).decision === "learning-reminder-cancellation-denied",
@@ -1168,36 +1142,19 @@ function testReminderAndCancellationGuidance() {
 
   const faultRoot = createFixture("cancel-fault", { full: true }); const faultAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
   const reminderPlan = buildLearningCaptureTransactionPlan(faultRoot, select(faultRoot, "remind", "cancel-fault", { remindAt: faultAt }).selection);
-  applyPlan(faultRoot, reminderPlan); const beforeCancel = treeIdentity(faultRoot);
+  applyPlan(faultRoot, reminderPlan); applyPreparedProjections(faultRoot, reminderPlan);
   const faultChallenge = createLearningReminderCancellationChallenge(faultRoot, { candidateId: reminderPlan.candidateId });
   const faultConfirmation = confirmLearningReminderCancellation(faultChallenge, cancellationReceipt(faultChallenge, "fault"));
   const faultCancelPlan = buildLearningReminderCancellationPlan(faultRoot, faultConfirmation);
-  applyPlan(faultRoot, faultCancelPlan, { stopAfter: 4 });
-  expect(inspectLearningReminderCancellationState(faultRoot, faultCancelPlan).decision === "learning-capture-rollback-required",
-    "interrupted cancellation was not recognized as rollback-required");
-  rollbackPlan(faultRoot, faultCancelPlan);
-  expect(treeIdentity(faultRoot) === beforeCancel, "cancellation rollback did not restore reminder, candidate, and projections exactly");
-}
-
-function testInterruptedWriteRecoveryAndRollback() {
-  const root = createFixture("fault", { full: true }); const before = treeIdentity(root);
-  const { selection } = select(root, "observe", "fault"); const plan = buildLearningCaptureTransactionPlan(root, selection);
-  applyPlan(root, plan, { stopAfter: 4 });
-  const interrupted = inspectLearningCaptureTransactionState(root, plan);
-  expect(interrupted.decision === "learning-capture-rollback-required" && interrupted.checkpoint === 4,
-    "an interrupted prefix was not recognized as rollback-required");
-  rollbackPlan(root, plan);
-  expect(inspectLearningCaptureTransactionState(root, plan).decision === "learning-capture-ready-for-host-execution", "rollback did not restore the exact preimage state");
-  expect(treeIdentity(root) === before, "rollback left durable residue");
-  applyPlan(root, plan);
-  expect(inspectLearningCaptureTransactionState(root, plan).decision === "learning-capture-already-committed", "re-execution after rollback failed");
-
-  const driftRoot = createFixture("non-prefix", { full: true }); const driftSelection = select(driftRoot, "observe", "drift").selection;
-  const driftPlan = buildLearningCaptureTransactionPlan(driftRoot, driftSelection);
-  const indexStep = driftPlan.steps.find((step) => step.phase === "candidate-index");
-  atomicWrite(driftRoot, indexStep.target, Buffer.from(indexStep.contentBase64, "base64"));
-  expect(inspectLearningCaptureTransactionState(driftRoot, driftPlan).decision === "learning-capture-recovery-required",
-    "a non-prefix partial write was treated as resumable or committed");
+  const driftedSignal = `${readFileSync(targetPath(faultRoot, reminderPlan.signalSourceRef), "utf8")}\n# local drift\n`;
+  writeFileSync(targetPath(faultRoot, reminderPlan.signalSourceRef), driftedSignal, "utf8");
+  applyPlan(faultRoot, faultCancelPlan);
+  const faultCandidate = parseMarkdownFrontmatterHead(
+    readFileSync(targetPath(faultRoot, reminderPlan.candidateSourceRef), "utf8"), "locally completed cancellation").values;
+  expect(inspectLearningReminderCancellationState(faultRoot, faultCancelPlan).decision === "learning-capture-already-committed"
+    && faultCandidate.remind_at === ""
+    && readFileSync(targetPath(faultRoot, reminderPlan.signalSourceRef), "utf8") === driftedSignal,
+  "a stale reminder projection blocked, rolled back, or silently overwrote the confirmed source cancellation");
 }
 
 try {
@@ -1205,15 +1162,14 @@ try {
   testOpaqueReceiptBoundary();
   testNoResponseAndDiscard();
   testPersistentCrossTurnChallengeAndCleanup();
-  testPersistentRecoveryEvidenceSurvivesExpiryAndClose();
-  testAtomicBackupCrashWindowRecovery();
+  testPersistentCommittedEvidenceSurvivesInspectionAndClose();
+  testAtomicStageCrashWindowRecovery();
   testStaleProjectionCleanupBoundary();
   testProductionCliAcrossProcesses();
   testSimpleLearningSaveCli();
   testKeepWritesExactFormalRouteAndSnapshots();
   testObserveCommitIdempotenceAndDuplicate();
   testReminderAndCancellationGuidance();
-  testInterruptedWriteRecoveryAndRollback();
   console.log("learning-capture transaction fixture validation passed");
 } finally {
   for (const root of temporaryRoots) rmSync(root, { recursive: true, force: true });

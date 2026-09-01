@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildPromotionTransactionPlan, confirmPromotionReview, preparePromotionReview, projectPromotionState } from "./learning-promotion-contract.mjs";
-import { confirmHostModelLevel, createHostModelLevelChallenge } from "./asset-route-contract.mjs";
 
 const assert = (condition, message) => { if (!condition) throw new Error(`Learning promotion contract failed: ${message}`); };
 const fixture = mkdtempSync(join(tmpdir(), "ai-carry-promotion-fixture-"));
@@ -47,15 +46,7 @@ const manifest = `schema_version = 1\ninstance_id = "ac-promotion-fixture"\nstat
   const preview = (status = "active") => `+++\nid = "sop.grade-workflow"\nkind = "sop"\nstatus = "${status}"\ntitle = "学习平台成绩整理"\nsummary = "按用户确认的方法整理并核对学习平台成绩。"\ntriggers = ["帮我整理学习平台成绩"]\naliases = ["之前的成绩整理方法"]\ntopic_key = "grade-workflow"\nsubject_key = "learning-platform"\nscope = ["学习平台成绩整理"]\nconditions = ["用户要求汇总或核对"]\nexcludes = ["修改原始成绩"]\nlifecycle = "recurring"\nexpected_next_use = ""\nsource_refs = []\nprivate_refs = []\nsupersedes = []\nrelated_asset_ids = []\nbody_sections = []\nminimum_level = 2\nconfirmation = "explicit-before-action"\napproval_state = "explicit"\nactivation_basis = "explicit-user"\nrisk_tier = "high"\napproved_by_user = true\nmaturity = "unvalidated"\nindependent_task_count = 0\nsuccessful_use_count = 0\nfailed_use_count = 0\ndistinct_context_count = 0\ndistinct_host_count = 0\nlast_validated_at = ""\nvalidation_refs = []\nhost_experience_refs = []\nupdated_at = ""\n+++\n# 使用方法\n先核对输入列与输出范围，再生成可回读结果。\n`;
 
 try {
-  let levelTicketSequence = 0;
-  const levelTicket = (level, purpose = "review-and-promote-formal-ai-carry-asset") => {
-    const challenge = createHostModelLevelChallenge({ requestedLevel: level, purpose });
-    return confirmHostModelLevel(challenge, { basis: "host-current-user-message", message_ref: `promotion.level${level}-${++levelTicketSequence}`,
-      confirmed_at: new Date().toISOString(), confirmed_level: level, challenge_nonce: challenge.challengeNonce });
-  };
-  const level3Ticket = (purpose = "review-and-promote-formal-ai-carry-asset") => levelTicket(3, purpose);
-  const level3 = level3Ticket();
-  const prepare = (options) => preparePromotionReview(fixture, { ...options, levelEvidence: level3Ticket() });
+  const prepare = (options) => preparePromotionReview(fixture, options);
   write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "fixture"\nasset_schema = "1.2"\nevolution_candidate_index_schema = "1.0"\nasset_confirmation_gate_schema = "1.0"\nresult_validation_evidence_schema = "1.0"\n\n[entry]\nresult_validation_evidence_index = "instance/validations/index.toml"\n\n[contracts]\nasset_confirmation_gate_registry = "core/maps/asset-confirmation-gates.toml"\nasset_confirmation_gate_schema = "core/schemas/asset-confirmation-gates.schema.md"\nresult_validation_evidence_schema = "core/schemas/result-validation-evidence-index.schema.md"\n`);
   write("core/schemas/asset-confirmation-gates.schema.md", "# fixture\n");
   write("core/schemas/result-validation-evidence-index.schema.md", "# fixture\n");
@@ -81,20 +72,17 @@ try {
   write("instance/evolution/index.toml", index({ target_kind: "memory", target_subtype: "habit", risk_tier: "medium" }));
   const mediumRequest = { candidateId: candidate.id, formalTarget: "instance/memory/medium-progress.md",
     formalPreview: memoryPreview({ id: "memory.habit.medium-progress", riskTier: "medium", minimumLevel: 2, confirmation: "explicit-before-action" }) };
-  assert(preparePromotionReview(fixture, { ...mediumRequest, levelEvidence: levelTicket(1) }).reason === "verified-level2-required", "a Level 1 ticket authorized a medium-risk formal review");
-  const mediumReview = preparePromotionReview(fixture, { ...mediumRequest, levelEvidence: levelTicket(2) });
-  assert(mediumReview.decision === "promotion-confirmation-required" && mediumReview.requiredReviewLevel === 2, "a clear medium-risk asset did not use Level 2 review");
+  const mediumReview = preparePromotionReview(fixture, mediumRequest);
+  assert(mediumReview.decision === "promotion-confirmation-required" && mediumReview.requiredReviewLevel === 2,
+    "a clear medium-risk asset did not expose Level 2 as a recommendation");
 
   write(candidate.source_ref, candidateSource());
   write("instance/evolution/index.toml", index());
 
   const promotionRequest = { candidateId: candidate.id, formalTarget: "instance/sops/grade-workflow.md", formalPreview: preview() };
-  assert(preparePromotionReview(fixture, promotionRequest).reason === "verified-level3-required", "promotion accepted an unverified caller model level");
-  assert(preparePromotionReview(fixture, { ...promotionRequest, levelEvidence: { ...level3 } }).reason === "verified-level3-required", "promotion accepted a cloned model-level ticket");
-  assert(preparePromotionReview(fixture, { ...promotionRequest, levelEvidence: level3Ticket("review-formal-asset") }).reason === "verified-level3-required",
-    "a Level 3 ticket confirmed for another purpose authorized promotion");
-  assert(preparePromotionReview(fixture, { ...promotionRequest, levelEvidence: levelTicket(2) }).reason === "verified-level3-required",
-    "a Level 2 ticket authorized a high-risk formal review");
+  const advisoryReview = preparePromotionReview(fixture, promotionRequest);
+  assert(advisoryReview.decision === "promotion-confirmation-required" && advisoryReview.requiredReviewLevel === 3,
+    "a high-risk promotion did not expose Level 3 as advice or was blocked on a model ticket");
   write("instance/maps/domain-map.toml", domainMap.replace('overflow_state = "ok"', 'overflow_state = "rebuild-required"'));
   assert(prepare({ ...promotionRequest }).reason === "domain-map-rebuild-required-before-promotion",
     "a promotion entered a domain map already marked for bounded rebuild");
@@ -113,27 +101,27 @@ try {
   assert(review.decision === "promotion-confirmation-required" && review.formalStatus === "active"
     && review.promotionChangeGateIds.includes("before-durable-change") && review.retainedFutureActionGateIds.includes("explicit-before-action"),
   "trusted explicit review was not created or did not separate the current write gate from retained future gates");
-  assert(preparePromotionReview(repository, { candidateId: candidate.id, formalTarget: "instance/sops/grade-workflow.md", formalPreview: preview(), levelEvidence: level3Ticket() }).decision === "promotion-review-denied", "the blank public template participated in promotion");
+  assert(preparePromotionReview(repository, { candidateId: candidate.id, formalTarget: "instance/sops/grade-workflow.md", formalPreview: preview() }).decision === "promotion-review-denied", "the blank public template participated in promotion");
   assert(prepare({ candidateId: candidate.id, formalTarget: "instance/sops/grade-workflow.md", formalPreview: preview("provisional") }).decision === "promotion-review-denied", "high-risk provisional preview was accepted");
   assert(confirmPromotionReview(fixture, { ...review }, {}).decision === "promotion-review-denied", "a cloned review was accepted");
-  const receipt = { basis: "host-current-user-message", message_ref: "turn.confirm-1", confirmed_at: new Date().toISOString(),
+  const receipt = { basis: "host-current-user-message", message_ref: "turn.confirm-1",
     candidate_id: candidate.id, candidate_revision: 3, formal_id: review.formalId, formal_preview_digest: review.formalPreviewDigest,
-    challenge_nonce: review.challengeNonce, confirmed_change_gate_ids: [...review.promotionChangeGateIds] };
+    confirmed_change_gate_ids: [...review.promotionChangeGateIds] };
   assert(confirmPromotionReview(fixture, review, { ...receipt, formal_id: "sop.other" }).decision === "promotion-review-denied", "confirmation for a different formal target was accepted");
   const confirmed = confirmPromotionReview(fixture, review, receipt);
   assert(confirmed.decision === "explicit-promotion-confirmed" && confirmed.initialStatus === "active" && confirmed.initialMaturity === "unvalidated", "current explicit confirmation did not preserve the legal high-risk status/maturity pair");
   assert(confirmPromotionReview(fixture, review, receipt).decision === "promotion-review-denied", "one confirmation challenge was reused");
   const plan = buildPromotionTransactionPlan(fixture, confirmed);
   assert(plan.decision === "transaction-preview" && plan.formalId === review.formalId && plan.sourceCandidateId === candidate.id
-    && plan.requiredProjectionSet.length === 7 && plan.requiredAudits.includes("rollback-on-any-failure"), "transaction plan was not bound to the confirmed source/target or complete write set");
+    && plan.requiredCoreSet.length === 3 && plan.bestEffortProjectionSet.length === 4
+    && plan.requiredAudits.includes("projection-failure-is-local"), "transaction plan did not separate its semantic core from rebuildable projections");
   assert(plan.completeness === "bound-input-preview-not-a-filesystem-transaction-executor"
     && plan.promotionChangeGateIds.length === 1 && !plan.promotionChangeGateIds.includes("explicit-before-action"),
   "the bounded plan pretended to be an executor or treated a retained future action gate as already satisfied");
   assert(buildPromotionTransactionPlan(fixture, { ...confirmed }).decision === "no-transaction", "a cloned confirmation minted a transaction plan");
   assert(buildPromotionTransactionPlan(fixture, confirmed).decision === "no-transaction", "one confirmation minted more than one transaction plan");
   const lateReview = prepare({ candidateId: candidate.id, formalTarget: "instance/sops/late-drift.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.late-drift") });
-  const lateReceipt = { ...receipt, message_ref: "turn.confirm-late-drift", formal_id: lateReview.formalId, formal_preview_digest: lateReview.formalPreviewDigest,
-    challenge_nonce: lateReview.challengeNonce, confirmed_at: new Date().toISOString() };
+  const lateReceipt = { ...receipt, message_ref: "turn.confirm-late-drift", formal_id: lateReview.formalId, formal_preview_digest: lateReview.formalPreviewDigest };
   const lateConfirmation = confirmPromotionReview(fixture, lateReview, lateReceipt);
   write("instance/maps/domain-map.toml", `${domainMap}\n# changed after confirmation\n`);
   assert(buildPromotionTransactionPlan(fixture, lateConfirmation).decision === "no-transaction", "a stale confirmation minted a plan after the trusted map changed");
@@ -191,35 +179,29 @@ try {
 
   write("instance/sops/archived-grade.md", "archived evidence placeholder\n");
   write("instance/maps/domain-map.toml", `${domainMap}\n[[routes]]\nid = "sop.archived-grade"\nasset_kind = "sop"\ntitle = "学习平台成绩整理"\nsummary = "旧版成绩整理记录。"\ntriggers = ["旧版成绩整理"]\naliases = []\ntopic_key = ""\nsubject_key = ""\nscope = ["历史记录"]\nconditions = []\nexcludes = []\nrelated_asset_ids = []\nbody_sections = []\ntarget = "instance/sops/archived-grade.md"\nstate = "archived"\nminimum_level = 2\nconfirmation = "explicit-before-action"\n`);
-  assert(prepare({ candidateId: candidate.id, formalTarget: "instance/sops/duplicate.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.duplicate") }).reason === "possible-formal-duplicate-requires-targeted-level3-review",
+  assert(prepare({ candidateId: candidate.id, formalTarget: "instance/sops/duplicate.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.duplicate") }).reason === "possible-formal-duplicate-requires-targeted-review",
     "a proposed asset duplicate hidden in an archived route bypassed the all-state duplicate check");
   write("instance/sops/trigger-overlap.md", "archived trigger-overlap placeholder\n");
   write("instance/maps/domain-map.toml", `${domainMap}\n[[routes]]\nid = "sop.trigger-overlap"\nasset_kind = "sop"\ntitle = "课程数据整理"\nsummary = "按既定格式核对课程导出数据。"\ntriggers = ["帮我整理学习平台成绩"]\naliases = []\ntopic_key = ""\nsubject_key = ""\nscope = ["学习平台成绩整理"]\nconditions = []\nexcludes = []\nrelated_asset_ids = []\nbody_sections = []\ntarget = "instance/sops/trigger-overlap.md"\nstate = "archived"\nminimum_level = 2\nconfirmation = "explicit-before-action"\n`);
   assert(prepare({ candidateId: candidate.id, formalTarget: "instance/sops/trigger-duplicate.md",
-    formalPreview: preview().replaceAll("sop.grade-workflow", "sop.trigger-duplicate") }).reason === "possible-formal-duplicate-requires-targeted-level3-review",
+    formalPreview: preview().replaceAll("sop.grade-workflow", "sop.trigger-duplicate") }).reason === "possible-formal-duplicate-requires-targeted-review",
   "a same-trigger and same-scope duplicate bypassed the semantic duplicate check by changing title and summary");
   write("instance/maps/domain-map.toml", domainMap);
 
   const replayReview = prepare({ candidateId: candidate.id, formalTarget: "instance/sops/replay.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.replay") });
-  const replayReceipt = { ...receipt, formal_id: replayReview.formalId, formal_preview_digest: replayReview.formalPreviewDigest,
-    challenge_nonce: replayReview.challengeNonce, confirmed_at: new Date().toISOString() };
+  const replayReceipt = { ...receipt, formal_id: replayReview.formalId, formal_preview_digest: replayReview.formalPreviewDigest };
   assert(confirmPromotionReview(fixture, replayReview, replayReceipt).decision === "promotion-review-denied", "one old user message confirmed a second promotion review");
-  const earlyReview = prepare({ candidateId: candidate.id, formalTarget: "instance/sops/early.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.early") });
-  const earlyReceipt = { ...receipt, message_ref: "turn.confirm-early", formal_id: earlyReview.formalId, formal_preview_digest: earlyReview.formalPreviewDigest,
-    challenge_nonce: earlyReview.challengeNonce, confirmed_at: new Date(Date.parse(earlyReview.issuedAt) - 1000).toISOString() };
-  assert(confirmPromotionReview(fixture, earlyReview, earlyReceipt).decision === "promotion-review-denied", "a message predating the challenge confirmed a promotion");
 
   const driftReview = prepare({ candidateId: candidate.id, formalTarget: "instance/sops/drift.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.drift") });
   write("instance/memory/unrelated.md", "placeholder\n");
   write("instance/maps/domain-map.toml", `${domainMap}\n[[routes]]\nid = "memory.unrelated"\nasset_kind = "memory"\nsubtype = "general"\ntitle = "无关记忆"\nsummary = "用于制造地图修订。"\ntriggers = ["无关测试"]\naliases = []\ntopic_key = "unrelated"\nsubject_key = "fixture"\nscope = ["测试"]\nconditions = []\nexcludes = []\nrelated_asset_ids = []\nbody_sections = []\ntarget = "instance/memory/unrelated.md"\nstate = "active"\nminimum_level = 1\nconfirmation = "none"\n`);
-  const driftReceipt = { ...receipt, message_ref: "turn.confirm-drift", formal_id: driftReview.formalId, formal_preview_digest: driftReview.formalPreviewDigest,
-    challenge_nonce: driftReview.challengeNonce, confirmed_at: new Date().toISOString() };
+  const driftReceipt = { ...receipt, message_ref: "turn.confirm-drift", formal_id: driftReview.formalId, formal_preview_digest: driftReview.formalPreviewDigest };
   assert(confirmPromotionReview(fixture, driftReview, driftReceipt).reason === "manifest-map-registry-duplicate-or-target-drifted", "a changed formal map remained bound to an old review");
   write("instance/maps/domain-map.toml", domainMap);
 
   write(candidate.source_ref, candidateSource({ candidate_relation: "refine" }));
   write("instance/evolution/index.toml", index({ candidate_relation: "refine" }));
-  assert(prepare({ candidateId: candidate.id, formalTarget: "instance/sops/other.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.other") }).reason === "non-new-relation-requires-targeted-level3-review",
+  assert(prepare({ candidateId: candidate.id, formalTarget: "instance/sops/other.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.other") }).reason === "non-new-relation-requires-targeted-review",
     "a refine relation was treated as a deterministic new formal asset");
 
   write(candidate.source_ref, candidateSource({ status: "review", candidate_relation: "new" }));
@@ -227,7 +209,7 @@ try {
   assert(prepare({ candidateId: candidate.id, formalTarget: "instance/sops/review-state.md", formalPreview: preview().replaceAll("sop.grade-workflow", "sop.review-state") }).reason === "candidate-review-state-requires-targeted-resolution",
     "a review-state candidate entered the generic promotion path without resolving its review reason");
 
-  console.log("Learning promotion passed trusted-candidate, template denial, legal status, current-confirmation binding, no-cross-target plan, complete-write-set, strict-partial-state, and idempotence checks.");
+  console.log("Learning promotion passed trusted-candidate, advisory model level, template denial, legal status, current-confirmation binding, no-cross-target plan, semantic-core/projection separation, and idempotence checks.");
 } finally {
   rmSync(fixture, { recursive: true, force: true });
 }

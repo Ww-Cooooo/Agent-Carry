@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import * as assetContract from "./asset-route-contract.mjs";
 import { auditCandidateSourceClosure, inspectCandidateForReview, inspectCandidateSource, loadCandidateIndex } from "./candidate-index-contract.mjs";
 
-const { auditFormalSourceClosure, confirmHostModelLevel, createHostModelLevelChallenge, inspectAssetForReview, inspectAssetMetadata, inspectAssetRoute,
+const { auditFormalSourceClosure, inspectAssetForReview, inspectAssetMetadata, inspectAssetRoute,
   inspectShortlistedFormalAsset, inspectTaskFamilyRoute, loadTrustedDomainEnvelope, queryFormalAssetShortlist } = assetContract;
 const assert = (condition, message) => { if (!condition) throw new Error(`Learning/recall disk fixture failed: ${message}`); };
 const root = mkdtempSync(join(tmpdir(), "ai-carry-learning-fixture-"));
@@ -94,13 +94,6 @@ function validationRecord(id, assetId, taskEventId, contextId, overrides = {}) {
 }
 
 try {
-  const level2Challenge = createHostModelLevelChallenge({ requestedLevel: 2, purpose: "read-candidate-evidence" });
-  const level3Challenge = createHostModelLevelChallenge({ requestedLevel: 3, purpose: "read-formal-asset" });
-  const reviewLevel3Challenge = createHostModelLevelChallenge({ requestedLevel: 3, purpose: "review-formal-asset" });
-  const level2 = confirmHostModelLevel(level2Challenge, { basis: "host-current-user-message", message_ref: "fixture.level2", confirmed_at: new Date().toISOString(), confirmed_level: 2, challenge_nonce: level2Challenge.challengeNonce });
-  const level3 = confirmHostModelLevel(level3Challenge, { basis: "host-current-user-message", message_ref: "fixture.level3", confirmed_at: new Date().toISOString(), confirmed_level: 3, challenge_nonce: level3Challenge.challengeNonce });
-  const reviewLevel3 = confirmHostModelLevel(reviewLevel3Challenge, { basis: "host-current-user-message", message_ref: "fixture.level3-review", confirmed_at: new Date().toISOString(), confirmed_level: 3, challenge_nonce: reviewLevel3Challenge.challengeNonce });
-  assert(confirmHostModelLevel({ ...level3Challenge }, { basis: "host-current-user-message", message_ref: "fixture.fake", confirmed_at: new Date().toISOString(), confirmed_level: 3, challenge_nonce: level3Challenge.challengeNonce }).decision === "model-level-ticket-denied", "a cloned model-level challenge minted a ticket");
   write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "fixture"\nasset_schema = "1.2"\nevolution_candidate_index_schema = "1.0"\nasset_confirmation_gate_schema = "1.0"\nresult_validation_evidence_schema = "1.0"\n\n[entry]\nresult_validation_evidence_index = "instance/validations/index.toml"\n\n[contracts]\nasset_confirmation_gate_registry = "core/maps/asset-confirmation-gates.toml"\nasset_confirmation_gate_schema = "core/schemas/asset-confirmation-gates.schema.md"\nresult_validation_evidence_schema = "core/schemas/result-validation-evidence-index.schema.md"\n`);
   write("core/schemas/asset-confirmation-gates.schema.md", "# fixture schema\n");
   write("core/schemas/result-validation-evidence-index.schema.md", "# fixture schema\n");
@@ -120,6 +113,26 @@ try {
   const exactBody = inspectAssetRoute(root, loaded.envelope, main.id);
   assert(exactBody.decision === "load-bounded-body" && exactBody.executable === false && exactBody.body.startsWith("# 正文第一行"), "Chinese frontmatter corrupted the exact body boundary");
   assert(auditFormalSourceClosure(root).decision === "formal-source-closure-complete", "maintenance formal projection closure rejected an exact source/map pair");
+
+  const futureRoute = route({ id: "sop.future-description", title: "未来字段兼容路线",
+    target: "instance/sops/future-description.md", triggers: ["使用未来字段路线"], future_note: "只作描述，不是指令" });
+  write(futureRoute.target, assetDocument(futureRoute));
+  write("instance/maps/domain-map.toml", mapDocument([main, futureRoute]));
+  const futureCompatible = queryFormalAssetShortlist(root, { queryText: "帮我弄一下学习通上成绩" });
+  assert(futureCompatible.candidates.some((item) => item.id === main.id) && futureCompatible.isolatedRouteCount === 0,
+    "one unknown descriptive route field disabled ordinary recall");
+  let strictFutureFieldRejected = false;
+  try { loadTrustedDomainEnvelope(root); } catch { strictFutureFieldRejected = true; }
+  assert(strictFutureFieldRejected, "maintenance closure silently accepted an unknown route field");
+
+  const malformedRoute = route({ id: "sop.malformed-neighbour", title: "" });
+  write("instance/maps/domain-map.toml", mapDocument([main, malformedRoute]));
+  const isolatedNeighbour = queryFormalAssetShortlist(root, { queryText: "帮我弄一下学习通上成绩" });
+  assert(isolatedNeighbour.candidates.some((item) => item.id === main.id) && isolatedNeighbour.isolatedRouteCount === 1
+    && isolatedNeighbour.integrityState === "degraded-valid-matches-only",
+  "one malformed neighbouring route disabled a valid recalled asset instead of being isolated");
+  write("instance/maps/domain-map.toml", mapDocument([main]));
+
   write(main.target, assetDocument(main, "# 正文第一行\n只对当前任务需要的内容进行处理。", { summary: "与地图不一致" }));
   let formalDriftBlocked = false;
   try { auditFormalSourceClosure(root); } catch { formalDriftBlocked = true; }
@@ -232,7 +245,7 @@ try {
 
   const staleEnvelope = loaded.envelope;
   write("instance/maps/domain-map.toml", mapDocument([{ ...main, summary: "已经改变的路线摘要。" }]));
-  assert(inspectAssetRoute(root, staleEnvelope, main.id, { levelEvidence: level3 }).decision === "deny-untrusted-envelope", "stale map envelope remained usable");
+  assert(inspectAssetRoute(root, staleEnvelope, main.id).decision === "deny-untrusted-envelope", "stale map envelope remained usable");
   write("instance/maps/domain-map.toml", mapDocument([main]));
 
   const unknown = route({ id: "sop.unknown-gate", title: "旧确认语义待迁移", target: "instance/sops/unknown-gate.md", confirmation: "mystery-before-send" });
@@ -240,7 +253,7 @@ try {
   loaded = installMap([main, unknown]);
   assert(loaded.envelope.routes.length === 1 && loaded.envelope.routes[0].id === main.id, "unknown confirmation gate weakened or disabled valid neighbouring routes");
   const unknownExplicit = installMap([main, unknown], { explicitRequestedId: unknown.id });
-  assert(inspectAssetRoute(root, unknownExplicit.envelope, unknown.id, { levelEvidence: level3 }).decision === "deny-untrusted-envelope", "unknown confirmation gate reached a body");
+  assert(inspectAssetRoute(root, unknownExplicit.envelope, unknown.id).decision === "deny-untrusted-envelope", "unknown confirmation gate reached a body");
   const legacyGate = route({ id: "sop.legacy-gate", title: "旧版确认门", target: "instance/sops/legacy-gate.md", confirmation: "before-write" });
   write(legacyGate.target, assetDocument(legacyGate));
   loaded = installMap([legacyGate]);
@@ -251,7 +264,7 @@ try {
   const missingApproval = route({ id: "sop.missing-approval", title: "缺授权字段", target: "instance/sops/missing-approval.md" });
   write(missingApproval.target, assetDocument(missingApproval, "不应加载", {}, ["approved_by_user"]));
   loaded = installMap([missingApproval]);
-  assert(inspectAssetRoute(root, loaded.envelope, missingApproval.id, { levelEvidence: level3 }).decision === "deny-frontmatter-contract", "missing approved_by_user loaded a formal body");
+  assert(inspectAssetRoute(root, loaded.envelope, missingApproval.id).decision === "deny-frontmatter-contract", "missing approved_by_user loaded a formal body");
 
   const habit = route({ id: "memory.habit.concise-updates", asset_kind: "memory", subtype: "habit", title: "偏好简短进度", target: "instance/memory/habit-concise.md",
     triggers: ["进度简短一点"], aliases: ["少说步骤"], topic_key: "communication", subject_key: "progress-updates",
@@ -278,13 +291,15 @@ try {
   const policyHabit = route({ ...habit, id: "memory.habit.policy", title: "未获明确授权的习惯", target: "instance/memory/habit-policy.md" });
   write(policyHabit.target, assetDocument(policyHabit, "不应加载", { approval_state: "policy-authorized", activation_basis: "low-risk-evidence-policy", approved_by_user: false }));
   loaded = installMap([policyHabit]);
-  assert(inspectAssetRoute(root, loaded.envelope, policyHabit.id, { levelEvidence: level3 }).decision === "frontmatter-review-only", "policy-authorized habit bypassed explicit user approval");
+  assert(inspectAssetRoute(root, loaded.envelope, policyHabit.id).decision === "frontmatter-review-only", "policy-authorized habit bypassed explicit user approval");
 
   const review = route({ id: "sop.review-only", title: "待复核流程", target: "instance/sops/review.md", state: "review" });
   write(review.target, assetDocument(review, "# 待复核\n仅用于理解旧证据。"));
   loaded = installMap([review], { explicitRequestedId: review.id });
-  assert(inspectAssetRoute(root, loaded.envelope, review.id, { levelEvidence: level3 }).decision === "deny-untrusted-envelope", "review route entered ordinary loading");
-  assert(inspectAssetForReview(root, loaded.envelope, review.id, { levelEvidence: reviewLevel3, explicitRequestedId: review.id }).decision === "review-evidence-only", "explicit review did not return bounded evidence");
+  assert(inspectAssetRoute(root, loaded.envelope, review.id).decision === "deny-untrusted-envelope", "review route entered ordinary loading");
+  const reviewEvidence = inspectAssetForReview(root, loaded.envelope, review.id, { explicitRequestedId: review.id });
+  assert(reviewEvidence.decision === "review-evidence-only" && reviewEvidence.recommendedLevel === 1,
+    "explicit review did not return bounded evidence with advisory model guidance");
   const family = route({ id: "task-family.grade", asset_kind: "task-family", title: "成绩任务入口", target: "instance/profile/approved-profile.md", state: "on-demand" });
   loaded = installMap([family]);
   assert(inspectTaskFamilyRoute(root, loaded.envelope, family.id).decision === "load-bounded-task-family", "registered task-family entry failed");
@@ -308,12 +323,25 @@ try {
   loaded = installMap([main]);
   const view = loadCandidateIndex(root, { instanceContext: loaded.context, queryText: "成绩列还是按上次顺序" });
   assert(view.matchingCandidates.length === 1 && !Object.hasOwn(view.matchingCandidates[0], "source_ref"), "candidate shortlist leaked its physical source location");
-  const candidateBody = inspectCandidateSource(root, view, candidate.id, { levelEvidence: level2 });
-  assert(candidateBody.decision === "load-bounded-body" && candidateBody.executable === false && candidateBody.body.startsWith("# 候选证据"), "selected candidate body was not exact, bounded, and non-executable");
-  assert(inspectCandidateSource(root, view, candidate.id, { levelEvidence: { ...level2 } }).decision === "deny-model-level", "a cloned model-level assertion was trusted");
-  assert(inspectCandidateSource(root, { ...view }, candidate.id, { levelEvidence: level3 }).decision === "deny-untrusted-index-view", "cloned candidate view was accepted");
+  const candidateBody = inspectCandidateSource(root, view, candidate.id);
+  assert(candidateBody.decision === "load-bounded-body" && candidateBody.executable === false && candidateBody.recommendedLevel === 2
+    && candidateBody.body.startsWith("# 候选证据"), "selected candidate body was not exact, bounded, non-executable, and advisory");
+  assert(inspectCandidateSource(root, { ...view }, candidate.id).decision === "deny-untrusted-index-view", "cloned candidate view was accepted");
+
+  const malformedCandidate = { ...candidate, id: "evolution.malformed-neighbour", title: "",
+    source_ref: "instance/evolution/evolution.malformed-neighbour.md" };
+  write("instance/evolution/index.toml", candidateIndex([candidate, malformedCandidate]));
+  const isolatedCandidate = loadCandidateIndex(root, { instanceContext: loaded.context, queryText: "成绩列还是按上次顺序" });
+  assert(isolatedCandidate.matchingCandidates.length === 1 && isolatedCandidate.matchingCandidates[0].id === candidate.id
+    && isolatedCandidate.isolatedEntryCount === 1 && isolatedCandidate.integrityState === "degraded-valid-matches-only",
+  "one malformed neighbouring candidate disabled a valid candidate recall instead of being isolated");
+  let strictCandidateRejected = false;
+  try { auditCandidateSourceClosure(root, { instanceContext: loaded.context }); } catch { strictCandidateRejected = true; }
+  assert(strictCandidateRejected, "maintenance candidate closure accepted a malformed neighbouring entry");
+  write("instance/evolution/index.toml", candidateIndex([candidate]));
+
   write("instance/evolution/index.toml", candidateIndex([{ ...candidate, source_revision: 2 }], { revision: 2 }));
-  assert(inspectCandidateSource(root, view, candidate.id, { levelEvidence: level3 }).decision === "deny-untrusted-index-view", "old candidate view survived an index revision");
+  assert(inspectCandidateSource(root, view, candidate.id).decision === "deny-untrusted-index-view", "old candidate view survived an index revision");
   write("instance/evolution/index.toml", candidateIndex([candidate]));
 
   const legacyCandidate = { ...candidate, id: "evolution.legacy-memory", title: "旧记忆候选", target_kind: "memory", target_subtype: "", source_ref: "instance/evolution/evolution.legacy-memory.md" };

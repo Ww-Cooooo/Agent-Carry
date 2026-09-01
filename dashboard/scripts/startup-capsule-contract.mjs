@@ -49,9 +49,9 @@ export function buildStartupCapsule(repository) {
   const core = parseSectionedToml(coreSource, "core manifest");
   const coreRoot = core[""] ?? {}; const entry = core.entry ?? {};
   if (coreRoot.core_id !== PRODUCT_IDENTITY.coreId
-    || coreRoot.version !== PRODUCT_IDENTITY.productVersion
+    || typeof coreRoot.version !== "string" || coreRoot.version.length === 0
     || entry.root_map !== "core/maps/root-map.toml") fail("core startup identity is invalid");
-  if (validated.versions.product !== PRODUCT_IDENTITY.productVersion) fail("instance and core product versions disagree");
+  if (validated.versions.product !== coreRoot.version) fail("instance and core product versions disagree");
   const values = Object.freeze({
     schema_version: 1,
     capsule_id: PRODUCT_IDENTITY.startupCapsuleId,

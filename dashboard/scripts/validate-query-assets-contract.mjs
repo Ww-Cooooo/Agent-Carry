@@ -8,8 +8,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const cli = resolve(here, "query-assets.mjs");
 const assert = (condition, message) => { if (!condition) throw new Error(`Asset query CLI contract failed: ${message}`); };
 const cliSource = readFileSync(cli, "utf8");
-assert(!cliSource.includes("retain-the-opaque-challenge"), "stateless CLI still promises that its dead in-memory challenge can be retained and resumed");
-assert(cliSource.includes("protected-body-reading-requires-a-stateful-trusted-host-integration"), "stateless CLI does not state the executable protected-read boundary");
+assert(!/selectionDigest|challengeNonce|challengeDigest|expiresAt|same-process-host/u.test(cliSource),
+  "ordinary recall still depends on a hash, clock, nonce, or same-process ticket");
+assert(cliSource.includes("modelGuidance") && cliSource.includes("recall remains available"),
+  "model level is not presented as non-blocking guidance");
 
 function run(input) {
   const result = spawnSync(process.execPath, [cli], { input: Buffer.from(JSON.stringify(input), "utf8"), encoding: "utf8", windowsHide: true, maxBuffer: 256 * 1024 });
@@ -91,4 +93,4 @@ for (const [name, request] of [
   assert(rejected.status !== 0 && rejected.output.decision === "request-rejected" && !hasLocation(rejected.output), `${name} was not rejected without a location leak`);
 }
 
-console.log("Asset query CLI passed fixed-root, staged-candidate, global-cap, same-query selection, no-bare-ID, no-stateless-confirmation, caller-assertion, multiline-language, and no-location-output checks.");
+console.log("Asset query CLI passed fixed-root, bounded shortlist, stateless explicit selection, non-blocking model guidance, caller-grounded learning review, multiline language, and no-location-output checks.");

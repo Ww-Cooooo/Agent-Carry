@@ -1,0 +1,97 @@
+schema_version = 2
+release = "2.0.2"
+core = "2.0.2"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.3"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+extension_manifest_schema = "1.0"
+instance_component_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"
+from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1"]
+required_preview_executor = "dashboard/scripts/ai-carry-upgrade-cli.mjs"
+required_preview_command = "prepare --source <current-instance-root> --target <verified-extracted-target-root>"
+required_preview_policy = "on an explicit update check the CLI must use GitHub HTTPS API live verification to bind the latest non-draft non-prerelease Release exact versioned Release direct lightweight tag commit public main exact Git tree target bytes and release manifest; caller-authored JSON and target self-report are not authority; prepare remains read-only and displays returned userPreview verbatim"
+required_confirm_policy = "after displaying the exact bound preview the host Agent must wait for the user's next independent reply to be exactly upgrade or confirm-upgrade before running the returned confirmCommand; confirm rechecks only the preview-bound local source target release boundary instance and write set without repeating network access and rejects any real drift; the user does not operate a terminal and the CLI does not pretend to authenticate chat roles"
+required_session_reentry_policy = "after a file switch refresh a pending snapshot through the returned snapshotRefreshCommand then run only the returned sessionReentryCommand; reentry validates installed runtime files and the rollback package but keeps current-session activation and behavior acceptance pending; any representative behavior that launches a copied-instance local runtime must first pass the bundled explicit-binding runtime boundary"
+notes = "AI Carry 2.0.2 separates usable core results from rebuildable helper state across first creation startup recall learning Skill installation and upgrades. Repairable capsule snapshot index registry or receipt faults become explicit local pending work instead of whole-assistant failure; identity user-data privacy and actual write-path uncertainty still stop the affected durable operation. Upgrade prepare verifies the official Release fixed tag public main target tree bytes and manifest live once; confirm rechecks the bound local source target instance and write set without a second network request. A directory copy also no longer counts as runtime isolation: before a copied candidate launches a component or professional-extension runtime one bounded read-only preflight checks only its explicit JSON or TOML bindings and limits that component if reachability is unsafe. Existing identity created_from assets validations candidates components extensions workspaces local bindings private content Skills reports handoffs future fields and unknown bytes remain preserved."
+asset_changes = "Asset Schema remains 1.3. Natural-language recall and learning no longer depend on a short-lived same-process ticket or every derivative succeeding together. Formal asset bytes remain the source of truth; indexes signals receipts and Dashboard projections may be rebuilt or reported pending. Upgrade itself creates promotes resets or rewrites no user-owned asset."
+dashboard_changes = "Dashboard Snapshot Schema remains 1.1 and Dashboard Action Schema remains 1.0. Product version advances to 2.0.2. First creation and upgrade refresh the byte-identical public and dist snapshots after the safe core result; a snapshot-only fault leaves an explicit refresh action instead of undoing the core. User-facing actions report impact data state what still works and the next step."
+extension_changes = "Extension API Extension Manifest Schema and Instance Component Schema remain 1.0. Unknown optional components are preserved and isolated from the core upgrade. A copied directory is not runtime isolation, so copied-instance execution routes through one explicit-binding preflight without rewriting existing component extension workspace or device-local bytes."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md", "instance/components/README.md"]
+migrate = ["instance/manifest.toml", "instance/startup-capsule.toml"]
+preserve = ["workspace/**", "instance/components/**", "instance/maps/**", "instance/profile/**", "instance/governance/**", "instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", "instance/validations/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "Only the exact README files in replace_instance_guides are target-template guides. Every sibling profile map governance Skill component validation candidate report and user file remains instance-owned."
+validation_overlap_note = "A clean template uses the target empty validation index. An existing instance keeps instance/validations/index.toml and every real validation record byte-for-byte; no record is invented by this patch."
+evolution_overlap_note = "A clean template uses the target empty candidate index. An existing instance keeps instance/evolution/index.toml candidate sources and generated_at byte-for-byte because the indexed business projection does not change."
+component_overlap_note = "A clean template uses the target ai-carry registry. An existing instance keeps current or legacy registry component bytes device-local binding bytes and unknown fields; the new preflight reads only bindings explicitly selected for a copied-instance runtime check."
+skill_overlap_note = "instance/skills/** is instance-owned and preserved. Upgrade does not infer versions rewrite entries execute package code or install a package."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+allow_overrides_deny_for_exact_paths = [".assistant-local/.gitkeep", ".assistant-local/dashboard/.gitkeep", ".assistant-local/indexes/.gitkeep", ".assistant-local/skills/.gitkeep", ".assistant-local/task-handoffs/.gitkeep", ".assistant-local/upgrade-inbox/.gitkeep", ".assistant-private/.gitkeep", ".assistant-private/assets/.gitkeep", ".assistant-private/inbox/.gitkeep"]
+exact_override_policy = "only-listed-regular-zero-byte-files-may-override-forbidden-segments; directory-records-are-container-metadata-not-files"
+broad_globs_are_copy_commands = false
+
+[instance_component_changes]
+schema = "1.0"
+registry = "instance/components/registry.toml"
+target_interfaces = ["ai-carry.instance-component@1", "agent-carry.instance-component@1"]
+migration_ids = ["copied-instance-runtime-boundary-2.0.2"]
+native_asset_policy = "reuse-existing-formal-owners-never-create-duplicate-component-manifests"
+professional_extension_policy = "reuse-extension-toml-never-duplicate-in-generic-registry"
+unregistered_policy = "preserve-and-stop-with-preview"
+optional_incompatible_action = "disable-and-preserve"
+required_incompatible_action = "stop-and-preserve"
+device_local_policy = "preserve-in-place-on-same-device-never-copy-to-public-or-complete-migration; before copied-instance execution inspect only explicit binding files and isolate the current component when runtime reachability is unresolved"
+ordinary_startup = "never-read-registry-enumerate-components-load-component-bodies-or-run-runtime-boundary-preflight"
+authorization = "reuse-the-current-durable-action-authorization-never-add-a-compatibility-only-user-confirmation"
+
+[[migration_rules]]
+id = "copied-instance-runtime-boundary-2.0.2"
+from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1"]
+when_all = ["source reports a recognized direct version and product identity", "the official latest Release versioned v2.0.2 Release direct lightweight tag public main manifest and extracted public tree agree and the user authorizes that exact upgrade", "upgrade runs through dashboard/scripts/ai-carry-upgrade-cli.mjs against a physical archive instance or verified official public clone and a separate pure public target"]
+source = "bounded product-owned path preimages plus the strict instance formal tree needed to rebuild manifest capsule and snapshots; workspace local private and unknown root bodies remain outside the write set"
+destination = "an atomically updated stable-root AI Carry 2.0.2 instance with the bundled copied-instance runtime preflight while all instance-owned and unknown source paths remain in place"
+operation_order = ["on an explicit update check live-verify the latest official v2.0.2 Release fixed lightweight tag public main Git tree target tree target file count and release manifest", "bind the confirmation reference to stable authority source target instance component workspace profile and write-set facts", "after the user's exact independent confirmation recheck only those bound local facts and reject drift without repeating the network request", "require the target release boundary to authorize this fixed replacement and reject forbidden unlisted conflicting or nonzero private or local target paths", "prepare remains read-only and never creates a candidate rollback package or source mutation", "copy the verified target to an isolated candidate then overlay only the instance truth needed for the strict manifest and startup capsule and restore target-owned guide READMEs", "preserve instance identity created_from direction profile learning policy maps signals governance hosts assets validation records candidates components extensions workspaces local bindings private references Skills reports handoffs future fields and unknown files", "update only the instantiated manifest product version to 2.0.2 while leaving created_from history unchanged", "read back candidate-consumed instance paths byte-for-byte and transactionally switch only changed manifest-owned core files while retaining every old product preimage", "after core switch refresh byte-identical public and dist snapshots from merged truth and return snapshot-refresh-required without rolling back the core when only that projection fails", "do not execute a Skill component workspace or device-local runtime during the file transaction", "when later representative validation in a copy needs a bound local runtime first call dashboard/scripts/copied-instance-runtime-boundary.mjs with the formal source root candidate root explicit binding files and reviewed external roots", "restore completed core writes in reverse order on a core failure and keep the valid source assistant usable", "a second explicit check against an installed 2.0.2 root live-verifies official authority local static product bytes startup and snapshot closure before returning already-current without refreshing user content"]
+forbidden = ["treating a directory copy temporary directory or environment variable as proof that a third-party runtime cannot write into the formal source instance", "scanning the whole computer or all component bodies to discover bindings", "executing a copied-instance component when an explicit binding reaches the formal source instance a missing or unreviewed shared runtime a linked path or an unresolved dynamic or relative path", "silently rewriting a real instance binding cache component workspace Skill private file or unknown file during preflight", "turning one blocked runtime optional component stale index or snapshot-only fault into a whole-assistant failure", "reusing a preview after its bound local source target instance release boundary or write set has drifted", "accepting caller-authored authority JSON target self-report an unfixed branch archive or a tag without the matching official Release", "re-running first instantiation against an existing instance", "executing shared package scripts or installing dependencies during upgrade", "automatically uploading sending filing committing publishing renaming a repository or deleting retained failure evidence", "weakening identity user-data ownership privacy secret archive-path or Skill package checks", "modifying a real installed instance during rehearsal"]
+unknown_or_ambiguous = "leave unknown source paths and binding bytes in place; do not execute the affected copied-instance runtime; report the exact binding reference and value position without exposing the raw absolute value; mark only the affected capability limited while conversation completed results and unrelated capabilities remain usable"
+idempotence = "same-installed-source-second-run-first-live-verifies-the-official-release-fixed-tag-target-tree-and-static-product-bytes-then-returns-already-current-with-no-file-record-asset-binding-cache-timestamp-package-report-or-snapshot-byte-change"
+
+[verification]
+copied_runtime_source_isolation = "one synthetic copied-instance binding points back into a formal source runtime and must be rejected before startup with current-component-only scope while a source cache sentinel remains byte-identical"
+copied_runtime_rebind = "the same binding moved to a candidate-private runtime passes; an external shared root fails until that exact root is explicitly reviewed and supplied"
+binding_formats = "bounded JSON and TOML binding files are parsed without executing embedded text; links escaping paths invalid UTF-8 NUL oversized depth and value budgets fail before runtime startup"
+privacy_of_diagnostics = "the result exposes binding-relative path value location counts impact safety and next action but not raw absolute binding values"
+ordinary_startup_budget = "the runtime boundary is on demand only and adds no registry component body binding or full-machine read to ordinary startup"
+upgrade_preservation = "all direct source identities assets components extensions workspaces local bindings private content Skills reports handoffs future fields and unknown files remain byte-preserved except manifest product version capsule snapshots and target-owned product files"
+staging_recovery = "faults before switch leave the source usable and faults after a product mutation restore every touched preimage in reverse order"
+network_failure = "HTTP refusal timeout or other live verification failure writes neither source nor target and contains failure to the current upgrade"
+checks = ["manifest-parses", "version-2.0.2-and-existing-schema-versions-aligned", "direct-sources-include-published-1.4.8-retained-local-1.4.9-ai-carry-2.0.0-and-2.0.1", "published-2.0.1-history-remains-byte-immutable", "published-2.0.2-authority-requires-latest-release-versioned-release-lightweight-tag-public-main-matching-tree-and-user-authorization", "blank-2.0.2-template-remains-empty", "first-creation-core-commits-before-optional-projections-and-optional-faults-remain-local", "startup-repairs-or-degrades-only-rebuildable-state", "learning-and-skill-formal-results-survive-derivative-refresh-faults", "prepare-live-verifies-once-and-confirm-rechecks-bound-local-facts-without-network", "snapshot-only-upgrade-fault-leaves-core-installed-and-refreshable", "copied-instance-source-binding-is-blocked-before-runtime-start-and-source-cache-bytes-remain-unchanged", "candidate-private-runtime-binding-passes-and-reviewed-shared-root-is-explicit", "blocked-runtime-produces-limited-current-component-only-natural-language-report-with-next-step", "preflight-is-bounded-read-only-deterministic-and-does-not-expose-raw-absolute-values", "ordinary-startup-gains-no-binding-component-body-or-machine-scan", "complex-source-instance-owned-and-unknown-bytes-remain-preserved", "fault-before-switch-leaves-source-usable-and-fault-after-core-mutation-restores-touched-paths", "already-current-check-is-zero-change", "public-distribution-excludes-private-maintainer-assets-real-instances-bindings-caches-skills-carriers-reports-and-private-data"]
+risk_policy = "run one high-information first-creation journey one learning and Skill journey one existing-instance upgrade journey one focused copied-runtime counterexample one pure public build and the post-release official acceptance; do not add a host matrix background watcher machine scan database or enterprise regression suite"
+
+[release_boundary]
+status = "published-release"
+release_ref = "v2.0.2"
+publication_authorized = true
+repository_operation_authorized = true
+instance_replacement_authorized = true
+future_publication_or_repository_operation_authorized = false
+authority_requires = ["official-latest-release-is-v2.0.2", "official-release-object-v2.0.2", "official-lightweight-tag-v2.0.2", "official-public-main-equals-v2.0.2-tag", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]
+authority_scope = "this-fixed-release-may-be-used-for-instance-replacement; never-authorizes-future-repository-release-publication-pages-or-rename-actions"
+maintainer_private_paths = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**", "workspace/**"]

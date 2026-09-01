@@ -40,8 +40,11 @@ expect(acceptedComponentRegistryRecordTypes.has("ai-carry-instance-component-reg
 expect(acceptedProfessionalExtensionRecordTypes.has("ai-carry-professional-extension")
   && acceptedProfessionalExtensionRecordTypes.has("agent-carry-professional-extension"), "professional extension rename aliases are unavailable");
 
-includesAll(read("assistant.toml"), [
-  'product_id = "ai-carry"', 'product_name = "AI Carry"', 'product_version = "2.0.1"', 'core_version = "2.0.1"',
+const assistantSource = read("assistant.toml");
+const productVersion = /^product_version\s*=\s*"([^"]+)"\s*$/mu.exec(assistantSource)?.[1];
+expect(/^\d+\.\d+\.\d+$/u.test(productVersion ?? ""), "assistant version authority is invalid");
+includesAll(assistantSource, [
+  'product_id = "ai-carry"', 'product_name = "AI Carry"', `product_version = "${productVersion}"`, `core_version = "${productVersion}"`,
   'legacy_product_ids = ["agent-carry"]', 'legacy_component_interfaces = ["agent-carry.instance-component@1"]',
   'legacy_professional_extension_record_types = ["agent-carry-professional-extension"]',
   'legacy_private_package_types = ["agent-carry-private-migration"]',
@@ -50,9 +53,9 @@ includesAll(read("assistant.toml"), [
   'repository_slug_state = "legacy-slug-until-separately-authorized-rename"',
   'write_policy = "new-product-owned-output-uses-ai-carry-identities"',
 ], "assistant identity authority");
-includesAll(read("core/manifest.toml"), ['core_id = "ai-carry-core"', 'version = "2.0.1"'], "core identity authority");
-includesAll(read("instance/manifest.toml"), ['instance_id = "template"', 'created_from = "ai-carry@2.0.1"', 'product = "2.0.1"'], "template identity authority");
-includesAll(read("dashboard/package.json"), ['"name": "ai-carry-dashboard"', '"version": "2.0.1"', '"upgrade": "node scripts/ai-carry-upgrade-cli.mjs"'], "Dashboard identity authority");
+includesAll(read("core/manifest.toml"), ['core_id = "ai-carry-core"', `version = "${productVersion}"`], "core identity authority");
+includesAll(read("instance/manifest.toml"), ['instance_id = "template"', `created_from = "ai-carry@${productVersion}"`, `product = "${productVersion}"`], "template identity authority");
+includesAll(read("dashboard/package.json"), ['"name": "ai-carry-dashboard"', `"version": "${productVersion}"`, '"upgrade": "node scripts/ai-carry-upgrade-cli.mjs"'], "Dashboard identity authority");
 includesAll(read("core/upgrade/official-source.toml"), [
   'source_id = "ai-carry-official-public"', 'product_id = "ai-carry"', 'label = "AI Carry 官方公开发布源"',
   'repository = "https://github.com/Ww-Cooooo/Agent-Carry"',
@@ -60,9 +63,8 @@ includesAll(read("core/upgrade/official-source.toml"), [
 ], "official source identity");
 const legacyDisplayTrigger = `${LEGACY_PRODUCT_IDENTITY.productNames[0]} 旧名`;
 includesAll(read("BOOTSTRAP.md"), [
-  `\`${LEGACY_PRODUCT_IDENTITY.productNames[0]}\` 是当前 \`${PRODUCT_IDENTITY.productName}\` 的已登记旧名`,
-  "单独看到旧名不代表产品损坏，也不得让 Agent 停止",
-  "才从根地图按需进入产品身份路线",
+  `\`${LEGACY_PRODUCT_IDENTITY.productNames[0]}\``, `\`${PRODUCT_IDENTITY.productName}\``, "旧名",
+  "单独出现不算损坏", "产品身份路线",
 ], "ordinary startup rename continuity");
 includesAll(read("core/maps/root-map.toml"), [legacyDisplayTrigger, "AI Carry 名称冲突", "旧品牌残留"], "root rename route triggers");
 includesAll(read("core/maps/assistant-maintenance.toml"), [
@@ -88,7 +90,7 @@ expectThrows(
 );
 
 const capsule = buildStartupCapsule(repository);
-expect(capsule.values.capsule_id === "ai-carry-startup" && capsule.values.product_version === "2.0.1", "new startup capsule identity is not generated from current truth");
+expect(capsule.values.capsule_id === "ai-carry-startup" && capsule.values.product_version === productVersion, "new startup capsule identity is not generated from current truth");
 expect(inspectStartupCapsule(repository).decision === "startup-capsule-valid", "checked-in template startup capsule is not synchronized");
 expect(typeof prepareUpgrade === "function" && typeof confirmUpgrade === "function", "deterministic upgrade entrypoint is unavailable");
 

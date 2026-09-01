@@ -2,7 +2,7 @@
 
 本 Schema 定义独立实例组件的小注册表和组件清单。它只用于不能由原生资产、Skill 小地图或专业扩展清单完整表达的实例模块、能力适配器、本机工具适配器和集成适配器。
 
-普通模板只携带空注册表，不创建示例组件。普通启动不得读取注册表、枚举 `instance/components/` 或读取组件正文；只有首次实例化、首次纳管、升级、迁移、修复、其他正式实例变化或已经命中某个组件时才按需读取。
+普通模板只携带空注册表，不创建示例组件。普通启动和首次创建都不读取注册表、枚举 `instance/components/` 或读取组件正文；只有首次真实安装／纳管组件、升级、迁移、修复或已经命中某个组件时才按需读取。
 
 规范写出使用 AI Carry 可移植 TOML 子集：UTF-8 无 BOM、LF、每个键值独占一行、JSON 兼容双引号字符串、单行数组、整数和布尔值；不使用单引号、多行字符串、行尾注释、内联表、浮点数或日期。严格发布审计要求这份规范表示；按需兼容读取可以接受不改变语义的 CRLF、BOM、已知章节顺序差异和未知标量字段，但必须保留原字节、不执行未知内容，并返回修复或迁移诊断。
 
@@ -21,7 +21,7 @@ AI Carry 2.0.0 规范写出 `ai-carry-instance-component-registry`、`ai-carry-i
 - `revision`：非负整数；正式内容改变时递增，空模板为 0。
 - `component_count`：必须等于 `[[components]]` 实际数量。
 
-全新模板首次实例化时，注册表必须进入同一原子身份事务：先有界确认 `instance/components/` 只有物理普通文件 `README.md` 和 `registry.toml`，没有其他文件、目录、链接或重解析点；再把 `instance_id` 改为新实例 ID，并写 `adoption_state = "current"`、`revision = 1`、`component_count = 0`，且不得创建任何 `[[components]]`。revision 从模板 0 递增到 1，因为实例身份与纳管状态已经成为正式内容；相同输入第二次执行保持 1。这一步只初始化实例所有权，不授权扫描整台电脑、安装软件或把原生资产伪装成组件。
+首次创建不写组件注册表；纯净的 `template + adoption_state=template + revision=0 + component_count=0` 占位可以继续存在，也不参与实例身份闭包。第一次真实安装或纳管组件时，先有界确认 `instance/components/` 只有物理普通文件 `README.md`、`registry.toml` 和本次明确目标，没有链接或重解析点；再从 manifest 初始化 `instance_id`，写 `adoption_state = "current"`、`revision = 1` 和真实计数。没有组件时不为“看起来完整”提前改写注册表。占位已经含有未知内容时只暂停组件能力并保留现场，不能拖住普通任务或猜测清理。
 
 每个 `[[components]]` 只包含：
 
@@ -63,6 +63,8 @@ AI Carry 2.0.0 规范写出 `ai-carry-instance-component-registry`、`ai-carry-i
 不同组件的 `device_local_paths` 也不得相等、互为父子或重叠。它们物理上仍处于 `local-private` 本机层，隐私与公开排除继续由该层约束；逻辑写入所有者以唯一引用它的组件清单为准。未携带目标组件 ID 的写入不能借 `.assistant-local/**` 宽泛边界修改组件绑定。
 
 已经存在但不符合推荐 `.assistant-local/components/<component-id>/` 结构的本机目录，可以在首次纳管时原地列入 `device_local_paths`；不为目录整齐强制重装。AI Carry 根外的实际软件路径只能写入某个已声明设备本地路径内的绑定文件。
+
+同机复制出升级候选或测试副本时，这些绑定文件可能仍含有回指正式源实例的绝对路径，因此“目录副本存在”不能证明“组件运行已隔离”。执行该组件前必须以正式源根、候选根和本次明确使用的绑定文件调用 `dashboard/scripts/copied-instance-runtime-boundary.mjs`。回指源实例、未核验／不存在的共享运行时、跨越链接／重解析点或未解析动态／相对路径只把当前组件标为 `limited` 并禁止本次执行；候选其他验证继续。绑定只能在一次性候选中重连，不能由预检器改写真实实例或扫描无关本机目录。
 
 ### `[interfaces]`
 
@@ -110,5 +112,6 @@ AI Carry 2.0.0 规范写出 `ai-carry-instance-component-registry`、`ai-carry-i
 
 - 完整换机包含注册表、组件清单和 `portable_paths`；`derived_paths` 可重建，`device_local_paths` 不迁移，私密引用由私密分卷处理。
 - 目标电脑重新解析设备本地绑定；不能复用旧电脑绝对路径或声称旧安装仍存在。
+- 同一电脑的隔离副本也必须重新核对运行可达性；复制 `.assistant-local/**` 不会自动把外部运行时和其缓存变成副本私有状态。
 - 公开模板包含本 Schema、空注册表和空清单模板，但不包含真实组件、真实绑定、二进制、模型、维护者资产或私密内容。
 - 新 Schema 或不兼容字段变化必须提升 Schema 版本，并在发布清单中提供版本化迁移。

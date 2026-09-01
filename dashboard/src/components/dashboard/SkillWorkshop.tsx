@@ -97,7 +97,7 @@ function exportedSkillView(item: ExportedSkillItem): ExportedSkillView {
       help: "可编辑 Skill 后来发生了变化，或原来的分享载体已缺失。旧载体会保留，但不再冒充最新版本。",
       deliveryTitle: "当前载体不是最新内容",
       deliveryCopy: "Agent 会从现在的可编辑真源生成一个新的、不覆盖旧文件的载体。",
-      nextStep: "让 Agent 重新生成分享文件；完成后它会报告新位置和摘要核对结果。",
+      nextStep: "让 Agent 重新生成分享文件；完成后它会报告新位置和检查结果，内部校验不需要你填写。",
     },
     review: {
       label: "分享信息需复核",

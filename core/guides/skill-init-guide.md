@@ -1,8 +1,8 @@
 # Skill 初始化与小型路由
 
-首次实例化只执行下面的“极小需求判断”；用户明确刷新 Skill，或真实任务命中一个尚未确认的 Skill 需求时，才展开相应条目。普通任务不扫描 Skill 仓库。
+首次创建不扫描或初始化 Skill。用户明确安装／刷新 Skill，或真实任务命中一个尚未确认的 Skill 需求时，才读取相应小地图和目标条目；普通任务不扫描 Skill 仓库。
 
-首次实例化时必须把 `instance/skills/requirements.toml` 的 `instance_id` 换成当前实例 ID，并写真实生成时间。判断只使用用户已经确认的初始任务和当前宿主最小档案：没有已确认的额外 Skill 需求时写 `status = "current"` 并保持空条目；信息不足时写 `status = "deferred"`。这不是宿主 Skill 全量盘点，也不授权安装任何东西。模板的 `status = "scan-after-instantiation"` 只是一条待完成标记，不得留在正式实例中。
+纯净模板的 `instance/skills/requirements.toml` 可以在首次创建后继续保持 `instance_id = "template"` 和 `status = "scan-after-instantiation"`；它只是尚未用到 Skill 的空占位，不参与实例身份闭包。第一次真实安装、登记或刷新 Skill 时，执行器从 manifest 懒初始化实例 ID 和小地图状态，并只处理本次明确相关的条目。占位损坏只暂停 Skill 安装／登记，不影响普通对话、已有正式资产或其他能力。
 
 1. 只有初始任务或当前真实任务确实需要额外 Skill 时，才从当前接入回执或本次实际观察读取少量相关 Skill 的名称、用途、入口和来源；宿主接入能力本身由 `HOST_INTEGRATION.md` 管理，不复制到 Skill 地图。
 2. 根据实例方向和初始任务族，列出“必须、可选、不相关”三类；安装任何外部 Skill 前先加载外部安全边界，必要时做安全审查并取得用户确认。

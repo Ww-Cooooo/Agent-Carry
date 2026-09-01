@@ -1,7 +1,6 @@
 export const PRODUCT_IDENTITY = Object.freeze({
   productId: "ai-carry",
   productName: "AI Carry",
-  productVersion: "2.0.1",
   coreId: "ai-carry-core",
   startupCapsuleId: "ai-carry-startup",
   componentRegistryRecordType: "ai-carry-instance-component-registry",

@@ -5,14 +5,12 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
-  consumeTrustedModelLevel,
   parseArrayTableDocument,
   parseMarkdownFrontmatterHead,
   parseSectionedToml,
   findPotentialFormalDuplicates,
   loadTrustedDomainEnvelope,
   prepareNewFormalTarget,
-  resolveTrustedModelLevel,
   stableAssetId,
   trustedMaintenanceStateDigest,
   validateInstanceManifestStructure,
@@ -47,7 +45,6 @@ const CANDIDATE_INDEX_REF = "instance/evolution/index.toml";
 const DOMAIN_MAP_REF = "instance/maps/domain-map.toml";
 const PUBLIC_SNAPSHOT_REF = "dashboard/public/snapshot.js";
 const DIST_SNAPSHOT_REF = "dashboard/dist/snapshot.js";
-const DIRECT_KEEP_LEVEL_PURPOSE = "direct-learning-capture-formal-write";
 const PERSISTENT_CAPTURE_DIR = ".assistant-local/runtime/learning-capture";
 const PROJECTION_MARKER = ".ai-carry-projection-owner.json";
 const PROJECTION_TTL_MS = 30 * 60_000;
@@ -86,6 +83,9 @@ const proposalFields = new Set([
 const receiptFields = new Set([
   "basis", "message_ref", "message_digest", "user_message_at", "confirmed_at", "choice",
   "remind_at", "instance_id", "proposal_digest", "challenge_nonce",
+]);
+const receiptRequiredFields = new Set([
+  "basis", "message_ref", "message_digest", "choice", "instance_id", "proposal_digest", "challenge_nonce",
 ]);
 const controlFields = new Set([
   "schema_version", "record_type", "instance_id", "source_revision", "projection_revision",
@@ -139,6 +139,9 @@ const signalEvidenceFields = new Set(["event_id", "event_source", "task_id", "co
 const cancellationReceiptFields = new Set([
   "basis", "message_ref", "message_digest", "user_message_at", "confirmed_at", "candidate_id", "instance_id", "challenge_nonce",
 ]);
+const cancellationReceiptRequiredFields = new Set([
+  "basis", "message_ref", "message_digest", "candidate_id", "instance_id", "challenge_nonce",
+]);
 const observationAssertionFields = new Set([
   "basis", "source_kind", "task_ref_digest", "context_ref_digest", "occurred_at", "result_state",
 ]);
@@ -191,6 +194,13 @@ function exactKeys(value, fields) {
   return value && typeof value === "object" && !Array.isArray(value)
     && Object.keys(value).length === fields.size
     && Object.keys(value).every((key) => fields.has(key));
+}
+
+function compatibleReceipt(value, requiredFields, knownFields) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && Object.getPrototypeOf(value) === Object.prototype
+    && [...requiredFields].every((key) => Object.hasOwn(value, key))
+    && Object.keys(value).every((key) => knownFields.has(key));
 }
 
 function strictDate(value) {
@@ -389,6 +399,82 @@ function parseTimeMap(read, instanceId, revision) {
     || entries.some((entry) => !validTimeTrigger(entry)) || new Set(entries.map((entry) => entry.id)).size !== entries.length
     || read.byteLength > limits.timeMap) throw new Error("time trigger projection is not current and bounded");
   return { root, entries };
+}
+
+function pristineDerivedFoldersAreEmpty(repositoryReal) {
+  const allowed = new Map([
+    [resolve(repositoryReal, "instance/evolution"), new Set(["index.toml", "README.md"])],
+    [resolve(repositoryReal, "instance/signals"), new Set(["control.toml", "README.md"])],
+  ]);
+  for (const [directory, names] of allowed) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const info = lstatSync(resolve(directory, entry.name));
+      if (!entry.isFile() || info.isSymbolicLink() || !names.has(entry.name)) return false;
+    }
+  }
+  return true;
+}
+
+function controlForLearningWrite(read, instanceId, initializedAt, allowPristineTemplate) {
+  const source = rootOnly(read.text, "signal control");
+  try { return validateControl(source, instanceId); }
+  catch (error) {
+    const pristine = allowPristineTemplate && exactKeys(source, controlFields)
+      && source.schema_version === 1 && source.record_type === "cross-session-signal-control"
+      && source.instance_id === "template" && source.source_revision === 0 && source.projection_revision === 0
+      && source.update_state === "clean" && source.base_revision === 0 && source.updated_at === ""
+      && ["pending_operation_id", "pending_event_id", "pending_signal_id", "pending_trigger_id", "pending_source_ref"]
+        .every((field) => source[field] === "");
+    if (!pristine) throw error;
+    return validateControl({ ...source, instance_id: instanceId, updated_at: initializedAt }, instanceId);
+  }
+}
+
+function candidateIndexForLearningWrite(read, instanceId, allowPristineTemplate) {
+  try { return parseCandidateIndex(read, instanceId); }
+  catch (error) {
+    const parsed = parseArrayTableDocument(read.text, "candidates", "evolution candidate index");
+    const root = parsed.root;
+    const pristine = allowPristineTemplate && exactKeys(root, candidateIndexRootFields)
+      && root.schema_version === 1 && root.index_id === "evolution-candidates" && root.instance_id === "template"
+      && root.state === "empty" && root.source_revision === 0 && root.generated_at === ""
+      && root.budget_bytes === limits.candidateIndex && root.overflow === false
+      && root.candidate_count === 0 && root.indexed_count === 0 && root.active_count === 0
+      && parsed.entries.length === 0 && read.byteLength <= limits.candidateIndex;
+    if (!pristine) throw error;
+    return { root: { ...root, instance_id: instanceId }, entries: [] };
+  }
+}
+
+function signalMapForLearningWrite(read, instanceId, revision, allowPristineTemplate) {
+  try { return parseSignalMap(read, instanceId, revision); }
+  catch (error) {
+    const parsed = parseArrayTableDocument(read.text, "signals", "startup signal projection");
+    const root = parsed.root;
+    const pristine = allowPristineTemplate && exactKeys(root, signalMapRootFields)
+      && root.schema_version === 1 && root.map_id === "cross-session-signals" && root.instance_id === "template"
+      && root.state === "empty" && root.source_revision === 0 && root.generated_at === ""
+      && root.budget_bytes === limits.signalMap && root.overflow === false && root.active_count === 0
+      && root.scheduled_count === 0 && root.next_wakeup_at === "" && root.next_wakeup_ref === TIME_MAP_REF
+      && parsed.entries.length === 0 && read.byteLength <= limits.signalMap;
+    if (!pristine || revision !== 0) throw error;
+    return { root: { ...root, instance_id: instanceId }, entries: [] };
+  }
+}
+
+function timeMapForLearningWrite(read, instanceId, revision, allowPristineTemplate) {
+  try { return parseTimeMap(read, instanceId, revision); }
+  catch (error) {
+    const parsed = parseArrayTableDocument(read.text, "triggers", "time trigger projection");
+    const root = parsed.root;
+    const pristine = allowPristineTemplate && exactKeys(root, timeMapRootFields)
+      && root.schema_version === 1 && root.map_id === "time-triggers" && root.instance_id === "template"
+      && root.state === "empty" && root.source_revision === 0 && root.generated_at === ""
+      && root.scheduled_count === 0 && root.next_wakeup_at === "" && parsed.entries.length === 0
+      && read.byteLength <= limits.timeMap;
+    if (!pristine || revision !== 0) throw error;
+    return { root: { ...root, instance_id: instanceId }, entries: [] };
+  }
 }
 
 function parseSignalSource(source, label = "learning signal") {
@@ -706,81 +792,46 @@ function replaceProjectionFile(root, ref, content) {
   writeFileSync(target, content, "utf8");
 }
 
-function buildDirectKeepProjection(repositoryReal, checked, envelope, context, issuedAt, levelEvidence) {
+function buildDirectKeepProjection(repositoryReal, checked, envelope, context) {
   const normalizedPreview = checked.proposal.formal_preview;
   const parsed = parseMarkdownFrontmatterHead(normalizedPreview, "direct keep formal preview");
   const asset = parsed.values; const body = normalizedPreview.slice(parsed.bodyOffset);
   const requiredLevel = Math.max(asset.minimum_level,
     asset.risk_tier === "high" ? 3 : asset.risk_tier === "medium" ? 2 : 1);
-  if (![1, 2, 3].includes(requiredLevel) || (requiredLevel > 1
-    && resolveTrustedModelLevel(levelEvidence, { expectedPurpose: DIRECT_KEEP_LEVEL_PURPOSE }) < requiredLevel)) {
-    throw new Error(`verified Level ${requiredLevel} review is required before this exact content can be kept`);
-  }
+  if (![1, 2, 3].includes(requiredLevel)) throw new Error("formal preview has invalid model guidance metadata");
   if (!context.allowedConfirmationGates.includes(asset.confirmation)
     || asset.approval_state !== "explicit" || asset.activation_basis !== "explicit-user" || asset.approved_by_user !== true
     || !["active", "provisional"].includes(asset.status)
     || (asset.status === "provisional" && asset.risk_tier !== "low")
     || (["medium", "high"].includes(asset.risk_tier) && asset.confirmation === "none")) {
-    throw new Error("formal preview authorization, status, risk, or future action gate requires targeted Level 3 review");
+    throw new Error("formal preview authorization, status, risk, or future action gate requires targeted review");
   }
   if ((asset.related_asset_ids ?? []).length > 0 || (asset.supersedes ?? []).length > 0) {
-    throw new Error("formal preview changes existing asset relationships and requires targeted Level 3 review");
+    throw new Error("formal preview changes existing asset relationships and requires targeted review");
   }
   const maturityBearing = ["capability", "sop"].includes(asset.kind)
     || (asset.kind === "experience" && asset.subtype === "host-execution");
   if (maturityBearing && (asset.maturity !== "unvalidated" || asset.independent_task_count !== 0
     || asset.successful_use_count !== 0 || asset.failed_use_count !== 0 || asset.distinct_context_count !== 0
     || asset.distinct_host_count !== 0 || (asset.validation_refs ?? []).length !== 0)) {
-    throw new Error("new formal content preclaims maturity and requires targeted Level 3 review");
+    throw new Error("new formal content preclaims maturity and requires targeted review");
   }
   const schema = validateProposedFormalAsset(repositoryReal, envelope, asset, body);
-  if (schema.decision !== "proposal-metadata-valid") throw new Error(schema.reason ?? "formal preview schema requires targeted Level 3 review");
+  if (schema.decision !== "proposal-metadata-valid") throw new Error(schema.reason ?? "formal preview schema requires targeted review");
   auditDirectFormalIdCandidateHistory(repositoryReal, asset.id);
   const formalTarget = formalTargetFor(asset, checked.formalDigest);
   const targetProof = prepareNewFormalTarget(repositoryReal, formalTarget, asset.kind);
   if (!verifyNewFormalTarget(repositoryReal, targetProof)) throw new Error("formal target is no longer available");
   const route = formalRouteProjection(asset, formalTarget);
   if (Buffer.byteLength(JSON.stringify(route.route), "utf8") > 2048 || envelope.routeCount + 1 > 96
-    || envelope.bytes + route.byteLength > 32768) throw new Error("domain map needs bounded Level 3 maintenance before keeping this content");
+    || envelope.bytes + route.byteLength > 32768) throw new Error("domain map needs bounded maintenance before keeping this content");
   const domainMapRead = stableRead(repositoryReal, context.domainMapRef, limits.domainMap);
   const domainMapText = `${domainMapRead.text.replace(/\s*$/u, "")}${route.source}`;
   if (Buffer.byteLength(domainMapText, "utf8") > limits.domainMap) throw new Error("domain map hard budget would be exceeded");
-  const publicSnapshotRead = stableRead(repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
-  const distSnapshotRead = stableRead(repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
-  if (publicSnapshotRead.digest !== distSnapshotRead.digest) throw new Error("dashboard snapshot pair is already drifted");
-  const baseSnapshotSourceDigest = computeSnapshotSourceDigest(repositoryReal, { mode: "operational",
-    requiredSourceRefs: [formalTarget, context.domainMapRef] }).digest;
-
-  cleanupStaleLearningCaptureProjections(repositoryReal);
-  let projectionRoot;
-  try {
-    projectionRoot = createOwnedProjectionRoot(repositoryReal, "direct-keep");
-    const budget = { directories: 0, files: 0 };
-    for (const ref of ["assistant.toml", "AGENTS.md", "BOOTSTRAP.md", "core", "instance"])
-      mirrorPhysicalTree(resolve(repositoryReal, ...ref.split("/")), resolve(projectionRoot, ...ref.split("/")), budget);
-    mirrorPhysicalTree(resolve(repositoryReal, ...PUBLIC_SNAPSHOT_REF.split("/")), resolve(projectionRoot, ...PUBLIC_SNAPSHOT_REF.split("/")), budget);
-    mirrorPhysicalTree(resolve(repositoryReal, ...DIST_SNAPSHOT_REF.split("/")), resolve(projectionRoot, ...DIST_SNAPSHOT_REF.split("/")), budget);
-    replaceProjectionFile(projectionRoot, context.domainMapRef, domainMapText);
-    replaceProjectionFile(projectionRoot, formalTarget, normalizedPreview);
-    const projectedEnvelope = loadTrustedDomainEnvelope(projectionRoot, { explicitRequestedId: asset.id });
-    if (projectedEnvelope.envelope.explicitRoute?.id !== asset.id) throw new Error("direct formal route did not close in the isolated projection");
-    const snapshot = buildSnapshotCandidate(projectionRoot, { existingSource: publicSnapshotRead.text, now: new Date(issuedAt),
-      mode: "operational", requiredSourceRefs: [formalTarget, context.domainMapRef] });
-    if (!snapshot.updated || typeof snapshot.source !== "string" || Buffer.byteLength(snapshot.source, "utf8") > limits.snapshot) {
-      throw new Error("the isolated snapshot projection did not produce a bounded changed pair");
-    }
-    if (requiredLevel > 1 && consumeTrustedModelLevel(levelEvidence, DIRECT_KEEP_LEVEL_PURPOSE) < requiredLevel) {
-      throw new Error(`verified Level ${requiredLevel} ticket became stale before the preview was bound`);
-    }
-    return Object.freeze({ eligible: true, requiredLevel, asset: Object.freeze({ ...asset }), normalizedPreview,
-      formalTarget, targetProof, route, domainMapRef: context.domainMapRef, domainMapRead, domainMapText,
-      publicSnapshotRead, distSnapshotRead, snapshotSource: snapshot.source, snapshotSourceDigest: snapshot.sourceDigest,
-      baseSnapshotSourceDigest,
-      writeSetPreview: Object.freeze([formalTarget, context.domainMapRef, PUBLIC_SNAPSHOT_REF, DIST_SNAPSHOT_REF]),
-      retainedFutureActionGate: asset.confirmation, initialMaturity: maturityBearing ? "unvalidated" : "not-applicable" });
-  } finally {
-    if (projectionRoot && existsSync(projectionRoot)) removeOwnedProjectionRoot(repositoryReal, projectionRoot, "direct-keep");
-  }
+  return Object.freeze({ eligible: true, requiredLevel, asset: Object.freeze({ ...asset }), normalizedPreview,
+    formalTarget, targetProof, route, domainMapRef: context.domainMapRef, domainMapRead, domainMapText,
+    writeSetPreview: Object.freeze([formalTarget, context.domainMapRef]),
+    retainedFutureActionGate: asset.confirmation, initialMaturity: maturityBearing ? "unvalidated" : "not-applicable" });
 }
 
 function purgeMessageRefs(now) {
@@ -815,13 +866,12 @@ export function createLearningCaptureObservationReceipt(repository, assertion) {
     const repositoryReal = realpathSync(repository); const now = Date.now();
     const manifestRead = stableRead(repositoryReal, MANIFEST_REF, limits.manifest);
     const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
-    const occurredAtMs = Date.parse(assertion?.occurred_at ?? "");
     if (manifest.root.state !== "instance" || !exactObject(assertion, observationAssertionFields)
       || assertion.basis !== "same-process-host-task-observation"
       || !observationSourceKinds.has(assertion.source_kind) || !observationResultStates.has(assertion.result_state)
       || !digestPattern.test(assertion.task_ref_digest ?? "") || !digestPattern.test(assertion.context_ref_digest ?? "")
-      || !strictDate(assertion.occurred_at) || occurredAtMs > now || occurredAtMs < now - 24 * 60 * 60_000) {
-      throw new Error("host observation assertion is invalid, future-dated, or older than the natural-stop window");
+      || !strictDate(assertion.occurred_at)) {
+      throw new Error("host observation assertion is invalid");
     }
     const nonce = randomBytes(18).toString("hex");
     const digest = sha256(canonical(assertion));
@@ -855,8 +905,6 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
       || observationTrust.manifestDigest !== manifestRead.digest || Date.now() > observationTrust.expiresAtMs) {
       throw new Error("a same-process host observation receipt is required before offering durable learning choices");
     }
-    const operationalGate = operationalDerivedStateGate(repositoryReal, "learning-capture");
-    if (!operationalGate.proceed) return operationalGate.result;
     consumedObservationReceipts.add(observationReceipt);
     const { context, envelope } = loadTrustedDomainEnvelope(repositoryReal, { explicitRequestedId: checked.formal.id });
     if (context.instanceId !== manifest.root.instance_id || context.manifestState !== "instance") throw new Error("trusted formal routing context does not match the instance");
@@ -874,20 +922,20 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
         && observationTrust.sourceKind === "unknown" && observationTrust.resultState === "closed-unverified"
         && checked.proposal.proposed_risk_tier === "low" && checked.proposal.minimum_level === 1;
       if (!verifiedHostResult && !exactPreviewOnly) {
-        throw new Error("non-host, memory, inferred, external, unknown, or unclosed observations require targeted Level 3 review before direct formal saving");
+        throw new Error("non-host, inferred, external, unknown, or unclosed observations require a targeted review before direct formal saving");
       }
-      directKeep = buildDirectKeepProjection(repositoryReal, checked, envelope, context, new Date(issuedAtMs).toISOString(), levelEvidence);
+      directKeep = buildDirectKeepProjection(repositoryReal, checked, envelope, context);
     } catch (error) {
       directKeep = Object.freeze({ eligible: false, reason: error.message });
     }
     const keepConsequence = directKeep.eligible
-      ? "你确认后会把这份精确内容直接保存为正式资产，并同步路由和两份看板快照；只保存，不执行任何未来动作。"
-      : `当前不能安全直写（${directKeep.reason}）。选择后只会生成 Level 3 定向复核请求，不会假装已经保存。`;
+      ? "你确认后会把这份精确内容直接保存为正式资产并接入召回；看板随后单独刷新，只保存，不执行任何未来动作。"
+      : `当前不能安全直写（${directKeep.reason}）。选择后只会生成定向复核请求，不会假装已经保存。`;
     const challenge = deepFreeze({
       decision: "learning-capture-current-user-choice-required", executable: false,
       instanceId: manifest.root.instance_id, proposalDigest: checked.proposalDigest,
       choices: ["keep", "observe", "remind", "discard"], challengeNonce: nonce,
-      issuedAt: new Date(issuedAtMs).toISOString(), expiresAt: new Date(issuedAtMs + 10 * 60_000).toISOString(),
+      issuedAt: new Date(issuedAtMs).toISOString(), expiresAt: "",
       preview: Object.freeze({
         discovery: checked.proposal.title,
         futureUse: checked.proposal.summary,
@@ -895,7 +943,7 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
         limits: Object.freeze([...checked.proposal.excludes]),
         question: "这项做法以后可能还会有用。你希望怎么处理？请先核对下面的精确内容。即使你刚才说过“记住”，当前通用宿主也必须真实展示这次选择并等待你的回复；事务回执只绑定预览与选择，不能证明是谁发言。",
         options: Object.freeze([
-          Object.freeze({ id: "keep", label: directKeep.eligible ? "留下" : "交给 Level 3 复核后留下", consequence: keepConsequence }),
+          Object.freeze({ id: "keep", label: directKeep.eligible ? "留下" : "复核后留下", consequence: keepConsequence }),
           Object.freeze({ id: "observe", label: "先观察", consequence: "只建立可撤销候选，等新的真实任务再次验证。" }),
           Object.freeze({ id: "remind", label: "以后提醒", consequence: "建立可撤销候选，并在你指定的时间提醒复核。" }),
           Object.freeze({ id: "discard", label: "不保存", consequence: "本次发现不会写入任何持久文件。" }),
@@ -905,16 +953,16 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
         futureUse: Object.freeze({ triggers: [...checked.proposal.triggers], scope: [...checked.proposal.scope],
           conditions: [...checked.proposal.conditions], excludes: [...checked.proposal.excludes] }),
         saveBoundary: "本次只保存内容，不执行内容描述的任何未来动作；未来动作仍遵守正式资产内的确认门。",
-        retainedFutureActionGate: directKeep.eligible ? directKeep.retainedFutureActionGate : "Level 3 复核后确定",
+        retainedFutureActionGate: directKeep.eligible ? directKeep.retainedFutureActionGate : "定向复核后确定",
         initialMaturity: directKeep.eligible ? directKeep.initialMaturity : "尚未采用",
         correctionAndDisable: "以后可直接用普通语言指出哪里不对、要求修改或停用；正式资产不会因为本次保存而预领真实使用成功。",
         directWriteSet: directKeep.eligible ? Object.freeze([...directKeep.writeSetPreview]) : Object.freeze([]),
         rollbackBoundary: directKeep.eligible
-          ? "宿主必须按精确字节事务写入；任一步失败，整个写集合回退到保存前字节。"
-          : "选择前没有语义写入；确认这个选项后只建立不可执行的候选与 Level 3 交接，不改变正式资产。",
+          ? "正式内容和直接召回路线会一起保存并回读；其中一项没有成功就只恢复这次保存，其他学习和普通任务不受影响。"
+          : "选择前没有语义写入；确认这个选项后只建立不可执行的候选与定向复核交接，不改变正式资产。",
       }),
       userMeaning: Object.freeze({
-        keep: directKeep.eligible ? "按上面的精确内容直接正式保存；只保存，不执行" : "当前只请求 Level 3 定向复核，不会假装已保存",
+        keep: directKeep.eligible ? "按上面的精确内容直接正式保存；只保存，不执行" : "当前只请求定向复核，不会假装已保存",
         observe: "只建立可撤销观察候选，后续真实任务再验证",
         remind: "建立观察候选并在指定时间提醒；随时可取消",
         discard: "本次发现不写入任何持久文件",
@@ -928,9 +976,8 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
       sourceKind: observationTrust.sourceKind, resultState: observationTrust.resultState });
     trustedChallenges.set(challenge, Object.freeze({ repositoryReal, manifestDigest: manifestRead.digest, formalStateDigest,
       instanceId: manifest.root.instance_id, checked, observation, directKeep,
-      allowedChoices: choices,
-      issuedAtMs, expiresAtMs: issuedAtMs + 10 * 60_000, nonce }));
-    return bindOperationalDerivedStateReport(challenge, operationalGate.repair);
+      allowedChoices: choices, issuedAtMs, nonce }));
+    return challenge;
   } catch (error) {
     return deepFreeze({ decision: "learning-capture-challenge-denied", reason: error.message, executable: false });
   }
@@ -938,23 +985,22 @@ export function createLearningCaptureChoiceChallenge(repository, proposal, { lev
 
 export function confirmLearningCaptureChoice(challenge, receipt) {
   const trust = trustedChallenges.get(challenge); const now = Date.now(); purgeMessageRefs(now);
-  const userMessageAt = Date.parse(receipt?.user_message_at ?? ""); const confirmedAt = Date.parse(receipt?.confirmed_at ?? "");
   const messageKey = trust ? `${trust.repositoryReal}\u0000${trust.instanceId}\u0000${receipt?.message_ref ?? ""}` : "";
   const remindAt = Date.parse(receipt?.remind_at ?? "");
-  const valid = trust && exactObject(receipt, receiptFields) && receipt.basis === "host-current-user-message"
+  const valid = trust && compatibleReceipt(receipt, receiptRequiredFields, receiptFields) && receipt.basis === "host-current-user-message"
     && stableAssetId.test(receipt.message_ref ?? "") && digestPattern.test(receipt.message_digest ?? "")
     && trust.allowedChoices.has(receipt.choice) && receipt.instance_id === trust.instanceId
     && receipt.proposal_digest === trust.checked.proposalDigest && receipt.challenge_nonce === trust.nonce
-    && strictDate(receipt.user_message_at) && strictDate(receipt.confirmed_at)
-    && userMessageAt >= trust.issuedAtMs && userMessageAt <= confirmedAt
-    && confirmedAt <= now && userMessageAt <= now
-    && confirmedAt <= trust.expiresAtMs && now <= trust.expiresAtMs
     && !consumedMessageRefs.has(messageKey)
     && (receipt.choice === "remind"
-      ? strictDate(receipt.remind_at) && remindAt > confirmedAt && remindAt <= confirmedAt + 10 * 365 * 24 * 60 * 60_000
-      : receipt.remind_at === "");
-  if (!valid) return deepFreeze({ decision: "learning-capture-choice-denied", reason: "receipt-invalid-stale-replayed-or-cross-bound", executable: false });
-  trustedChallenges.delete(challenge); consumedMessageRefs.set(messageKey, trust.expiresAtMs);
+      ? strictDate(receipt.remind_at) && remindAt > now && remindAt <= now + 10 * 365 * 24 * 60 * 60_000
+      : receipt.remind_at === undefined || receipt.remind_at === "");
+  if (!valid) return deepFreeze({ decision: "learning-capture-choice-denied", reason: "receipt-invalid-replayed-or-cross-bound", executable: false });
+  const internalAt = new Date(now).toISOString();
+  const normalizedReceipt = Object.freeze({ ...receipt,
+    user_message_at: strictDate(receipt.user_message_at) ? receipt.user_message_at : internalAt,
+    confirmed_at: internalAt, remind_at: receipt.choice === "remind" ? receipt.remind_at : "" });
+  trustedChallenges.delete(challenge); consumedMessageRefs.set(messageKey, Number.POSITIVE_INFINITY);
   const ids = Object.freeze({ ...trust.observation,
     operationId: runtimeOperationId(trust.instanceId, trust.nonce, receipt.message_ref, receipt.message_digest) });
   const transactionAt = new Date(now).toISOString();
@@ -966,15 +1012,14 @@ export function confirmLearningCaptureChoice(challenge, receipt) {
     durableEffect: receipt.choice === "discard" ? "zero-persistent-writes" : "host-transaction-plan-required",
     cancellationGuidance: receipt.choice === "remind" ? "随时告诉当前 Agent：取消这条学习提醒，并说出它的大概内容即可；不需要 ID 或路径。" : "",
   });
-  trustedSelections.set(selection, Object.freeze({ ...trust, receipt: Object.freeze({ ...receipt }), ids, transactionAt,
-    expiresAtMs: Math.min(trust.expiresAtMs, now + 2 * 60_000) }));
+  trustedSelections.set(selection, Object.freeze({ ...trust, receipt: normalizedReceipt, ids, transactionAt }));
   const earlierReport = getOperationalDerivedStateReport(challenge);
   return bindOperationalDerivedStateReport(selection, earlierReport ? { userReport: earlierReport } : null);
 }
 
 export function closeLearningCaptureWithoutResponse(challenge) {
   const trust = trustedChallenges.get(challenge);
-  if (!trust || Date.now() > trust.expiresAtMs) return deepFreeze({ decision: "learning-capture-no-response-denied", executable: false });
+  if (!trust) return deepFreeze({ decision: "learning-capture-no-response-denied", executable: false });
   trustedChallenges.delete(challenge);
   return deepFreeze({ decision: "learning-capture-closed-without-response", executable: false,
     durableEffect: "zero-persistent-writes", writeSet: Object.freeze([]), reminderCreated: false, candidateCreated: false });
@@ -1046,11 +1091,9 @@ function readPersistentJson(target, maxBytes, label) {
 }
 
 function currentPersistentStateDigest(repositoryReal) {
-  const source = computeSnapshotSourceDigest(repositoryReal, { mode: "operational" });
   const refs = ["assistant.toml", "core/manifest.toml", "core/maps/asset-confirmation-gates.toml",
-    PUBLIC_SNAPSHOT_REF, DIST_SNAPSHOT_REF];
-  return sha256(canonical({ source: source.digest,
-    refs: refs.map((ref) => [ref, stableRead(repositoryReal, ref, ref.includes("snapshot") ? limits.snapshot : 64 * 1024).digest]) }));
+    MANIFEST_REF, DOMAIN_MAP_REF];
+  return sha256(canonical(refs.map((ref) => [ref, stableRead(repositoryReal, ref, 64 * 1024).digest])));
 }
 
 function validPersistentRecord(record, repositoryReal) {
@@ -1061,7 +1104,8 @@ function validPersistentRecord(record, repositoryReal) {
     && digestPattern.test(record.proposal_digest ?? "") && digestPattern.test(record.formal_preview_digest ?? "")
     && digestPattern.test(record.observation_digest ?? "")
     && digestPattern.test(record.state_digest ?? "") && clean(record.challenge_nonce, 80, false)
-    && strictDate(record.issued_at) && strictDate(record.expires_at) && ["direct", "level3"].includes(record.direct_keep_mode)
+    && strictDate(record.issued_at) && (record.expires_at === "" || strictDate(record.expires_at))
+    && ["direct", "review", "level3"].includes(record.direct_keep_mode)
     && ["prepared", "planned", "completed"].includes(record.status) && clean(record.message_ref, 160)
     && (record.message_digest === "" || digestPattern.test(record.message_digest))
     && (record.choice === "" || choices.has(record.choice)) && clean(record.remind_at, 64)
@@ -1074,6 +1118,10 @@ function validPersistentRecord(record, repositoryReal) {
         && digestPattern.test(record.plan_digest)
         && (record.status === "planned" ? record.plan_ref !== "" : record.plan_ref === ""))
     && (record.plan_digest === "" || digestPattern.test(record.plan_digest)) && clean(record.plan_ref, 240);
+}
+
+function normalizedReviewMode(value) {
+  return value === "level3" ? "review" : value;
 }
 
 function readBoundPersistentPlan(repositoryReal, record) {
@@ -1092,36 +1140,44 @@ function readBoundPersistentPlan(repositoryReal, record) {
   return plan;
 }
 
-export function cleanupExpiredPersistentLearningCaptureChallenges(repository, { now = new Date() } = {}) {
+export function cleanupExpiredPersistentLearningCaptureChallenges(repository, _options = {}) {
   try {
     const repositoryReal = realpathSync(repository); const root = persistentRoot(repositoryReal);
-    const nowMs = now instanceof Date ? now.getTime() : Number.NaN; let removed = 0; let inspected = 0;
-    const rollbackRequired = []; const recoveryRequired = [];
-    if (!Number.isFinite(nowMs)) throw new Error("cleanup time is invalid");
+    let removed = 0; let inspected = 0;
+    const rollbackRequired = []; const recoveryRequired = []; const isolatedRecords = [];
     for (const entry of readdirSync(root, { withFileTypes: true })) {
       if (++inspected > 2048) throw new Error("persistent challenge cleanup budget exceeded");
       if (!entry.isFile() || !entry.name.endsWith(".json") || entry.name.endsWith(".plan.json")) continue;
-      const target = resolve(root, entry.name); const record = readPersistentJson(target, 32 * 1024, "persistent challenge record");
-      if (!validPersistentRecord(record, repositoryReal)) throw new Error("persistent challenge store contains an invalid record");
-      if (Date.parse(record.expires_at) >= nowMs) continue;
-      const plan = persistentPlanPath(repositoryReal, record.challenge_id);
-      if (record.status === "planned") {
-        const boundPlan = readBoundPersistentPlan(repositoryReal, record);
-        const state = inspectStructurallyTrustedPlanState(repositoryReal, boundPlan);
-        if (state.decision === "learning-capture-rollback-required") {
-          rollbackRequired.push(Object.freeze({ challengeId: record.challenge_id, checkpoint: state.checkpoint,
-            planRef: record.plan_ref })); continue;
+      const target = resolve(root, entry.name);
+      try {
+        const record = readPersistentJson(target, 32 * 1024, "persistent challenge record");
+        if (!validPersistentRecord(record, repositoryReal)) {
+          isolatedRecords.push(Object.freeze({ record: entry.name, reason: "record shape or repository binding is invalid" }));
+          continue;
         }
-        if (state.decision === "learning-capture-recovery-required") {
-          recoveryRequired.push(Object.freeze({ challengeId: record.challenge_id, reason: state.reason,
-            planRef: record.plan_ref })); continue;
+        const plan = persistentPlanPath(repositoryReal, record.challenge_id);
+        if (record.status === "prepared") continue;
+        if (record.status === "planned") {
+          const boundPlan = readBoundPersistentPlan(repositoryReal, record);
+          const state = inspectStructurallyTrustedPlanState(repositoryReal, boundPlan);
+          if (state.decision === "learning-capture-rollback-required") {
+            rollbackRequired.push(Object.freeze({ challengeId: record.challenge_id, checkpoint: state.checkpoint,
+              planRef: record.plan_ref })); continue;
+          }
+          if (state.decision === "learning-capture-recovery-required") {
+            recoveryRequired.push(Object.freeze({ challengeId: record.challenge_id, reason: state.reason,
+              planRef: record.plan_ref })); continue;
+          }
+          if (!["learning-capture-ready-for-host-execution", "learning-capture-already-committed"].includes(state.decision)) {
+            recoveryRequired.push(Object.freeze({ challengeId: record.challenge_id,
+              reason: `unexpected persistent plan state: ${state.decision}`, planRef: record.plan_ref })); continue;
+          }
+          continue;
         }
-        if (!["learning-capture-ready-for-host-execution", "learning-capture-already-committed"].includes(state.decision)) {
-          recoveryRequired.push(Object.freeze({ challengeId: record.challenge_id,
-            reason: `unexpected persistent plan state: ${state.decision}`, planRef: record.plan_ref })); continue;
-        }
+        if (existsSync(plan)) unlinkSync(plan); unlinkSync(target); removed += 1;
+      } catch (error) {
+        isolatedRecords.push(Object.freeze({ record: entry.name, reason: String(error?.message ?? error) }));
       }
-      if (existsSync(plan)) unlinkSync(plan); unlinkSync(target); removed += 1;
     }
     removeEmptyPersistentDirectories(repositoryReal);
     const decision = recoveryRequired.length > 0 ? "persistent-learning-capture-cleanup-recovery-required"
@@ -1129,6 +1185,7 @@ export function cleanupExpiredPersistentLearningCaptureChallenges(repository, { 
         : "persistent-learning-capture-cleanup-complete";
     return deepFreeze({ decision, executable: false, removedOperationalRecordCount: removed,
       preservedRollbackCount: rollbackRequired.length, preservedRecoveryCount: recoveryRequired.length,
+      isolatedRecordCount: isolatedRecords.length, isolatedRecords: Object.freeze(isolatedRecords.slice(0, 32)),
       rollbackRequired: Object.freeze(rollbackRequired), recoveryRequired: Object.freeze(recoveryRequired), semanticAssetWriteCount: 0 });
   } catch (error) {
     return deepFreeze({ decision: "persistent-learning-capture-cleanup-denied", reason: error.message, executable: false });
@@ -1141,7 +1198,7 @@ export function preparePersistentLearningCaptureChallenge(repository, proposal, 
   try {
     const repositoryReal = realpathSync(repository);
     const cleanup = cleanupExpiredPersistentLearningCaptureChallenges(repositoryReal);
-    if (cleanup.decision !== "persistent-learning-capture-cleanup-complete") throw new Error(cleanup.reason ?? "persistent challenge cleanup unavailable");
+    if (cleanup.decision === "persistent-learning-capture-cleanup-denied") throw new Error(cleanup.reason ?? "persistent challenge cleanup unavailable");
     const observationReceipt = createLearningCaptureObservationReceipt(repositoryReal, observationAssertion);
     if (observationReceipt.decision !== "learning-capture-host-observation-bound") throw new Error(observationReceipt.reason ?? "host observation unavailable");
     const embedded = createLearningCaptureChoiceChallenge(repositoryReal, proposal, {
@@ -1158,15 +1215,32 @@ export function preparePersistentLearningCaptureChallenge(repository, proposal, 
       proposal_digest: embedded.proposalDigest, formal_preview_digest: embedded.preview.exactFormalPreviewDigest,
       observation_digest: observationReceipt.observationDigest,
       state_digest: currentPersistentStateDigest(repositoryReal), challenge_nonce: challengeNonce,
-      issued_at: embedded.issuedAt, expires_at: embedded.expiresAt,
-      direct_keep_mode: embedded.preview.directWriteSet.length > 0 ? "direct" : "level3",
+      issued_at: embedded.issuedAt, expires_at: "",
+      direct_keep_mode: embedded.preview.directWriteSet.length > 0 ? "direct" : "review",
       status: "prepared", message_ref: "", message_digest: "", choice: "", remind_at: "", plan_digest: "", plan_ref: "",
     };
     atomicJson(persistentRecordPath(repositoryReal, challengeId), record);
-    const userReport = getOperationalDerivedStateReport(embedded);
+    const derivedUserReport = getOperationalDerivedStateReport(embedded);
+    const hasOlderDiagnostics = cleanup.isolatedRecordCount > 0 || cleanup.preservedRollbackCount > 0
+      || cleanup.preservedRecoveryCount > 0;
+    const olderUserReport = hasOlderDiagnostics ? Object.freeze({
+      impact: "发现旧的学习操作记录需要复核，但问题已限制在那些旧记录内；这一次新的学习仍可继续。",
+      data_state: "旧记录和恢复现场保持原样，没有被自动删除、覆盖或冒充成功。",
+      recoverability: "以后可以只检查报告中的旧记录，并分别继续、回退或保留。",
+      still_usable: "当前学习选择、普通对话、已有记忆和其他能力仍可正常使用。",
+      next_step: "先完成眼前这次学习；方便时再让 Agent 只查看旧学习记录，不需要重建整个实例。",
+      user_summary: "旧学习记录存在局部问题，但已原样隔离；当前学习和其他能力继续可用，稍后只需定向处理旧记录。",
+    }) : undefined;
+    const userReport = derivedUserReport && olderUserReport ? Object.freeze({
+      ...derivedUserReport,
+      impact: `${derivedUserReport.impact}此外，旧学习操作记录的局部问题也已隔离，本次学习仍可继续。`,
+      data_state: `${derivedUserReport.data_state}旧记录和恢复现场保持原样。`,
+      next_step: `${derivedUserReport.next_step}方便时再单独查看旧学习记录。`,
+      user_summary: `${derivedUserReport.user_summary}旧学习记录也已原样隔离，可稍后单独处理。`,
+    }) : derivedUserReport ?? olderUserReport;
     return deepFreeze({ decision: "persistent-learning-capture-choice-required", executable: false,
       persistentChallengeId: challengeId, instanceId: embedded.instanceId, proposalDigest: embedded.proposalDigest,
-      challengeNonce, issuedAt: embedded.issuedAt, expiresAt: embedded.expiresAt,
+      challengeNonce, issuedAt: embedded.issuedAt, expiresAt: "",
       choices: embedded.choices, preview: embedded.preview, userMeaning: embedded.userMeaning,
       operationalRecordContainsSemanticBody: false, ...(userReport ? { userReport } : {}) });
   } catch (error) {
@@ -1180,40 +1254,40 @@ export function confirmPersistentLearningCaptureChallenge(repository, { challeng
     const repositoryReal = realpathSync(repository); const target = persistentRecordPath(repositoryReal, challengeId);
     const record = readPersistentJson(target, 32 * 1024, "persistent challenge record");
     if (!validPersistentRecord(record, repositoryReal) || record.challenge_id !== challengeId) throw new Error("persistent challenge record is invalid");
-    const now = Date.now(); const userAt = Date.parse(receipt?.user_message_at ?? ""); const confirmedAt = Date.parse(receipt?.confirmed_at ?? "");
-    if (!exactObject(receipt, receiptFields) || receipt.basis !== "host-current-user-message"
+    const now = Date.now();
+    if (!compatibleReceipt(receipt, receiptRequiredFields, receiptFields) || receipt.basis !== "host-current-user-message"
       || receipt.instance_id !== record.instance_id || receipt.proposal_digest !== record.proposal_digest
       || receipt.challenge_nonce !== record.challenge_nonce || !choices.has(receipt.choice)
       || !stableAssetId.test(receipt.message_ref ?? "") || !digestPattern.test(receipt.message_digest ?? "")
-      || !strictDate(receipt.user_message_at) || !strictDate(receipt.confirmed_at)
-      || userAt < Date.parse(record.issued_at) || userAt > confirmedAt || confirmedAt > now
-      || confirmedAt > Date.parse(record.expires_at) || now > Date.parse(record.expires_at)
-      || (receipt.choice === "remind" ? !strictDate(receipt.remind_at) || Date.parse(receipt.remind_at) <= confirmedAt : receipt.remind_at !== "")) {
-      throw new Error("persistent current-user choice receipt is invalid, stale, future-dated, or cross-bound");
+      || (receipt.choice === "remind"
+        ? !strictDate(receipt.remind_at) || Date.parse(receipt.remind_at) <= now
+        : receipt.remind_at !== undefined && receipt.remind_at !== "")) {
+      throw new Error("persistent current-user choice receipt is invalid, replayed, or cross-bound");
     }
+    const internalAt = new Date(now).toISOString();
+    const boundReceipt = Object.freeze({ ...receipt,
+      user_message_at: strictDate(receipt.user_message_at) ? receipt.user_message_at : internalAt,
+      confirmed_at: internalAt, remind_at: receipt.choice === "remind" ? receipt.remind_at : "" });
     const planTarget = persistentPlanPath(repositoryReal, challengeId);
     if (record.status === "completed") {
-      if (record.message_ref !== receipt.message_ref || record.message_digest !== receipt.message_digest
-        || record.choice !== receipt.choice || record.remind_at !== receipt.remind_at) {
+      if (record.message_ref !== boundReceipt.message_ref || record.message_digest !== boundReceipt.message_digest
+        || record.choice !== boundReceipt.choice || record.remind_at !== boundReceipt.remind_at) {
         throw new Error("persistent challenge was completed by a different message");
       }
       return deepFreeze({ decision: "persistent-learning-capture-already-committed", executable: false,
         persistentChallengeId: challengeId, planDigest: record.plan_digest, idempotent: true });
     }
     if (record.status === "planned") {
-      if (record.message_ref !== receipt.message_ref || record.message_digest !== receipt.message_digest
-        || record.choice !== receipt.choice || record.remind_at !== receipt.remind_at || !existsSync(planTarget)) {
+      if (record.message_ref !== boundReceipt.message_ref || record.message_digest !== boundReceipt.message_digest
+        || record.choice !== boundReceipt.choice || record.remind_at !== boundReceipt.remind_at || !existsSync(planTarget)) {
         throw new Error("persistent challenge was already consumed by a different message");
       }
       const existing = readPersistentJson(planTarget, 64 * 1024 * 1024, "persistent transaction plan");
       if (!validateLearningCaptureTransactionPlan(existing) || existing.planDigest !== record.plan_digest) throw new Error("stored transaction plan is invalid");
-      trustedPlans.set(existing, Object.freeze({ repositoryReal, expiresAtMs: Date.parse(existing.expiresAt),
-        noWrite: existing.writeSet.length === 0 }));
+      trustedPlans.set(existing, Object.freeze({ repositoryReal, noWrite: existing.writeSet.length === 0 }));
       return deepFreeze({ decision: "persistent-learning-capture-plan-ready", executable: false,
         persistentChallengeId: challengeId, planRef: record.plan_ref, plan: existing, idempotent: true });
     }
-    const operationalGate = operationalDerivedStateGate(repositoryReal, "persistent-learning-capture-confirm");
-    if (!operationalGate.proceed) return operationalGate.result;
     if (currentPersistentStateDigest(repositoryReal) !== record.state_digest) throw new Error("repository state changed after the user reviewed the persistent challenge");
     const observationReceipt = createLearningCaptureObservationReceipt(repositoryReal, observationAssertion);
     if (observationReceipt.decision !== "learning-capture-host-observation-bound"
@@ -1226,12 +1300,12 @@ export function confirmPersistentLearningCaptureChallenge(repository, { challeng
     if (embedded.decision !== "learning-capture-current-user-choice-required"
       || embedded.instanceId !== record.instance_id || embedded.proposalDigest !== record.proposal_digest
       || embedded.preview.exactFormalPreviewDigest !== record.formal_preview_digest
-      || (embedded.preview.directWriteSet.length > 0 ? "direct" : "level3") !== record.direct_keep_mode) {
+      || (embedded.preview.directWriteSet.length > 0 ? "direct" : "review") !== normalizedReviewMode(record.direct_keep_mode)) {
       throw new Error("recomputed proposal, formal preview, gates, or direct-write eligibility differs from the reviewed challenge");
     }
     const reboundAt = new Date().toISOString();
     const selection = confirmLearningCaptureChoice(embedded, {
-      ...receipt, user_message_at: reboundAt, confirmed_at: reboundAt,
+      ...boundReceipt, user_message_at: reboundAt, confirmed_at: reboundAt,
       proposal_digest: embedded.proposalDigest, challenge_nonce: embedded.challengeNonce,
     });
     if (!["learning-capture-choice-confirmed", "learning-capture-discard-confirmed"].includes(selection.decision)) {
@@ -1239,21 +1313,19 @@ export function confirmPersistentLearningCaptureChallenge(repository, { challeng
     }
     const plan = buildLearningCaptureTransactionPlan(repositoryReal, selection);
     if (!validateLearningCaptureTransactionPlan(plan)) throw new Error(plan.reason ?? "recomputed transaction plan is invalid");
-    if (receipt.choice === "discard") {
+    if (boundReceipt.choice === "discard") {
       unlinkSync(target);
       removeEmptyPersistentDirectories(repositoryReal);
       return deepFreeze({ decision: "persistent-learning-capture-discard-closed", executable: false,
-        durableEffect: "zero-semantic-writes", plan, operationalRecordRemoved: true,
-        ...(operationalGate.repair.userReport ? { userReport: operationalGate.repair.userReport } : {}) });
+        durableEffect: "zero-semantic-writes", plan, operationalRecordRemoved: true });
     }
     atomicJson(planTarget, plan);
     const planRef = `${PERSISTENT_CAPTURE_DIR}/${challengeId}.plan.json`;
-    atomicJson(target, { ...record, status: "planned", message_ref: receipt.message_ref,
-      message_digest: receipt.message_digest, choice: receipt.choice, remind_at: receipt.remind_at,
+    atomicJson(target, { ...record, status: "planned", message_ref: boundReceipt.message_ref,
+      message_digest: boundReceipt.message_digest, choice: boundReceipt.choice, remind_at: boundReceipt.remind_at,
       plan_digest: plan.planDigest, plan_ref: planRef }, { replace: true });
     return deepFreeze({ decision: "persistent-learning-capture-plan-ready", executable: false,
-      persistentChallengeId: challengeId, planRef, plan, idempotent: false,
-      ...(operationalGate.repair.userReport ? { userReport: operationalGate.repair.userReport } : {}) });
+      persistentChallengeId: challengeId, planRef, plan, idempotent: false });
   } catch (error) {
     return deepFreeze({ decision: "persistent-learning-capture-confirm-denied", reason: error.message, executable: false });
   }
@@ -1305,11 +1377,7 @@ export function loadPersistentLearningCapturePlan(repository, { challengeId, cha
     }
     const plan = readBoundPersistentPlan(repositoryReal, record);
     const state = inspectStructurallyTrustedPlanState(repositoryReal, plan);
-    if (Date.now() > Date.parse(plan.expiresAt) && state.decision === "learning-capture-ready-for-host-execution") {
-      throw new Error("expired unstarted plan requires a new current-user decision rather than late execution");
-    }
-    trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: Math.max(Date.parse(plan.expiresAt), Date.now() + 2 * 60_000),
-      noWrite: plan.writeSet.length === 0 }));
+    trustedPlans.set(plan, Object.freeze({ repositoryReal, noWrite: plan.writeSet.length === 0 }));
     return deepFreeze({ decision: "persistent-learning-capture-plan-loaded", executable: false,
       persistentChallengeId: challengeId, planRef: expectedPlanRef, transactionState: state.decision, plan });
   } catch (error) {
@@ -1393,8 +1461,7 @@ export function shortlistLearningReminderCancellations(repository, { query } = {
         summary: item.entry.summary, scheduledFor: item.trigger.next_check_at })) });
     trustedReminderShortlists.set(shortlist, Object.freeze({ repositoryReal, instanceId: manifest.root.instance_id,
       stateDigest: sha256(canonical({ manifest: manifestRead.digest, control: controlRead.digest,
-        index: indexRead.digest, timeMap: timeMapRead.digest })), candidateIds: ranked.map((item) => item.entry.id),
-      expiresAtMs: Date.now() + 10 * 60_000 }));
+        index: indexRead.digest, timeMap: timeMapRead.digest })), candidateIds: ranked.map((item) => item.entry.id) }));
     return shortlist;
   } catch (error) {
     return deepFreeze({ decision: "learning-reminder-cancellation-shortlist-denied", reason: error.message, executable: false });
@@ -1408,7 +1475,7 @@ export function createLearningReminderCancellationChallenge(repository, { candid
       const shortlistTrust = trustedReminderShortlists.get(shortlist);
       const selected = shortlistTrust?.candidateIds.length === 1 && selection === undefined ? 1 : selection;
       if (!shortlistTrust || consumedReminderShortlists.has(shortlist) || shortlistTrust.repositoryReal !== repositoryReal
-        || Date.now() > shortlistTrust.expiresAtMs || !Number.isSafeInteger(selected)
+        || !Number.isSafeInteger(selected)
         || selected < 1 || selected > shortlistTrust.candidateIds.length) throw new Error("a current same-process reminder shortlist selection is required");
       consumedReminderShortlists.add(shortlist); candidateId = shortlistTrust.candidateIds[selected - 1];
     }
@@ -1419,7 +1486,7 @@ export function createLearningReminderCancellationChallenge(repository, { candid
       decision: "learning-reminder-cancellation-current-user-confirmation-required", executable: false,
       instanceId: state.instanceId, candidateId, candidateSourceRevision: state.candidateParsed.values.source_revision,
       reminderAt: state.candidateParsed.values.remind_at, challengeNonce: nonce,
-      issuedAt: new Date(issuedAtMs).toISOString(), expiresAt: new Date(issuedAtMs + 10 * 60_000).toISOString(),
+      issuedAt: new Date(issuedAtMs).toISOString(), expiresAt: "",
       preview: Object.freeze({ title: state.entry.title, scheduledFor: state.candidateParsed.values.remind_at,
         question: "确认取消这条学习提醒吗？取消后保留观察候选，但不再按这个时间提醒。",
         confirmLabel: "确认取消提醒", keepLabel: "保留提醒" }),
@@ -1428,7 +1495,7 @@ export function createLearningReminderCancellationChallenge(repository, { candid
     trustedCancellationChallenges.set(challenge, Object.freeze({ repositoryReal, stateDigest: state.stateDigest,
       instanceId: state.instanceId, candidateId, candidateSourceRef: state.entry.source_ref,
       signalId: state.trigger.id, signalSourceRef: state.signalSourceRef,
-      issuedAtMs, expiresAtMs: issuedAtMs + 10 * 60_000, nonce }));
+      issuedAtMs, nonce }));
     return challenge;
   } catch (error) {
     return deepFreeze({ decision: "learning-reminder-cancellation-challenge-denied", reason: error.message, executable: false });
@@ -1437,30 +1504,31 @@ export function createLearningReminderCancellationChallenge(repository, { candid
 
 export function confirmLearningReminderCancellation(challenge, receipt) {
   const trust = trustedCancellationChallenges.get(challenge); const now = Date.now(); purgeMessageRefs(now);
-  const messageAt = Date.parse(receipt?.user_message_at ?? ""); const confirmedAt = Date.parse(receipt?.confirmed_at ?? "");
   const key = trust ? `${trust.repositoryReal}\u0000${trust.instanceId}\u0000${receipt?.message_ref ?? ""}` : "";
-  const valid = trust && exactObject(receipt, cancellationReceiptFields) && receipt.basis === "host-current-user-message"
+  const valid = trust && compatibleReceipt(receipt, cancellationReceiptRequiredFields, cancellationReceiptFields)
+    && receipt.basis === "host-current-user-message"
     && stableAssetId.test(receipt.message_ref ?? "") && digestPattern.test(receipt.message_digest ?? "")
     && receipt.candidate_id === trust.candidateId && receipt.instance_id === trust.instanceId
-    && receipt.challenge_nonce === trust.nonce && strictDate(receipt.user_message_at) && strictDate(receipt.confirmed_at)
-    && messageAt >= trust.issuedAtMs && messageAt <= confirmedAt && confirmedAt <= now
-    && confirmedAt <= trust.expiresAtMs && now <= trust.expiresAtMs && !consumedMessageRefs.has(key);
-  if (!valid) return deepFreeze({ decision: "learning-reminder-cancellation-denied", reason: "receipt-invalid-stale-replayed-or-cross-bound", executable: false });
+    && receipt.challenge_nonce === trust.nonce && !consumedMessageRefs.has(key);
+  if (!valid) return deepFreeze({ decision: "learning-reminder-cancellation-denied", reason: "receipt-invalid-replayed-or-cross-bound", executable: false });
   let current;
   try { current = loadReminderState(trust.repositoryReal, trust.candidateId); }
   catch { return deepFreeze({ decision: "learning-reminder-cancellation-denied", reason: "reminder-state-unavailable", executable: false }); }
   if (current.stateDigest !== trust.stateDigest) return deepFreeze({ decision: "learning-reminder-cancellation-denied", reason: "reminder-state-drifted", executable: false });
-  trustedCancellationChallenges.delete(challenge); consumedMessageRefs.set(key, trust.expiresAtMs);
+  const internalAt = new Date(now).toISOString();
+  const boundReceipt = Object.freeze({ ...receipt,
+    user_message_at: strictDate(receipt.user_message_at) ? receipt.user_message_at : internalAt,
+    confirmed_at: internalAt });
+  trustedCancellationChallenges.delete(challenge); consumedMessageRefs.set(key, Number.POSITIVE_INFINITY);
   const transactionAt = new Date(now).toISOString();
   const operationHex = createHash("sha256").update(`${trust.instanceId}\u0000${trust.nonce}\u0000${receipt.message_ref}\u0000${receipt.message_digest}\u0000cancel-reminder`).digest("hex");
   const confirmation = deepFreeze({ decision: "learning-reminder-cancellation-confirmed", executable: false,
     instanceId: trust.instanceId, candidateId: trust.candidateId, signalId: trust.signalId,
     transactionAt, durableEffect: "host-transaction-plan-required",
     sourceTrust: "host-asserted-current-user-message-not-independently-verified" });
-  trustedCancellations.set(confirmation, Object.freeze({ ...trust, receipt: Object.freeze({ ...receipt }), transactionAt,
+  trustedCancellations.set(confirmation, Object.freeze({ ...trust, receipt: boundReceipt, transactionAt,
     operationId: `operation.cancel-reminder.${operationHex.slice(0, 24)}`, eventId: `event.cancel-reminder.${operationHex.slice(24, 48)}`,
-    taskId: `task.cancel-reminder.${operationHex.slice(8, 32)}`, contextId: `context.cancel-reminder.${operationHex.slice(32, 56)}`,
-    expiresAtMs: Math.min(trust.expiresAtMs, now + 2 * 60_000) }));
+    taskId: `task.cancel-reminder.${operationHex.slice(8, 32)}`, contextId: `context.cancel-reminder.${operationHex.slice(32, 56)}` }));
   return confirmation;
 }
 
@@ -1517,14 +1585,13 @@ function preimage(read, target) {
     encoding: read ? "base64" : "absent", contentBase64: read ? read.buffer.toString("base64") : "" });
 }
 
-function candidateBody(proposal, { choice, formalDigest, sourceKind, resultState, reviewPayloadId = "", reviewPayloadRef = "",
-  reviewPayloadDigest = "" }) {
+function candidateBody(proposal, { choice, sourceKind, resultState }) {
   const intended = choice === "keep"
-    ? `用户已经对精确正式内容与范围选择“留下”。当前建立不可执行的 Level 3 复核交接；Level 3 只复核架构与风险。只要正式预览摘要仍为 ${formalDigest}，不得重复询问同一保存决定；只有内容、范围、排除项或未来动作门实质变化时，才展示差异并重新确认。\n交接载荷 ID：${reviewPayloadId}；相对引用：${reviewPayloadRef}；载荷摘要：${reviewPayloadDigest}。`
+    ? "用户已经对展示过的正式内容与范围选择“留下”。当前建立不可执行的定向复核交接，只复核架构与风险；内容没有实质变化时不重复询问，内容、范围、排除项或未来动作门变化时才展示差异并重新确认。精确绑定由同目录的结构化复核载荷负责，不把内部摘要写进用户说明。"
     : choice === "remind"
       ? "用户选择以后提醒；当前建立可撤销观察候选与时间提醒，尚未成为正式资产。"
       : "用户选择先观察；当前只建立可撤销观察候选，尚未成为正式资产。";
-  return `# 核心主张与未来价值\n\n${proposal.claim_summary}\n\n# 来源、独立证据与限制\n\n${intended}\n主张来源类别为 ${sourceKind}，任务结果状态为 ${resultState}；保存授权来自随后单独的用户选择，两者没有混成同一条证据。该来源仍只是宿主断言，不是独立验证事实；首次只记录 1 个任务事件和 1 个情境，成功次数仍为 0。外部内容、其他 Agent 内容或未知来源不会因本记录被洗白成当前宿主事实。未保存对话正文、秘密或设备绝对路径。\n\n# 同类匹配与关系判断\n\n主题：${proposal.topic_key || "未命名主题"}；对象：${proposal.subject_key || "未命名对象"}。创建前比较了候选极小索引和可信正式资产地图；若存在同 ID 或高置信同类内容，事务会失败关闭。\n\n# 风险与建议动作\n\n建议风险为 ${proposal.proposed_risk_tier}。候选目标由 AI Carry 内部归类为 ${proposal.target_kind}，用户不需要理解或选择内部资产类型。\n\n# 给用户的简短说明\n\n${proposal.summary}\n正式预览摘要：${formalDigest}。选择“不保存”或没有回答时不会生成本文件；选择提醒后可直接用日常语言说“取消刚才那条学习提醒”。`;
+  return `# 核心主张与未来价值\n\n${proposal.claim_summary}\n\n# 来源、独立证据与限制\n\n${intended}\n主张来源类别为 ${sourceKind}，任务结果状态为 ${resultState}；保存授权来自随后单独的用户选择，两者没有混成同一条证据。该来源仍只是宿主断言，不是独立验证事实；首次只记录 1 个任务事件和 1 个情境，成功次数仍为 0。外部内容、其他 Agent 内容或未知来源不会因本记录被洗白成当前宿主事实。未保存对话正文、秘密或设备绝对路径。\n\n# 同类匹配与关系判断\n\n主题：${proposal.topic_key || "未命名主题"}；对象：${proposal.subject_key || "未命名对象"}。创建前比较了候选极小索引和可信正式资产地图；若存在同 ID 或高置信同类内容，只暂停这一项并请用户复核。\n\n# 风险与建议动作\n\n建议风险为 ${proposal.proposed_risk_tier}。候选目标由 AI Carry 内部归类为 ${proposal.target_kind}，用户不需要理解或选择内部资产类型。\n\n# 给用户的简短说明\n\n${proposal.summary}\n选择“不保存”或没有回答时不会生成本文件；选择提醒后可直接用日常语言说“取消刚才那条学习提醒”。`;
 }
 
 function buildState(repositoryReal, trust) {
@@ -1542,33 +1609,55 @@ function buildState(repositoryReal, trust) {
     || currentFormalDuplicates.decision !== "duplicate-check-complete" || currentFormalDuplicates.matches.length > 0) {
     throw new Error("formal routes changed or now contain a semantic duplicate");
   }
-  const controlRead = stableRead(repositoryReal, CONTROL_REF, limits.control);
-  const control = validateControl(rootOnly(controlRead.text, "signal control"), trust.instanceId);
-  const indexRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, limits.candidateIndex);
-  const index = parseCandidateIndex(indexRead, trust.instanceId);
-  const signalMapRead = stableRead(repositoryReal, SIGNAL_MAP_REF, limits.signalMap);
-  const signalMap = parseSignalMap(signalMapRead, trust.instanceId, control.projection_revision);
-  const timeMapRead = stableRead(repositoryReal, TIME_MAP_REF, limits.timeMap);
-  const timeMap = parseTimeMap(timeMapRead, trust.instanceId, control.projection_revision);
-  if (signalMap.root.scheduled_count !== timeMap.entries.length || signalMap.root.next_wakeup_at !== timeMap.root.next_wakeup_at) {
-    throw new Error("time and startup projections are not one clean revision");
+  let controlRead = null; let control = null;
+  let indexRead = null; let index = null;
+  let signalMapRead = null; let signalMap = null;
+  let timeMapRead = null; let timeMap = null;
+  let signalRead = null;
+  const projectionIssues = [];
+  try {
+    const allowPristineTemplate = pristineDerivedFoldersAreEmpty(repositoryReal);
+    controlRead = stableRead(repositoryReal, CONTROL_REF, limits.control);
+    control = controlForLearningWrite(controlRead, trust.instanceId, transactionAt, allowPristineTemplate);
+    indexRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, limits.candidateIndex);
+    index = candidateIndexForLearningWrite(indexRead, trust.instanceId, allowPristineTemplate);
+    signalMapRead = stableRead(repositoryReal, SIGNAL_MAP_REF, limits.signalMap);
+    signalMap = signalMapForLearningWrite(signalMapRead, trust.instanceId, control.projection_revision, allowPristineTemplate);
+    timeMapRead = stableRead(repositoryReal, TIME_MAP_REF, limits.timeMap);
+    timeMap = timeMapForLearningWrite(timeMapRead, trust.instanceId, control.projection_revision, allowPristineTemplate);
+    if (signalMap.root.scheduled_count !== timeMap.entries.length
+      || signalMap.root.next_wakeup_at !== timeMap.root.next_wakeup_at) {
+      throw new Error("time and startup projections are not one clean revision");
+    }
+  } catch {
+    projectionIssues.push("learning-derived-state-refresh-pending");
   }
-  if (index.entries.some((entry) => entry.id === ids.candidateId || entry.source_ref.toLowerCase() === ids.candidateSourceRef.toLowerCase())) {
-    throw new Error("runtime-derived candidate already exists");
+  if (projectionIssues.length === 0) {
+    if (index.entries.some((entry) => entry.id === ids.candidateId
+      || entry.source_ref.toLowerCase() === ids.candidateSourceRef.toLowerCase())) {
+      throw new Error("runtime-derived candidate already exists");
+    }
+    if (index.entries.some((entry) => semanticDuplicate(entry, checked.proposal))) {
+      throw new Error("a semantically similar candidate already exists and must be routed instead of duplicated");
+    }
+    try {
+      signalRead = stableRead(repositoryReal, ids.signalSourceRef, limits.signalSource, { allowMissing: true });
+      if (signalRead || signalMap.entries.some((entry) => entry.id === ids.signalId
+        || entry.source_ref.toLowerCase() === ids.signalSourceRef.toLowerCase())
+        || timeMap.entries.some((entry) => entry.id === ids.signalId)) {
+        projectionIssues.push("learning-derived-state-refresh-pending");
+      }
+    } catch {
+      projectionIssues.push("learning-derived-state-refresh-pending");
+    }
   }
-  if (index.entries.some((entry) => semanticDuplicate(entry, checked.proposal))) {
-    throw new Error("a semantically similar candidate already exists and must be routed instead of duplicated");
-  }
-  if (signalMap.entries.some((entry) => entry.id === ids.signalId || entry.source_ref.toLowerCase() === ids.signalSourceRef.toLowerCase())
-    || timeMap.entries.some((entry) => entry.id === ids.signalId)) throw new Error("runtime-derived signal identity already exists");
   const candidateRead = stableRead(repositoryReal, ids.candidateSourceRef, limits.candidateSource, { allowMissing: true });
-  const signalRead = stableRead(repositoryReal, ids.signalSourceRef, limits.signalSource, { allowMissing: true });
   const reviewPayloadRead = receipt.choice === "keep"
     ? stableRead(repositoryReal, ids.reviewPayloadRef, limits.reviewPayload, { allowMissing: true }) : null;
-  if (candidateRead || signalRead || reviewPayloadRead) throw new Error("runtime-derived candidate, signal, or review payload path is already occupied");
+  if (candidateRead || reviewPayloadRead) throw new Error("candidate or review payload path is already occupied");
 
   // When direct formal closure is unavailable, "keep" becomes a durable,
-  // non-executable Level 3 review handoff. It preserves the exact authorization
+  // non-executable targeted-review handoff. It preserves the exact authorization
   // without treating the host observation as independent result validation.
   const status = "candidate";
   const candidate = {
@@ -1588,8 +1677,8 @@ function buildState(repositoryReal, trust) {
     approved_by_user: false, updated_at: transactionAt,
   };
   const reviewPayload = receipt.choice === "keep" ? Object.freeze({
-    schema_version: 1, record_type: "awaiting-level3-learning-review", id: ids.reviewPayloadId,
-    state: "awaiting-level3-review", candidate_id: ids.candidateId,
+    schema_version: 1, record_type: "awaiting-learning-review", id: ids.reviewPayloadId,
+    state: "awaiting-review", candidate_id: ids.candidateId,
     formal_id: checked.formal.id, formal_kind: checked.formal.kind,
     formal_preview_digest: checked.formalDigest, formal_preview_encoding: "base64",
     formal_preview_base64: Buffer.from(checked.proposal.formal_preview, "utf8").toString("base64"),
@@ -1597,18 +1686,25 @@ function buildState(repositoryReal, trust) {
       message_digest: receipt.message_digest, message_at: receipt.user_message_at,
       content_scope: "exact-formal-preview-and-user-visible-scope", exact_content_authorized: true,
       future_actions_authorized: false }),
-    review: Object.freeze({ reason: trust.directKeep.reason, required_level: 3,
+    review: Object.freeze({ reason: trust.directKeep.reason, recommended_level: 3,
       exact_preview_may_reuse_authorization: true, material_change_requires_new_confirmation: true,
       result_validation_claimed: false, executable: false }),
   }) : null;
   const reviewPayloadArtifact = reviewPayload
     ? artifact(ids.reviewPayloadRef, `${JSON.stringify(reviewPayload, null, 2)}\n`, limits.reviewPayload) : null;
   const candidateText = serializeCandidateSource(candidate, candidateBody(checked.proposal, {
-    choice: receipt.choice, formalDigest: checked.formalDigest, sourceKind: ids.sourceKind, resultState: ids.resultState,
-    reviewPayloadId: ids.reviewPayloadId, reviewPayloadRef: ids.reviewPayloadRef,
-    reviewPayloadDigest: reviewPayloadArtifact?.digest ?? "",
+    choice: receipt.choice, sourceKind: ids.sourceKind, resultState: ids.resultState,
   }));
   const candidateArtifact = artifact(ids.candidateSourceRef, candidateText, limits.candidateSource);
+  if (projectionIssues.includes("learning-derived-state-refresh-pending")) {
+    return {
+      manifestRead, controlRead, indexRead, signalMapRead, timeMapRead, candidateRead, signalRead, reviewPayloadRead,
+      publicSnapshotRead: null, distSnapshotRead: null, candidateArtifact,
+      indexArtifact: null, signalArtifact: null, timeArtifact: null, signalMapArtifact: null,
+      cleanControlArtifact: null, publicSnapshotArtifact: null, distSnapshotArtifact: null,
+      reviewPayloadArtifact, projectionIssues,
+    };
+  }
   const candidateEntry = {
     id: candidate.id, title: candidate.title, summary: candidate.summary, topic_key: candidate.topic_key,
     subject_key: candidate.subject_key, triggers: candidate.triggers, aliases: candidate.aliases, scope: candidate.scope,
@@ -1634,7 +1730,7 @@ function buildState(repositoryReal, trust) {
   const signalStatus = receipt.choice === "keep" ? "pending-review" : "observing";
   const signal = { schema_version: 1, record_type: "cross-session-signal", id: ids.signalId,
     signal_type: "learning-candidate-review", evaluation_family: "count", status: signalStatus,
-    title: "已获准保留一项可能可复用的做法", reason: receipt.choice === "keep" ? "用户已确认精确内容，等待 Level 3 只复核架构与风险" : "用户选择先观察，等待后续真实任务验证",
+    title: "已获准保留一项可能可复用的做法", reason: receipt.choice === "keep" ? "用户已确认精确内容，等待定向复核架构与风险" : "用户选择先观察，等待后续真实任务验证",
     domain: "evolution-model", route_id: "evolution-review", revision: 1, created_at: transactionAt,
     updated_at: transactionAt, last_verified_at: "", asset_refs: [ids.candidateId], candidate_source_revision: 1,
     related_signal_ids: [], minimum_level: checked.proposal.minimum_level, confirmation: "risk-dependent",
@@ -1644,7 +1740,7 @@ function buildState(repositoryReal, trust) {
   // owns reminder scheduling, matching the existing signal runtime contract.
   const signalTrigger = { mode: "count", independent_event_count: 1,
     threshold_value: receipt.choice === "keep" ? 1 : 3, progress_summary: "已记录 1 个不同任务情境",
-    next_event: receipt.choice === "keep" ? "由 Level 3 复核架构与风险；精确内容未变时沿用已有授权" : "在新的真实任务中再次验证",
+    next_event: receipt.choice === "keep" ? "定向复核架构与风险；精确内容未变时沿用已有授权" : "在新的真实任务中再次验证",
     next_check_at: receipt.choice === "remind" ? receipt.remind_at : "" };
   const evidence = [{ event_id: ids.eventId, event_source: ids.sourceKind, task_id: ids.taskId,
     context_id: ids.contextId, occurred_at: ids.observedAt, source_kind: ids.sourceKind,
@@ -1680,24 +1776,22 @@ function buildState(repositoryReal, trust) {
     "signals", signalEntries,
     ["id", "signal_type", "status", "reason", "progress", "next_event", "domain", "route_id", "source_ref", "source_signal_revision", "provenance", "trust_state", "minimum_level", "confirmation"]), limits.signalMap);
 
-  const pendingControl = { ...control, source_revision: nextRevision, update_state: "pending",
-    pending_operation_id: ids.operationId, pending_event_id: ids.eventId, pending_signal_id: ids.signalId,
-    pending_trigger_id: ids.signalId, pending_source_ref: ids.candidateSourceRef,
-    base_revision: control.projection_revision, updated_at: transactionAt };
-  const cleanControl = { ...pendingControl, projection_revision: nextRevision, update_state: "clean",
+  const cleanControl = { ...control, source_revision: nextRevision, projection_revision: nextRevision, update_state: "clean",
     pending_operation_id: "", pending_event_id: "", pending_signal_id: "", pending_trigger_id: "", pending_source_ref: "",
-    base_revision: nextRevision };
+    base_revision: nextRevision, updated_at: transactionAt };
   const controlOrder = ["schema_version", "record_type", "instance_id", "source_revision", "projection_revision", "update_state",
     "pending_operation_id", "pending_event_id", "pending_signal_id", "pending_trigger_id", "pending_source_ref", "base_revision", "updated_at"];
-  const pendingControlArtifact = artifact(CONTROL_REF, `${serializeRoot(pendingControl, controlOrder)}\n`, limits.control);
   const cleanControlArtifact = artifact(CONTROL_REF, `${serializeRoot(cleanControl, controlOrder)}\n`, limits.control);
-  const publicSnapshotRead = stableRead(repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
-  const distSnapshotRead = stableRead(repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
-  if (publicSnapshotRead.digest !== distSnapshotRead.digest) throw new Error("dashboard snapshot pair is already drifted");
-  cleanupStaleLearningCaptureProjections(repositoryReal);
+  let publicSnapshotRead = null;
+  let distSnapshotRead = null;
+  let publicSnapshotArtifact = null;
+  let distSnapshotArtifact = null;
   let projectionRoot;
-  let snapshotSource;
   try {
+    publicSnapshotRead = stableRead(repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
+    distSnapshotRead = stableRead(repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
+    if (publicSnapshotRead.digest !== distSnapshotRead.digest) throw new Error("dashboard snapshot pair is already drifted");
+    cleanupStaleLearningCaptureProjections(repositoryReal);
     projectionRoot = createOwnedProjectionRoot(repositoryReal, "candidate-snapshot");
     const budget = { directories: 0, files: 0 };
     for (const ref of ["assistant.toml", "AGENTS.md", "BOOTSTRAP.md", "core", "instance"])
@@ -1715,15 +1809,19 @@ function buildState(repositoryReal, trust) {
     if (!snapshot.updated || typeof snapshot.source !== "string" || Buffer.byteLength(snapshot.source, "utf8") > limits.snapshot) {
       throw new Error("candidate transaction did not produce one bounded changed dashboard snapshot");
     }
-    snapshotSource = snapshot.source;
+    publicSnapshotArtifact = artifact(PUBLIC_SNAPSHOT_REF, snapshot.source, limits.snapshot);
+    distSnapshotArtifact = artifact(DIST_SNAPSHOT_REF, snapshot.source, limits.snapshot);
+  } catch {
+    projectionIssues.push("dashboard-snapshot-refresh-pending");
   } finally {
-    if (projectionRoot && existsSync(projectionRoot)) removeOwnedProjectionRoot(repositoryReal, projectionRoot, "candidate-snapshot");
+    if (projectionRoot && existsSync(projectionRoot)) {
+      try { removeOwnedProjectionRoot(repositoryReal, projectionRoot, "candidate-snapshot"); }
+      catch { projectionIssues.push("dashboard-projection-cleanup-pending"); }
+    }
   }
-  const publicSnapshotArtifact = artifact(PUBLIC_SNAPSHOT_REF, snapshotSource, limits.snapshot);
-  const distSnapshotArtifact = artifact(DIST_SNAPSHOT_REF, snapshotSource, limits.snapshot);
   return { manifestRead, controlRead, indexRead, signalMapRead, timeMapRead, candidateRead, signalRead, reviewPayloadRead,
     publicSnapshotRead, distSnapshotRead, candidateArtifact, indexArtifact, signalArtifact, timeArtifact, signalMapArtifact,
-    pendingControlArtifact, cleanControlArtifact, publicSnapshotArtifact, distSnapshotArtifact, reviewPayloadArtifact };
+    cleanControlArtifact, publicSnapshotArtifact, distSnapshotArtifact, reviewPayloadArtifact, projectionIssues };
 }
 
 function sealPlan(core) {
@@ -1743,7 +1841,7 @@ function buildNoWritePlan(trust) {
     preimages: [], steps: [], finalDigests: [], rollback: [], writeSet: [], readSet: [MANIFEST_REF],
     hostExecutionRequired: false, formalPromotionRequest: null,
     userGuidance: "本次发现没有保存，也没有创建候选或提醒。",
-    requiredChecks: [], expiresAt: new Date(trust.expiresAtMs).toISOString(),
+    requiredChecks: [],
   };
   return sealPlan(core);
 }
@@ -1757,27 +1855,18 @@ function buildDirectKeepPlan(repositoryReal, trust) {
   if (manifestRead.digest !== trust.manifestDigest || current.context.instanceId !== trust.instanceId
     || currentFormalDigest !== trust.formalStateDigest || registeredFormalId(current.envelope, trust.checked.formal.id)
     || currentDuplicates.decision !== "duplicate-check-complete" || currentDuplicates.matches.length > 0
-    || !verifyNewFormalTarget(repositoryReal, direct.targetProof)
-    || computeSnapshotSourceDigest(repositoryReal, { mode: "operational",
-      requiredSourceRefs: [direct.formalTarget, direct.domainMapRef] }).digest !== direct.baseSnapshotSourceDigest) {
+    || !verifyNewFormalTarget(repositoryReal, direct.targetProof)) {
     throw new Error("direct keep inputs changed after the user reviewed the exact preview");
   }
   const domainMapRead = stableRead(repositoryReal, direct.domainMapRef, limits.domainMap);
-  const publicSnapshotRead = stableRead(repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
-  const distSnapshotRead = stableRead(repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
   const formalRead = stableRead(repositoryReal, direct.formalTarget, limits.formalPreview, { allowMissing: true });
-  if (formalRead || domainMapRead.digest !== direct.domainMapRead.digest
-    || publicSnapshotRead.digest !== direct.publicSnapshotRead.digest || distSnapshotRead.digest !== direct.distSnapshotRead.digest) {
+  if (formalRead || domainMapRead.digest !== direct.domainMapRead.digest) {
     throw new Error("direct keep write-set preimages changed after review");
   }
   const formalArtifact = artifact(direct.formalTarget, direct.normalizedPreview, limits.formalPreview);
   const domainArtifact = artifact(direct.domainMapRef, direct.domainMapText, limits.domainMap);
-  const publicArtifact = artifact(PUBLIC_SNAPSHOT_REF, direct.snapshotSource, limits.snapshot);
-  const distArtifact = artifact(DIST_SNAPSHOT_REF, direct.snapshotSource, limits.snapshot);
-  const preimages = [preimage(formalRead, direct.formalTarget), preimage(domainMapRead, direct.domainMapRef),
-    preimage(publicSnapshotRead, PUBLIC_SNAPSHOT_REF), preimage(distSnapshotRead, DIST_SNAPSHOT_REF)];
-  const phaseArtifacts = [["formal-asset", formalArtifact], ["instance-domain-map", domainArtifact],
-    ["dashboard-public-snapshot", publicArtifact], ["dashboard-dist-snapshot", distArtifact]];
+  const preimages = [preimage(formalRead, direct.formalTarget), preimage(domainMapRead, direct.domainMapRef)];
+  const phaseArtifacts = [["formal-asset", formalArtifact], ["instance-domain-map", domainArtifact]];
   const currentDigest = new Map(preimages.map((item) => [item.target, item.digest]));
   const steps = phaseArtifacts.map(([phase, item], index) => {
     const step = Object.freeze({ ordinal: index + 1, phase, target: item.target,
@@ -1785,7 +1874,7 @@ function buildDirectKeepPlan(repositoryReal, trust) {
       proposedByteLength: item.byteLength, encoding: item.encoding, contentBase64: item.contentBase64 });
     currentDigest.set(item.target, item.digest); return step;
   });
-  const writeSet = [formalArtifact, domainArtifact, publicArtifact, distArtifact]
+  const writeSet = [formalArtifact, domainArtifact]
     .sort((left, right) => left.target.localeCompare(right.target, "en"));
   const finalDigests = writeSet.map((item) => ({ target: item.target, digest: item.digest }));
   const rollback = [...preimages].reverse().map((item) => ({ target: item.target, restoreDigest: item.digest,
@@ -1808,12 +1897,11 @@ function buildDirectKeepPlan(repositoryReal, trust) {
     initialEvidence: Object.freeze({ hostObservationCount: 1, formalSuccessfulUseCount: 0,
       formalMaturityPreclaimed: false, independentValidationClaimed: false }),
     preimages, steps, finalDigests, rollback, writeSet,
-    readSet: [MANIFEST_REF, direct.domainMapRef, PUBLIC_SNAPSHOT_REF, DIST_SNAPSHOT_REF, direct.formalTarget],
+    readSet: [MANIFEST_REF, direct.domainMapRef, direct.formalTarget],
     hostExecutionRequired: true, formalPromotionRequest: null,
-    userGuidance: "这份精确内容已准备按一次确认正式保存。事务只写正式资产、直接路由和两份相同看板快照，不执行任何未来动作；任一步失败必须整体回退。",
+    userGuidance: "这份精确内容已准备按一次确认正式保存。核心事务只写正式资产和直接召回路由，不执行任何未来动作；看板在保存后单独刷新。",
     requiredChecks: ["stage-all-exact-proposed-bytes", "reverify-all-preimage-digests", "commit-in-step-order",
-      "read-back-all-final-digests", "rollback-whole-write-set-on-any-failure", "rebuild-snapshot-must-be-byte-idempotent"],
-    expiresAt: new Date(trust.expiresAtMs).toISOString(),
+      "read-back-all-final-digests", "rollback-core-write-set-on-any-failure", "verify-ordinary-language-recall-after-commit"],
   });
 }
 
@@ -1821,13 +1909,23 @@ export function buildLearningCaptureTransactionPlan(repository, selection) {
   const trust = trustedSelections.get(selection);
   let repositoryReal;
   try { repositoryReal = realpathSync(repository); } catch { return deepFreeze({ decision: "learning-capture-plan-denied", reason: "repository-unavailable", executable: false }); }
-  if (!trust || trust.repositoryReal !== repositoryReal || consumedSelections.has(selection) || Date.now() > trust.expiresAtMs) {
+  if (!trust || trust.repositoryReal !== repositoryReal || consumedSelections.has(selection)) {
     return deepFreeze({ decision: "learning-capture-plan-denied", reason: "trusted-current-choice-required", executable: false });
   }
   if (trust.receipt.choice === "discard") {
     consumedSelections.add(selection);
-    const plan = buildNoWritePlan(trust); trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: trust.expiresAtMs, noWrite: true }));
+    const plan = buildNoWritePlan(trust); trustedPlans.set(plan, Object.freeze({ repositoryReal, noWrite: true }));
     return plan;
+  }
+  if (trust.receipt.choice === "keep") {
+    if (trust.directKeep.eligible) try {
+      consumedSelections.add(selection);
+      const plan = buildDirectKeepPlan(repositoryReal, trust);
+      trustedPlans.set(plan, Object.freeze({ repositoryReal, noWrite: false }));
+      return plan;
+    } catch (error) {
+      return deepFreeze({ decision: "learning-capture-plan-denied", reason: error.message, executable: false });
+    }
   }
   const operationalGate = operationalDerivedStateGate(repositoryReal, "learning-capture-plan");
   if (!operationalGate.proceed) return operationalGate.result;
@@ -1835,60 +1933,57 @@ export function buildLearningCaptureTransactionPlan(repository, selection) {
   const earlierReport = getOperationalDerivedStateReport(selection);
   const reportSource = operationalGate.repair.userReport ? operationalGate.repair
     : earlierReport ? { userReport: earlierReport } : null;
-  if (trust.receipt.choice === "keep") {
-    if (trust.directKeep.eligible) try {
-      const plan = buildDirectKeepPlan(repositoryReal, trust);
-      trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: trust.expiresAtMs,
-        noWrite: false }));
-      return bindOperationalDerivedStateReport(plan, reportSource);
-    } catch (error) {
-      return deepFreeze({ decision: "learning-capture-plan-denied", reason: error.message, executable: false });
-    }
-  }
   try {
     const state = buildState(repositoryReal, trust);
-    const preimages = [preimage(state.controlRead, CONTROL_REF), preimage(state.candidateRead, trust.ids.candidateSourceRef),
-      preimage(state.indexRead, CANDIDATE_INDEX_REF), preimage(state.signalRead, trust.ids.signalSourceRef),
-      preimage(state.timeMapRead, TIME_MAP_REF), preimage(state.signalMapRead, SIGNAL_MAP_REF),
-      ...(state.reviewPayloadArtifact ? [preimage(state.reviewPayloadRead, trust.ids.reviewPayloadRef)] : []),
-      preimage(state.publicSnapshotRead, PUBLIC_SNAPSHOT_REF), preimage(state.distSnapshotRead, DIST_SNAPSHOT_REF)];
-    const phaseArtifacts = [
-      ["control-pending", state.pendingControlArtifact], ["candidate-source", state.candidateArtifact],
-      ["candidate-index", state.indexArtifact], ["learning-signal-source", state.signalArtifact],
-      ["time-projection", state.timeArtifact], ["startup-signal-projection", state.signalMapArtifact],
-      ...(state.reviewPayloadArtifact ? [["level3-review-payload", state.reviewPayloadArtifact]] : []),
-      ["dashboard-public-snapshot", state.publicSnapshotArtifact], ["dashboard-dist-snapshot", state.distSnapshotArtifact],
-      ["control-clean", state.cleanControlArtifact],
+    const coreArtifacts = [
+      ["candidate-source", state.candidateArtifact, state.candidateRead],
+      ...(state.reviewPayloadArtifact ? [["review-payload", state.reviewPayloadArtifact, state.reviewPayloadRead]] : []),
     ];
+    const preimages = coreArtifacts.map(([, item, read]) => preimage(read, item.target));
     const currentDigest = new Map(preimages.map((item) => [item.target, item.digest]));
-    const steps = phaseArtifacts.map(([phase, item], index) => {
+    const steps = coreArtifacts.map(([phase, item], index) => {
       const step = Object.freeze({ ordinal: index + 1, phase, target: item.target,
         preconditionDigest: currentDigest.get(item.target), proposedDigest: item.digest,
         proposedByteLength: item.byteLength, encoding: item.encoding, contentBase64: item.contentBase64 });
       currentDigest.set(item.target, item.digest); return step;
     });
-    const writeSet = [state.cleanControlArtifact, state.candidateArtifact, state.indexArtifact, state.signalArtifact,
-      state.timeArtifact, state.signalMapArtifact, ...(state.reviewPayloadArtifact ? [state.reviewPayloadArtifact] : []),
-      state.publicSnapshotArtifact, state.distSnapshotArtifact]
+    const writeSet = coreArtifacts.map(([, item]) => item)
       .sort((left, right) => left.target.localeCompare(right.target, "en"));
     const finalDigests = writeSet.map((item) => ({ target: item.target, digest: item.digest }));
     const rollback = [...preimages].reverse().map((item) => ({ target: item.target, restoreDigest: item.digest,
       encoding: item.encoding, contentBase64: item.contentBase64 }));
+    const projectionArtifacts = [
+      ...(state.indexArtifact ? [
+        ["candidate-index", state.indexArtifact, state.indexRead],
+        ["learning-signal-source", state.signalArtifact, state.signalRead],
+        ["time-projection", state.timeArtifact, state.timeMapRead],
+        ["startup-signal-projection", state.signalMapArtifact, state.signalMapRead],
+        ["control-clean", state.cleanControlArtifact, state.controlRead],
+      ] : []),
+      ...(state.publicSnapshotArtifact && state.distSnapshotArtifact
+        ? [["dashboard-public-snapshot", state.publicSnapshotArtifact, state.publicSnapshotRead],
+          ["dashboard-dist-snapshot", state.distSnapshotArtifact, state.distSnapshotRead]] : []),
+    ];
+    const projections = projectionArtifacts.map(([phase, item, read], index) => Object.freeze({
+      ordinal: index + 1, phase, target: item.target, preconditionDigest: preimage(read, item.target).digest,
+      proposedDigest: item.digest, proposedByteLength: item.byteLength,
+      encoding: item.encoding, contentBase64: item.contentBase64,
+    }));
     const formalTarget = formalTargetFor(trust.checked.formal, trust.checked.formalDigest);
     const formalPromotionRequest = trust.receipt.choice === "keep" ? Object.freeze({
-      decision: "awaiting-level3-review-with-existing-content-authorization", executable: false,
+      decision: "awaiting-review-with-existing-content-authorization", executable: false,
       candidateId: trust.ids.candidateId, candidateSourceRevision: 1,
       reviewPayloadId: trust.ids.reviewPayloadId, reviewPayloadRef: trust.ids.reviewPayloadRef,
       reviewPayloadDigest: state.reviewPayloadArtifact.digest,
       formalId: trust.checked.formal.id, formalKind: trust.checked.formal.kind, formalSubtype: trust.checked.formal.subtype,
       formalTarget, formalPreviewDigest: trust.checked.formalDigest,
-      requiredNextBoundary: "Level 3 reviews architecture/risk; unchanged exact preview reuses the existing keep authorization",
+      requiredNextBoundary: "targeted review checks architecture and risk; unchanged exact preview reuses the existing keep authorization",
       existingKeepAuthorizationReusableIfExactDigestUnchanged: true,
       materialChangeRequiresNewConfirmation: true, silentFormalWriteForbidden: true,
       candidateStagingRequired: false, userMustChooseInternalAssetKind: false,
     }) : null;
     const guidance = trust.receipt.choice === "keep"
-      ? "你选择留下的精确内容已保存为不可执行的 Level 3 复核交接。Level 3 只检查架构和风险；内容与范围没变时不会重复问你，只有发生实质变化才会展示差异并重新确认。"
+      ? "你选择留下的精确内容已保存为不可执行的定向复核交接。只检查架构和风险；内容与范围没变时不会重复问你，只有发生实质变化才会展示差异并重新确认。"
       : trust.receipt.choice === "remind"
         ? `我会在 ${trust.receipt.remind_at} 提醒你复核这项做法。随时告诉 Agent“取消刚才那条学习提醒”并描述大概内容即可，不需要记住 ID 或路径。`
         : "我会先观察这项做法，只在后续新的真实任务里再次出现时再累计证据；它现在不会被当成正式规则自动使用。随时可以用日常语言让我停止观察。";
@@ -1909,17 +2004,19 @@ export function buildLearningCaptureTransactionPlan(repository, selection) {
         sourceKind: trust.ids.sourceKind, resultState: trust.ids.resultState }),
       initialEvidence: Object.freeze({ independentEventCount: 1, distinctContextCount: 1, successfulEventCount: 0,
         contextId: trust.ids.contextId, independentValidationClaimed: false }),
-      preimages, steps, finalDigests, rollback, writeSet,
-      readSet: [MANIFEST_REF, CONTROL_REF, CANDIDATE_INDEX_REF, SIGNAL_MAP_REF, TIME_MAP_REF,
-        PUBLIC_SNAPSHOT_REF, DIST_SNAPSHOT_REF, trust.ids.candidateSourceRef, trust.ids.signalSourceRef,
-        ...(state.reviewPayloadArtifact ? [trust.ids.reviewPayloadRef] : [])],
+      preimages, steps, finalDigests, rollback, writeSet, projections,
+      projectionIssues: Object.freeze([...state.projectionIssues]),
+      readSet: [MANIFEST_REF, trust.ids.candidateSourceRef,
+        ...(state.reviewPayloadArtifact ? [trust.ids.reviewPayloadRef] : []),
+        ...(state.indexArtifact ? [CONTROL_REF, CANDIDATE_INDEX_REF, SIGNAL_MAP_REF, TIME_MAP_REF,
+          trust.ids.signalSourceRef] : []),
+        ...(state.publicSnapshotArtifact ? [PUBLIC_SNAPSHOT_REF, DIST_SNAPSHOT_REF] : [])],
       hostExecutionRequired: true, formalPromotionRequest, userGuidance: guidance,
-      requiredChecks: ["stage-all-exact-proposed-bytes", "reverify-all-preimage-digests", "commit-in-step-order",
-        "read-back-all-final-digests", "rollback-whole-write-set-on-any-failure", "second-run-must-be-idempotent"],
-      expiresAt: new Date(trust.expiresAtMs).toISOString(),
+      requiredChecks: ["commit-and-read-back-candidate-source", "rollback-only-core-source-on-core-failure",
+        "refresh-derived-projections-best-effort", "report-projection-failure-without-rolling-back-source"],
     };
     const plan = sealPlan(core);
-    trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: trust.expiresAtMs, noWrite: false }));
+    trustedPlans.set(plan, Object.freeze({ repositoryReal, noWrite: false }));
     return bindOperationalDerivedStateReport(plan, reportSource);
   } catch (error) {
     return deepFreeze({ decision: "learning-capture-plan-denied", reason: error.message, executable: false });
@@ -1932,7 +2029,7 @@ export function buildLearningReminderCancellationPlan(repository, confirmation) 
   try { repositoryReal = realpathSync(repository); } catch {
     return deepFreeze({ decision: "learning-reminder-cancellation-plan-denied", reason: "repository-unavailable", executable: false });
   }
-  if (!trust || trust.repositoryReal !== repositoryReal || consumedCancellations.has(confirmation) || Date.now() > trust.expiresAtMs) {
+  if (!trust || trust.repositoryReal !== repositoryReal || consumedCancellations.has(confirmation)) {
     return deepFreeze({ decision: "learning-reminder-cancellation-plan-denied", reason: "trusted-current-cancellation-required", executable: false });
   }
   consumedCancellations.add(confirmation);
@@ -1993,27 +2090,15 @@ export function buildLearningReminderCancellationPlan(repository, confirmation) 
       "signals", signalEntries,
       ["id", "signal_type", "status", "reason", "progress", "next_event", "domain", "route_id", "source_ref", "source_signal_revision", "provenance", "trust_state", "minimum_level", "confirmation"]), limits.signalMap);
 
-    const pendingControl = { ...state.control, source_revision: nextRevision, update_state: "pending",
-      pending_operation_id: trust.operationId, pending_event_id: trust.eventId, pending_signal_id: trust.signalId,
-      pending_trigger_id: trust.signalId, pending_source_ref: trust.candidateSourceRef,
-      base_revision: state.control.projection_revision, updated_at: trust.transactionAt };
-    const cleanControl = { ...pendingControl, projection_revision: nextRevision, update_state: "clean",
+    const cleanControl = { ...state.control, source_revision: nextRevision, projection_revision: nextRevision, update_state: "clean",
       pending_operation_id: "", pending_event_id: "", pending_signal_id: "", pending_trigger_id: "", pending_source_ref: "",
-      base_revision: nextRevision };
+      base_revision: nextRevision, updated_at: trust.transactionAt };
     const controlOrder = ["schema_version", "record_type", "instance_id", "source_revision", "projection_revision", "update_state",
       "pending_operation_id", "pending_event_id", "pending_signal_id", "pending_trigger_id", "pending_source_ref", "base_revision", "updated_at"];
-    const pendingControlArtifact = artifact(CONTROL_REF, `${serializeRoot(pendingControl, controlOrder)}\n`, limits.control);
     const cleanControlArtifact = artifact(CONTROL_REF, `${serializeRoot(cleanControl, controlOrder)}\n`, limits.control);
 
-    const preimages = [preimage(state.controlRead, CONTROL_REF), preimage(state.candidateRead, trust.candidateSourceRef),
-      preimage(state.indexRead, CANDIDATE_INDEX_REF), preimage(state.signalRead, trust.signalSourceRef),
-      preimage(state.timeMapRead, TIME_MAP_REF), preimage(state.signalMapRead, SIGNAL_MAP_REF)];
-    const phaseArtifacts = [
-      ["control-pending", pendingControlArtifact], ["candidate-source", candidateArtifact],
-      ["candidate-index", indexArtifact], ["learning-signal-source", signalArtifact],
-      ["time-projection", timeArtifact], ["startup-signal-projection", signalMapArtifact],
-      ["control-clean", cleanControlArtifact],
-    ];
+    const preimages = [preimage(state.candidateRead, trust.candidateSourceRef)];
+    const phaseArtifacts = [["candidate-source", candidateArtifact]];
     const currentDigest = new Map(preimages.map((item) => [item.target, item.digest]));
     const steps = phaseArtifacts.map(([phase, item], index) => {
       const step = Object.freeze({ ordinal: index + 1, phase, target: item.target,
@@ -2021,11 +2106,22 @@ export function buildLearningReminderCancellationPlan(repository, confirmation) 
         proposedByteLength: item.byteLength, encoding: item.encoding, contentBase64: item.contentBase64 });
       currentDigest.set(item.target, item.digest); return step;
     });
-    const writeSet = [cleanControlArtifact, candidateArtifact, indexArtifact, signalArtifact, timeArtifact, signalMapArtifact]
-      .sort((left, right) => left.target.localeCompare(right.target, "en"));
+    const writeSet = [candidateArtifact];
     const finalDigests = writeSet.map((item) => ({ target: item.target, digest: item.digest }));
     const rollback = [...preimages].reverse().map((item) => ({ target: item.target, restoreDigest: item.digest,
       encoding: item.encoding, contentBase64: item.contentBase64 }));
+    const projectionArtifacts = [
+      ["candidate-index", indexArtifact, state.indexRead],
+      ["learning-signal-source", signalArtifact, state.signalRead],
+      ["time-projection", timeArtifact, state.timeMapRead],
+      ["startup-signal-projection", signalMapArtifact, state.signalMapRead],
+      ["control-clean", cleanControlArtifact, state.controlRead],
+    ];
+    const projections = projectionArtifacts.map(([phase, item, read], index) => Object.freeze({
+      ordinal: index + 1, phase, target: item.target, preconditionDigest: preimage(read, item.target).digest,
+      proposedDigest: item.digest, proposedByteLength: item.byteLength,
+      encoding: item.encoding, contentBase64: item.contentBase64,
+    }));
     const core = {
       schemaVersion: 1, planType: "learning-capture-transaction", decision: "learning-reminder-cancellation-host-transaction-preview",
       choice: "cancel-reminder", executable: false, authorization: "same-process-current-user-cancellation-receipt",
@@ -2041,17 +2137,16 @@ export function buildLearningReminderCancellationPlan(repository, confirmation) 
       cancellationTarget: Object.freeze({ candidateId: trust.candidateId, signalId: trust.signalId,
         previousReminderAt: state.candidateParsed.values.remind_at,
         candidateRemainsObserved: true, reminderProjectionRemoved: true }),
-      preimages, steps, finalDigests, rollback, writeSet,
+      preimages, steps, finalDigests, rollback, writeSet, projections, projectionIssues: Object.freeze([]),
       readSet: [MANIFEST_REF, CONTROL_REF, CANDIDATE_INDEX_REF, SIGNAL_MAP_REF, TIME_MAP_REF,
         trust.candidateSourceRef, trust.signalSourceRef],
       hostExecutionRequired: true, formalPromotionRequest: null,
       userGuidance: "这条定时提醒已准备取消；观察候选会保留，后续仍可在相关真实任务中继续积累，但不会再按原时间提醒。",
-      requiredChecks: ["stage-all-exact-proposed-bytes", "reverify-all-preimage-digests", "commit-in-step-order",
-        "read-back-all-final-digests", "rollback-whole-write-set-on-any-failure", "second-run-must-be-idempotent"],
-      expiresAt: new Date(trust.expiresAtMs).toISOString(),
+      requiredChecks: ["commit-and-read-back-candidate-source", "rollback-only-core-source-on-core-failure",
+        "refresh-reminder-projections-best-effort", "report-projection-failure-without-restoring-reminder"],
     };
     const plan = sealPlan(core);
-    trustedPlans.set(plan, Object.freeze({ repositoryReal, expiresAtMs: trust.expiresAtMs, noWrite: false }));
+    trustedPlans.set(plan, Object.freeze({ repositoryReal, noWrite: false }));
     return plan;
   } catch (error) {
     return deepFreeze({ decision: "learning-reminder-cancellation-plan-denied", reason: error.message, executable: false });
@@ -2104,12 +2199,30 @@ function exactBytePlanShape(plan, expectedPhases, expectedTargetCount) {
   return true;
 }
 
+function projectionPlanShape(plan, expectedPhases) {
+  if (!Array.isArray(plan.projections) || plan.projections.length !== expectedPhases.length
+    || !Array.isArray(plan.projectionIssues) || plan.projectionIssues.some((item) => typeof item !== "string")) return false;
+  const targets = new Set();
+  for (const [index, item] of plan.projections.entries()) {
+    if (item.ordinal !== index + 1 || item.phase !== expectedPhases[index]
+      || !clean(item.target, 240, false) || targets.has(item.target)
+      || !(digestPattern.test(item.preconditionDigest ?? "") || item.preconditionDigest === "absent")
+      || !digestPattern.test(item.proposedDigest ?? "") || item.encoding !== "base64"
+      || typeof item.contentBase64 !== "string") return false;
+    const buffer = Buffer.from(item.contentBase64, "base64");
+    if (buffer.length !== item.proposedByteLength || sha256(buffer) !== item.proposedDigest) return false;
+    targets.add(item.target);
+  }
+  return true;
+}
+
 function structuralPlanValid(plan) {
   if (!plan || typeof plan !== "object" || plan.schemaVersion !== 1 || plan.planType !== "learning-capture-transaction"
     || plan.executable !== false || !digestPattern.test(plan.planDigest ?? "")) return false;
   const { planDigest, ...core } = plan;
   if (sha256(canonical(core)) !== planDigest || !transactionChoices.has(plan.choice) || !strictDate(plan.transactionAt)
-    || !strictDate(plan.expiresAt) || !digestPattern.test(plan.proposalDigest ?? "")
+    || (Object.hasOwn(plan, "expiresAt") && plan.expiresAt !== "" && !strictDate(plan.expiresAt))
+    || !digestPattern.test(plan.proposalDigest ?? "")
     || !stableAssetId.test(plan.confirmationMessageRef ?? "") || !digestPattern.test(plan.confirmationMessageDigest ?? "")
     || !strictDate(plan.confirmationAt)) return false;
   if (plan.choice === "discard") return plan.decision === "learning-capture-no-write-closed"
@@ -2117,14 +2230,14 @@ function structuralPlanValid(plan) {
     && [plan.preimages, plan.steps, plan.finalDigests, plan.rollback, plan.writeSet]
       .every((items) => Array.isArray(items) && items.length === 0)
     && plan.formalPromotionRequest === null;
-  if (plan.decision === "learning-capture-level3-review-required") return plan.choice === "keep"
-    && plan.completeness === "zero-persistent-writes-targeted-level3-review"
+  if (["learning-capture-review-required", "learning-capture-level3-review-required"].includes(plan.decision)) return plan.choice === "keep"
+    && ["zero-persistent-writes-targeted-review", "zero-persistent-writes-targeted-level3-review"].includes(plan.completeness)
     && [plan.preimages, plan.steps, plan.finalDigests, plan.rollback, plan.writeSet]
       .every((items) => Array.isArray(items) && items.length === 0)
     && plan.hostExecutionRequired === false && plan.formalPromotionRequest?.candidateCreated === false
     && plan.formalPromotionRequest?.formalCreated === false
     && digestPattern.test(plan.formalPromotionRequest?.formalPreviewDigest ?? "")
-    && plan.formalPromotionRequest?.requiredNextBoundary?.includes("Level 3");
+    && /review|复核/iu.test(plan.formalPromotionRequest?.requiredNextBoundary ?? "");
   if (plan.decision === "learning-capture-direct-formal-host-transaction-preview") {
     const expectedPrefix = { memory: "instance/memory/", capability: "instance/capabilities/",
       sop: "instance/sops/", experience: "instance/experiences/" }[plan.formalKind];
@@ -2141,8 +2254,7 @@ function structuralPlanValid(plan) {
         && plan.observationReceipt?.resultState === "closed-result-checked")
         || (plan.observationReceipt?.sourceKind === "unknown"
           && plan.observationReceipt?.resultState === "closed-unverified"))
-      && exactBytePlanShape(plan,
-        ["formal-asset", "instance-domain-map", "dashboard-public-snapshot", "dashboard-dist-snapshot"], 4);
+      && exactBytePlanShape(plan, ["formal-asset", "instance-domain-map"], 2);
   }
   if (!["learning-capture-host-transaction-preview", "learning-reminder-cancellation-host-transaction-preview"].includes(plan.decision)
     || plan.executable !== false
@@ -2152,8 +2264,10 @@ function structuralPlanValid(plan) {
     || !portableRef(plan.candidateSourceRef, { prefix: "instance/evolution/", extension: ".md" })
     || !stableAssetId.test(plan.signalId ?? "") || !portableRef(plan.signalSourceRef, { prefix: "instance/signals/", extension: ".toml" })
     ) return false;
-  if (plan.choice === "cancel-reminder") return exactBytePlanShape(plan,
-    ["control-pending", "candidate-source", "candidate-index", "learning-signal-source", "time-projection", "startup-signal-projection", "control-clean"], 6)
+  if (plan.choice === "cancel-reminder") return exactBytePlanShape(plan, ["candidate-source"], 1)
+    && projectionPlanShape(plan,
+      ["candidate-index", "learning-signal-source", "time-projection", "startup-signal-projection", "control-clean"])
+    && plan.projectionIssues.length === 0
     && plan.decision === "learning-reminder-cancellation-host-transaction-preview"
     && plan.initialEvidence === null && plan.observationReceipt === null && plan.formalPromotionRequest === null
     && plan.cancellationTarget?.candidateId === plan.candidateId
@@ -2161,10 +2275,20 @@ function structuralPlanValid(plan) {
     && strictDate(plan.cancellationTarget?.previousReminderAt ?? "")
     && plan.cancellationTarget?.candidateRemainsObserved === true
     && plan.cancellationTarget?.reminderProjectionRemoved === true;
-  const expectedPhases = ["control-pending", "candidate-source", "candidate-index", "learning-signal-source", "time-projection",
-    "startup-signal-projection", ...(plan.choice === "keep" ? ["level3-review-payload"] : []),
-    "dashboard-public-snapshot", "dashboard-dist-snapshot", "control-clean"];
-  if (!exactBytePlanShape(plan, expectedPhases, plan.choice === "keep" ? 9 : 8)) return false;
+  const corePhases = plan.choice === "keep" ? ["candidate-source", "review-payload"] : ["candidate-source"];
+  if (!exactBytePlanShape(plan, corePhases, corePhases.length)) return false;
+  const baseProjectionPhases = ["candidate-index", "learning-signal-source", "time-projection", "startup-signal-projection", "control-clean"];
+  const fullProjectionPhases = [...baseProjectionPhases, "dashboard-public-snapshot", "dashboard-dist-snapshot"];
+  const projectionIssueSet = new Set(plan.projectionIssues);
+  if (projectionIssueSet.size !== plan.projectionIssues.length
+    || [...projectionIssueSet].some((item) => !["learning-derived-state-refresh-pending",
+      "dashboard-snapshot-refresh-pending", "dashboard-projection-cleanup-pending"].includes(item))) return false;
+  const derivedStatePending = projectionIssueSet.has("learning-derived-state-refresh-pending");
+  const snapshotPending = projectionIssueSet.has("dashboard-snapshot-refresh-pending");
+  const projectionShapeValid = derivedStatePending
+    ? projectionIssueSet.size === 1 && projectionPlanShape(plan, [])
+    : projectionPlanShape(plan, snapshotPending ? baseProjectionPhases : fullProjectionPhases);
+  if (!projectionShapeValid) return false;
   return plan.initialEvidence?.independentEventCount === 1 && plan.initialEvidence?.distinctContextCount === 1
     && plan.initialEvidence?.successfulEventCount === 0 && plan.initialEvidence?.independentValidationClaimed === false
     && plan.observationReceipt?.basis === "same-process-host-natural-stop-observation"
@@ -2207,8 +2331,8 @@ export function inspectLearningCaptureTransactionState(repository, plan) {
   const trust = trustedPlans.get(plan);
   let repositoryReal;
   try { repositoryReal = realpathSync(repository); } catch { return deepFreeze({ decision: "learning-capture-recovery-required", reason: "repository-unavailable", executable: false }); }
-  if (!trust || trust.repositoryReal !== repositoryReal || Date.now() > trust.expiresAtMs || !structuralPlanValid(plan)) {
-    return deepFreeze({ decision: "learning-capture-recovery-required", reason: "untrusted-expired-or-invalid-plan", executable: false });
+  if (!trust || trust.repositoryReal !== repositoryReal || !structuralPlanValid(plan)) {
+    return deepFreeze({ decision: "learning-capture-recovery-required", reason: "untrusted-or-invalid-plan", executable: false });
   }
   return inspectStructurallyTrustedPlanState(repositoryReal, plan, trust.noWrite);
 }
@@ -2414,11 +2538,68 @@ function atomicPlanStep(repositoryReal, step, planDigest) {
   }
 }
 
+function applyBestEffortProjections(repositoryReal, plan) {
+  const steps = Array.isArray(plan.projections) ? plan.projections : [];
+  const pending = [];
+  for (const issue of plan.projectionIssues ?? []) {
+    if (issue === "dashboard-snapshot-refresh-pending") {
+      pending.push("dashboard-public-snapshot", "dashboard-dist-snapshot");
+    } else if (issue === "dashboard-projection-cleanup-pending") {
+      pending.push("dashboard-projection-cleanup");
+    } else if (issue === "learning-derived-state-refresh-pending") {
+      pending.push("candidate-index", "learning-signal-source", "time-projection",
+        "startup-signal-projection", "control-clean", "dashboard-public-snapshot", "dashboard-dist-snapshot");
+    }
+  }
+  let applied = 0;
+  let reason = pending.length > 0 ? "projection-could-not-be-prepared" : "";
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index];
+    const current = digestAt(repositoryReal, { target: step.target });
+    if (current === step.proposedDigest) {
+      applied += 1;
+      continue;
+    }
+    if (current !== step.preconditionDigest) {
+      reason = "projection-source-drifted";
+      pending.push(...steps.slice(index).map((item) => item.phase));
+      break;
+    }
+    try {
+      atomicPlanStep(repositoryReal, step, plan.planDigest);
+      applied += 1;
+    } catch {
+      reason = "projection-refresh-failed";
+      pending.push(...steps.slice(index).map((item) => item.phase));
+      break;
+    }
+  }
+  return Object.freeze({
+    state: pending.length === 0 ? "current" : "refresh-pending",
+    appliedCount: applied,
+    pending: Object.freeze([...new Set(pending)]),
+    reason,
+  });
+}
+
 function finalizePersistentCompletion(loaded) {
   atomicJson(loaded.recordTarget, { ...loaded.record, status: "completed", plan_ref: "" }, { replace: true });
   const planTarget = persistentPlanPath(loaded.repositoryReal, loaded.record.challenge_id);
   if (existsSync(planTarget)) unlinkSync(planTarget);
   removeEmptyPersistentDirectories(loaded.repositoryReal);
+}
+
+function finishPersistentExecution(loaded, { idempotent, writeCount }) {
+  const projection = applyBestEffortProjections(loaded.repositoryReal, loaded.plan);
+  finalizePersistentCompletion(loaded);
+  return deepFreeze({
+    decision: "persistent-learning-capture-execution-complete", executable: false,
+    persistentChallengeId: loaded.record.challenge_id, planDigest: loaded.plan.planDigest,
+    idempotent, writeCount, temporarySemanticPlanRemoved: true,
+    projectionState: projection.state, projectionAppliedCount: projection.appliedCount,
+    projectionPending: projection.pending, projectionReason: projection.reason,
+    ordinaryTasksContinue: true,
+  });
 }
 
 export function executePersistentLearningCaptureTransaction(repository, { challengeId, challengeNonce } = {}) {
@@ -2429,10 +2610,7 @@ export function executePersistentLearningCaptureTransaction(repository, { challe
       executable: false, persistentChallengeId: challengeId, planDigest: loaded.record.plan_digest,
       idempotent: true, temporarySemanticPlanRemoved: true });
     if (loaded.state.decision === "learning-capture-already-committed") {
-      finalizePersistentCompletion(loaded);
-      return deepFreeze({ decision: "persistent-learning-capture-execution-complete", executable: false,
-        persistentChallengeId: challengeId, planDigest: loaded.plan.planDigest, idempotent: true,
-        temporarySemanticPlanRemoved: true });
+      return finishPersistentExecution(loaded, { idempotent: true, writeCount: 0 });
     }
     if (loaded.state.decision !== "learning-capture-ready-for-host-execution") {
       return deepFreeze({ decision: loaded.state.decision === "learning-capture-rollback-required"
@@ -2440,14 +2618,10 @@ export function executePersistentLearningCaptureTransaction(repository, { challe
       executable: false, persistentChallengeId: challengeId, checkpoint: loaded.state.checkpoint ?? 0,
       reason: loaded.state.reason ?? "", planRef: loaded.record.plan_ref, recoveryEvidencePreserved: true });
     }
-    if (Date.now() > Date.parse(loaded.plan.expiresAt)) throw new Error("expired unstarted plan requires a new current-user decision");
     for (const step of loaded.plan.steps) atomicPlanStep(loaded.repositoryReal, step, loaded.plan.planDigest);
     const finalState = inspectStructurallyTrustedPlanState(loaded.repositoryReal, loaded.plan);
     if (finalState.decision !== "learning-capture-already-committed") throw new Error("transaction final state did not close exactly");
-    finalizePersistentCompletion(loaded);
-    return deepFreeze({ decision: "persistent-learning-capture-execution-complete", executable: false,
-      persistentChallengeId: challengeId, planDigest: loaded.plan.planDigest, idempotent: false,
-      writeCount: loaded.plan.steps.length, temporarySemanticPlanRemoved: true });
+    return finishPersistentExecution(loaded, { idempotent: false, writeCount: loaded.plan.steps.length });
   } catch (error) {
     let state;
     try { if (loaded?.plan) state = inspectStructurallyTrustedPlanState(loaded.repositoryReal, loaded.plan); } catch { /* preserve evidence */ }

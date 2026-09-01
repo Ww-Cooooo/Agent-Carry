@@ -101,19 +101,20 @@ for (const fragment of [
   "不回滚已经验证通过的目标实例",
 ]) expect(protocol.includes(fragment), `activation protocol is missing ${fragment}`);
 expect(upgradeGuide.includes("UPGRADE_SESSION_ACTIVATION.md"), "upgrade guide does not route to session activation");
-expect(machineContract.includes("session-activation-required") && machineContract.includes("behavior-accepted"),
-  "machine upgrade completion does not distinguish session activation and behavior acceptance");
-expect(machineContract.includes("target-runtime-validated")
-  && machineContract.includes("不得自行签发 `sessionActivated=true`、`behaviorAccepted=true`"),
+expect(machineContract.includes("看板是否待刷新") && machineContract.includes("当前会话是否采用")
+  && machineContract.includes("代表行为是否通过"),
+"machine upgrade completion does not distinguish snapshot, session, and behavior state");
+expect(machineContract.includes("sessionReentryCommand") && machineContract.includes("不能由自己填写后两项")
+  && machineContract.includes("sessionActivated=true") && machineContract.includes("behaviorAccepted=true"),
   "machine upgrade contract still lets a local file check impersonate host session or behavior facts");
 expect(upgradeCli.includes('decision: "ai-carry-upgrade-target-runtime-validated"')
   && upgradeCli.includes("sessionActivated: false") && upgradeCli.includes("behaviorAccepted: false")
   && !upgradeCli.includes("sessionActivated: true") && !upgradeCli.includes("behaviorAccepted: true"),
-  "2.0.1 upgrade CLI self-attests current-session activation or behavior acceptance");
+  "2.0.2 upgrade CLI self-attests current-session activation or behavior acceptance");
 expect(hostResume.includes("升级后的新运行接续") && hostResume.includes("不是每次升级都必须执行"),
   "new-run resume still presents itself as a mandatory upgrade path");
-expect(protocol.includes("宿主产品版本属于宿主观察")
-  && triggerRegistry.includes("never-use-host-product-version"),
+expect(protocol.includes("宿主产品版本属于宿主观察，不参与 AI Carry 版本比较")
+  && triggerRegistry.includes('id = "upgrade-session-activation"'),
   "AI Carry version adoption can still be confused with the host product version");
 for (const source of [agentsEntry, bootstrap]) {
   expect(source.includes("每个新的实质用户目标开始前")
@@ -121,4 +122,4 @@ for (const source of [agentsEntry, bootstrap]) {
   "the stable entry describes a mismatch route but never performs the bounded version comparison");
 }
 
-console.log("Upgrade session activation passed high-information invalid, rollback, continuity, and generic-JSON no-self-attestation cases plus the 2.0.1 local-CLI boundary.");
+console.log("Upgrade session activation passed high-information invalid, rollback, continuity, and generic-JSON no-self-attestation cases plus the 2.0.2 local-CLI boundary.");

@@ -33,11 +33,11 @@ const isolatableSourceAreas = Object.freeze([
   ["instance/components/", "components"],
   ["instance/signals/", "signals"],
   ["instance/evolution/", "evolution"],
+  ["instance/startup-capsule.toml", "startup"],
 ]);
-const nonIsolatableDerivedRefs = new Set([
-  "instance/evolution/index.toml",
-  "instance/signals/control.toml",
-  "instance/startup-capsule.toml",
+const signalProjectionRefs = new Set([
+  "instance/maps/signal-map.toml",
+  "instance/maps/time-trigger-map.toml",
 ]);
 
 function fail(message) { throw new Error(`Snapshot source builder failed: ${message}`); }
@@ -62,7 +62,8 @@ function normalizeRequiredSourceRefs(refs) {
 }
 
 function isolatableArea(ref) {
-  if (nonIsolatableDerivedRefs.has(ref) || ref.startsWith("instance/maps/")) return null;
+  if (signalProjectionRefs.has(ref)) return "signals";
+  if (ref.startsWith("instance/maps/")) return null;
   return isolatableSourceAreas.find(([prefix]) => ref.startsWith(prefix))?.[1] ?? null;
 }
 
@@ -236,6 +237,7 @@ function projectSupportDirectory(repository, directory, expectedKind, { mode = "
         if (![1, 2, 3].includes(asset.required_level)) fail(`deferred asset ${asset.id} has an invalid required level`);
         results.push({ summary: asset.summary, level: asset.required_level, remind: asset.remind_at ?? "", status: asset.status });
       } else {
+        if (asset.approved_by_user !== true || (asset.schedule_state ?? "uninitialized") === "uninitialized") continue;
         if (!Number.isSafeInteger(asset.frequency_days) || asset.frequency_days < 1 || asset.frequency_days > 3650) fail(`governance asset ${asset.id} has an invalid frequency`);
         const steps = [...body.matchAll(/^\s*\d+\.\s+(.+)$/gmu)].map((match) => match[1].trim()).slice(0, 20);
         if (steps.length === 0) fail(`governance asset ${asset.id} has no bounded numbered steps`);
@@ -444,7 +446,10 @@ export function buildSnapshotCandidate(repository, {
   const requiredSourceRefSet = normalizeRequiredSourceRefs(requiredSourceRefs);
   const issues = [];
   const root = realpathSync(repository);
-  if (inspectStartupCapsule(root).decision !== "startup-capsule-valid") fail("startup capsule is stale or invalid");
+  if (inspectStartupCapsule(root).decision !== "startup-capsule-valid") {
+    if (mode !== "operational" || requiredSourceRefSet.has("instance/startup-capsule.toml")) fail("startup capsule is stale or invalid");
+    recordOperationalIssue(issues, { area: "startup", code: "startup-capsule-stale", sourceRef: "instance/startup-capsule.toml" });
+  }
   const assistant = parseSectionedToml(readStructured(root, "assistant.toml", 64 * 1024), "assistant manifest");
   const manifest = parseSectionedToml(readStructured(root, "instance/manifest.toml", 2560), "instance manifest");
   const validatedManifest = validateInstanceManifestStructure(manifest);

@@ -150,9 +150,9 @@ updated_at = ""
 
 function captureHandoff(root, suffix) {
   const observedAt = new Date(Date.now() - 1000).toISOString();
-  const observation = { basis: "same-process-host-task-observation", source_kind: "connected-host-observation",
+  const observation = { basis: "same-process-host-task-observation", source_kind: "external-content",
     task_ref_digest: sha256(`task-${suffix}`), context_ref_digest: sha256(`context-${suffix}`),
-    occurred_at: observedAt, result_state: "closed-result-checked" };
+    occurred_at: observedAt, result_state: "closed-unverified" };
   const prepared = preparePersistentLearningCaptureChallenge(root, proposal(), observation);
   expect(prepared.decision === "persistent-learning-capture-choice-required", `capture prepare failed: ${prepared.reason ?? prepared.decision}`);
   const now = new Date().toISOString();
@@ -162,8 +162,8 @@ function captureHandoff(root, suffix) {
   const planned = confirmPersistentLearningCaptureChallenge(root, { challengeId: prepared.persistentChallengeId,
     proposal: proposal(), observationAssertion: observation, receipt });
   expect(planned.decision === "persistent-learning-capture-plan-ready"
-    && planned.plan.formalPromotionRequest?.decision === "awaiting-level3-review-with-existing-content-authorization",
-  `capture did not create the exact Level 3 handoff: ${planned.reason ?? planned.decision}`);
+    && planned.plan.formalPromotionRequest?.decision === "awaiting-review-with-existing-content-authorization",
+  `capture did not create the exact targeted-review handoff: ${planned.reason ?? JSON.stringify(planned.plan?.formalPromotionRequest) ?? planned.decision}`);
   const executed = executePersistentLearningCaptureTransaction(root,
     { challengeId: prepared.persistentChallengeId, challengeNonce: prepared.challengeNonce });
   expect(executed.decision === "persistent-learning-capture-execution-complete", `capture execution failed: ${executed.reason ?? executed.decision}`);
@@ -241,7 +241,7 @@ try {
     const root = cloneFixture(seed, "unchanged");
     const prepared = preparePersistentPromotionFromHandoff(root, handoff, { proposedFormalPreview: proposal().formal_preview });
     expect(prepared.decision === "persistent-learning-promotion-prepared"
-      && prepared.authorizationBasis === "verified-existing-level3-handoff", "unchanged exact preview requested another confirmation");
+      && prepared.authorizationBasis === "verified-existing-review-handoff", "unchanged exact preview requested another confirmation");
     const closed = closePersistentPromotionTransaction(root, { transactionId: prepared.transactionId, transactionNonce: prepared.transactionNonce });
     expect(closed.decision === "persistent-learning-promotion-closed", "unchanged authorization fixture did not close safely");
   });
@@ -263,17 +263,20 @@ try {
       const faultAt = chooseStep(prepared.stepCount);
       const interrupted = cliCall("execute", root, action, { AI_CARRY_PROMOTION_TEST_FAULTS: "1",
         AI_CARRY_PROMOTION_FAIL_AFTER_STEP: String(faultAt) });
-      expect(interrupted.decision === "persistent-learning-promotion-execution-denied", `${label} fault was not injected`);
+      const coreComplete = faultAt >= 3;
+      expect(coreComplete
+        ? ["persistent-learning-promotion-core-complete-projections-pending", "persistent-learning-promotion-execution-complete"].includes(interrupted.decision)
+        : interrupted.decision === "persistent-learning-promotion-execution-denied",
+      `${label} fault did not stay inside the expected core/projection boundary`);
       const inspected = cliCall("inspect", root, action);
-      expect(["persistent-learning-promotion-resume-or-rollback-required", "persistent-learning-promotion-final"].includes(inspected.decision),
+      expect(["persistent-learning-promotion-resume-or-rollback-required",
+        "persistent-learning-promotion-core-complete-projections-pending", "persistent-learning-promotion-final"].includes(inspected.decision),
         `${label} interruption did not preserve a legal prefix/final state`);
-      const resumed = label === "middle" ? cliCall("rollback", root, action) : cliCall("resume", root, action);
-      expect(label === "middle"
-        ? resumed.decision === "persistent-learning-promotion-rollback-complete" && truthTreeDigest(root) === exactPreimage
-        : resumed.decision === "persistent-learning-promotion-resume-complete",
-      `${label} interruption did not ${label === "middle" ? "roll back exact bytes" : "resume cross-process"}`);
-      if (label === "middle") expect(cliCall("execute", root, action).decision === "persistent-learning-promotion-execution-complete",
-        "rolled-back transaction could not execute again");
+      const resumed = inspected.decision === "persistent-learning-promotion-final"
+        ? cliCall("execute", root, action) : cliCall("resume", root, action);
+      expect(["persistent-learning-promotion-resume-complete", "persistent-learning-promotion-execution-complete"].includes(resumed.decision),
+        `${label} interruption did not resume its remaining work`);
+      if (!coreComplete) expect(exactPreimage !== truthTreeDigest(root), "resumed core transaction did not publish the authorized asset");
       const beforeRepeat = truthTreeDigest(root); const repeated = cliCall("execute", root, action);
       expect(repeated.updated === false && truthTreeDigest(root) === beforeRepeat, `${label} resumed transaction was not idempotent`);
     });
@@ -316,7 +319,15 @@ try {
     expect(cliCall("prepare-handoff", templateRoot, handoff).decision.endsWith("-denied"), "template instance accepted promotion");
     const snapshotRoot = cloneFixture(seed, "snapshot-drift");
     writeFileSync(join(snapshotRoot, "dashboard/dist/snapshot.js"), `${readFileSync(join(snapshotRoot, "dashboard/dist/snapshot.js"), "utf8")}\n`, "utf8");
-    expect(cliCall("prepare-handoff", snapshotRoot, handoff).decision.endsWith("-denied"), "pre-existing dual-snapshot drift was accepted");
+    const snapshotPrepared = cliCall("prepare-handoff", snapshotRoot, handoff);
+    expect(snapshotPrepared.decision === "persistent-learning-promotion-prepared",
+      "a repairable dual-snapshot drift blocked the authorized promotion");
+    const snapshotAction = { transaction_id: snapshotPrepared.transactionId, transaction_nonce: snapshotPrepared.transactionNonce };
+    expect(cliCall("persist", snapshotRoot, snapshotAction).decision === "persistent-learning-promotion-planned"
+      && cliCall("execute", snapshotRoot, snapshotAction).decision === "persistent-learning-promotion-execution-complete"
+      && readFileSync(join(snapshotRoot, "dashboard/public/snapshot.js"), "utf8")
+        === readFileSync(join(snapshotRoot, "dashboard/dist/snapshot.js"), "utf8"),
+    "promotion did not repair the derived snapshot pair after preserving core truth");
     const tamperRoot = cloneFixture(seed, "plan-tamper"); const prepared = cliCall("prepare-handoff", tamperRoot, handoff);
     const action = { transaction_id: prepared.transactionId, transaction_nonce: prepared.transactionNonce }; cliCall("persist", tamperRoot, action);
     const before = truthTreeDigest(tamperRoot); const planPath = join(tamperRoot, ".assistant-local/learning-promotion-transactions", prepared.transactionId, "plan.json");
@@ -340,6 +351,21 @@ try {
     const denied = cleanupPromotionProjectionResidue(root, { now: new Date() });
     expect(denied.decision === "learning-promotion-projection-cleanup-denied" && existsSync(join(outside, "keep.txt")),
       "forged projection link was followed or deleted");
+    const prepared = preparePersistentPromotionFromHandoff(root, handoff);
+    expect(prepared.decision === "persistent-learning-promotion-prepared"
+      && prepared.projectionPending?.includes("dashboard-public-snapshot")
+      && existsSync(join(outside, "keep.txt")),
+    "an unrelated forged projection residue blocked source promotion preparation or was removed");
+    const action = { transaction_id: prepared.transactionId, transaction_nonce: prepared.transactionNonce };
+    expect(cliCall("persist", root, action).decision === "persistent-learning-promotion-planned",
+      "projection-degraded promotion plan did not persist");
+    const executed = cliCall("execute", root, action);
+    expect(executed.decision === "persistent-learning-promotion-execution-complete-projections-pending"
+      && executed.projectionPending?.includes("dashboard-public-snapshot")
+      && executed.ordinaryTasksContinue === true
+      && existsSync(join(root, ...handoff.formal_target.split("/")))
+      && existsSync(join(outside, "keep.txt")),
+    "projection cleanup trouble blocked the formal asset/direct route or removed unrelated bytes");
   });
 
   check("prepared-expiry-does-not-delete-planned-evidence", () => {

@@ -18,12 +18,8 @@ const trustedEnvelopes = new WeakMap();
 const trustedInstanceContexts = new WeakMap();
 const trustedFormalShortlists = new WeakMap();
 const trustedReadChallenges = new WeakMap();
-const trustedSelectionChallenges = new WeakMap();
 const trustedNewFormalTargets = new WeakMap();
-const trustedModelLevelChallenges = new WeakMap();
-const trustedModelLevelTickets = new WeakMap();
 const consumedReadConfirmationMessages = new Map();
-const consumedSelectionConfirmationMessages = new Map();
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 
 const manifestSections = new Set(["", "direction", "profile", "learning", "validation", "privacy", "versions"]);
@@ -129,47 +125,6 @@ export function validateInstanceManifestStructure(manifest, { allowUnknownFields
       || versions.startup_capsule_schema !== "1.0" });
 }
 
-export function createHostModelLevelChallenge({ requestedLevel, purpose } = {}) {
-  if (![2, 3].includes(requestedLevel) || !clean(purpose ?? "", 160, false)) return Object.freeze({ decision: "model-level-challenge-denied", executable: false });
-  const issuedAt = Date.now();
-  const challenge = Object.freeze({ decision: "model-level-user-confirmation-required", requestedLevel, purpose,
-    challengeNonce: randomBytes(16).toString("hex"),
-    issuedAt: new Date(issuedAt).toISOString(), expiresAt: new Date(issuedAt + 10 * 60_000).toISOString(), executable: false });
-  trustedModelLevelChallenges.set(challenge, Object.freeze({ requestedLevel, purpose, issuedAt }));
-  return challenge;
-}
-
-export function confirmHostModelLevel(challenge, receipt) {
-  const trust = trustedModelLevelChallenges.get(challenge);
-  const fields = ["basis", "message_ref", "confirmed_at", "confirmed_level", "challenge_nonce"];
-  const keys = receipt && typeof receipt === "object" && !Array.isArray(receipt) && Object.getPrototypeOf(receipt) === Object.prototype ? Object.keys(receipt) : [];
-  const confirmedAt = Date.parse(receipt?.confirmed_at ?? ""); const now = Date.now();
-  const valid = trust && keys.length === fields.length && fields.every((field) => keys.includes(field)) && receipt.basis === "host-current-user-message"
-    && stableAssetId.test(receipt.message_ref ?? "") && receipt.confirmed_level === trust.requestedLevel
-    && receipt.challenge_nonce === challenge.challengeNonce && Number.isFinite(confirmedAt)
-    && /[zZ]|[+-]\d{2}:\d{2}$/u.test(receipt.confirmed_at) && confirmedAt >= trust.issuedAt
-    && confirmedAt <= now + 60_000 && confirmedAt <= trust.issuedAt + 10 * 60_000;
-  if (!valid) return Object.freeze({ decision: "model-level-ticket-denied", executable: false });
-  trustedModelLevelChallenges.delete(challenge);
-  const ticket = Object.freeze({ decision: "model-level-confirmed-for-current-session", level: receipt.confirmed_level,
-    purpose: trust.purpose, confirmationTrust: "same-process-host-asserted-current-user-message-not-cryptographically-verifiable", executable: false });
-  trustedModelLevelTickets.set(ticket, Object.freeze({ level: receipt.confirmed_level, purpose: trust.purpose,
-    expiresAt: Math.min(confirmedAt + 10 * 60_000, trust.issuedAt + 10 * 60_000) }));
-  return ticket;
-}
-
-export function resolveTrustedModelLevel(ticket, { expectedPurpose = undefined } = {}) {
-  if (ticket === undefined || ticket === null) return 1;
-  const trust = trustedModelLevelTickets.get(ticket);
-  return trust && trust.expiresAt >= Date.now() && (expectedPurpose === undefined || trust.purpose === expectedPurpose) ? trust.level : null;
-}
-
-export function consumeTrustedModelLevel(ticket, expectedPurpose) {
-  const level = resolveTrustedModelLevel(ticket, { expectedPurpose });
-  if (level === null || ticket === undefined || ticket === null) return null;
-  trustedModelLevelTickets.delete(ticket);
-  return level;
-}
 function parseValue(raw, key) {
   if (/^"(?:[^"\\\u0000-\u001f]|\\["\\/bfnrt]|\\u[0-9a-fA-F]{4})*"$/.test(raw) || /^\[.*\]$/.test(raw)) {
     try { return JSON.parse(raw); } catch { fail(`unsupported TOML value for ${key}`); }
@@ -933,9 +888,13 @@ function resolveConfirmationGate(context, raw) {
   return Object.freeze({ id: "risk-dependent-before-action", migrationRequired: true, source: "legacy-unknown", blocked: true });
 }
 
-function validateDomainMapEnvelope(source, parsed, expected, label = "domain map", { explicitRequestedId = undefined, mapDigest = undefined } = {}) {
+function validateDomainMapEnvelope(source, parsed, expected, label = "domain map", {
+  explicitRequestedId = undefined, mapDigest = undefined, mode = "strict",
+} = {}) {
   const bytes = Buffer.byteLength(source, "utf8");
   const { root, budget, routes } = parsed;
+  const operational = mode === "operational";
+  if (!operational && mode !== "strict") fail(`${label} has an invalid read mode`);
   const expectedTrust = trustedInstanceContexts.get(expected);
   if (!expectedTrust) fail(`${label} lacks a context minted from the installed instance manifest`);
   if (explicitRequestedId !== undefined && !stableAssetId.test(explicitRequestedId)) fail(`${label} has an invalid explicit route request`);
@@ -962,11 +921,13 @@ function validateDomainMapEnvelope(source, parsed, expected, label = "domain map
   const reviewRoutes = [];
   const routeConfirmationMigrations = new Map();
   const blockedRouteIds = new Set();
+  const isolatedRouteIds = new Set();
   for (const route of routes) {
+    try {
     if (Buffer.byteLength(JSON.stringify(route), "utf8") > budget.max_route_bytes) fail(`${label} contains an oversized route`);
     if (locateHighConfidenceSecretCandidates(JSON.stringify(route)).blocked) fail(`${label} route contains a secret candidate`);
     if (!stableAssetId.test(route.id ?? "") || routeIds.has(route.id)) fail(`${label} contains an invalid or duplicate route ID`);
-    if (Object.keys(route).some((field) => !domainRouteFields.has(field))) fail(`${label} route ${route.id} contains an unknown field`);
+    if (!operational && Object.keys(route).some((field) => !domainRouteFields.has(field))) fail(`${label} route ${route.id} contains an unknown field`);
     if (!clean(route.title, 80, false) || !clean(route.summary, 240, false)
       || !cleanList(route.triggers, 8, 80) || route.triggers.length === 0
       || !cleanList(route.aliases ?? [], 8, 80) || !clean(route.topic_key ?? "", 120)
@@ -1007,34 +968,67 @@ function validateDomainMapEnvelope(source, parsed, expected, label = "domain map
     if (confirmation.blocked) blockedRouteIds.add(route.id);
     if (!confirmation.blocked && (route.asset_kind === "task-family" || ["active", "provisional"].includes(route.state))) safeRoutes.push(safeRoute);
     else reviewRoutes.push(safeRoute);
-  }
-  for (const route of validatedRoutes.values()) {
-    for (const relatedId of route.related_asset_ids ?? []) {
-      const related = validatedRoutes.get(relatedId);
-      if (!related || related.asset_kind === "task-family" || !["active", "provisional"].includes(related.state)) fail(`${label} route ${route.id} has an unavailable related asset ${relatedId}`);
+    } catch (error) {
+      if (!operational) throw error;
+      if (stableAssetId.test(route?.id ?? "")) isolatedRouteIds.add(route.id);
     }
   }
-  const visiting = new Set(); const visited = new Set();
+  let relatedChanged = true;
+  while (relatedChanged) {
+    relatedChanged = false;
+    for (const route of validatedRoutes.values()) {
+      if (isolatedRouteIds.has(route.id)) continue;
+      for (const relatedId of route.related_asset_ids ?? []) {
+        const related = validatedRoutes.get(relatedId);
+        if (!related || isolatedRouteIds.has(relatedId) || related.asset_kind === "task-family"
+          || !["active", "provisional"].includes(related.state)) {
+          if (!operational) fail(`${label} route ${route.id} has an unavailable related asset ${relatedId}`);
+          isolatedRouteIds.add(route.id); relatedChanged = true; break;
+        }
+      }
+    }
+  }
+  const visiting = []; const visited = new Set();
   const visitRelated = (id) => {
-    if (visiting.has(id)) fail(`${label} contains a related-asset cycle at ${id}`);
-    if (visited.has(id)) return;
-    visiting.add(id);
+    if (isolatedRouteIds.has(id) || visited.has(id)) return;
+    const cycleStart = visiting.indexOf(id);
+    if (cycleStart >= 0) {
+      if (!operational) fail(`${label} contains a related-asset cycle at ${id}`);
+      for (const cycleId of visiting.slice(cycleStart)) isolatedRouteIds.add(cycleId);
+      return;
+    }
+    visiting.push(id);
     for (const relatedId of validatedRoutes.get(id)?.related_asset_ids ?? []) visitRelated(relatedId);
-    visiting.delete(id); visited.add(id);
+    visiting.pop(); visited.add(id);
   };
   for (const id of validatedRoutes.keys()) visitRelated(id);
+  if (operational && isolatedRouteIds.size) {
+    relatedChanged = true;
+    while (relatedChanged) {
+      relatedChanged = false;
+      for (const route of validatedRoutes.values()) {
+        if (!isolatedRouteIds.has(route.id) && (route.related_asset_ids ?? []).some((id) => isolatedRouteIds.has(id))) {
+          isolatedRouteIds.add(route.id); relatedChanged = true;
+        }
+      }
+    }
+  }
   const softExceeded = bytes > budget.soft_max_bytes || routes.length > budget.soft_max_routes;
   const explicitRoute = explicitRequestedId
-    ? [...safeRoutes, ...reviewRoutes].find((route) => route.id === explicitRequestedId) ?? null
+    ? [...safeRoutes, ...reviewRoutes].find((route) => route.id === explicitRequestedId && !isolatedRouteIds.has(route.id)) ?? null
     : null;
+  const usableSafeRoutes = safeRoutes.filter((route) => !isolatedRouteIds.has(route.id));
+  const usableReviewRoutes = reviewRoutes.filter((route) => !isolatedRouteIds.has(route.id));
   const envelope = Object.freeze({
     bytes,
     routeCount: routes.length,
+    isolatedRouteCount: isolatedRouteIds.size,
     softExceeded,
     ordinaryMatchingAllowed: budget.overflow_state === "ok",
     blockReason: budget.overflow_state === "ok" ? "" : "rebuild-required",
-    routes: budget.overflow_state === "ok" ? Object.freeze(safeRoutes) : Object.freeze([]),
-    reviewRoutes: Object.freeze(explicitRoute && !["active", "provisional", "on-demand"].includes(explicitRoute.state) ? [explicitRoute] : []),
+    routes: budget.overflow_state === "ok" ? Object.freeze(usableSafeRoutes) : Object.freeze([]),
+    reviewRoutes: Object.freeze(explicitRoute && usableReviewRoutes.includes(explicitRoute)
+      && !["active", "provisional", "on-demand"].includes(explicitRoute.state) ? [explicitRoute] : []),
     explicitRoute,
   });
   trustedEnvelopes.set(envelope, Object.freeze({
@@ -1047,7 +1041,8 @@ function validateDomainMapEnvelope(source, parsed, expected, label = "domain map
     mapDigest,
     routeConfirmationMigrations,
     blockedRouteIds,
-    maintenanceRoutes: Object.freeze([...validatedRoutes.values()].map((route) => Object.freeze({ ...route }))),
+    maintenanceRoutes: Object.freeze([...validatedRoutes.values()].filter((route) => !isolatedRouteIds.has(route.id))
+      .map((route) => Object.freeze({ ...route }))),
   }));
   return envelope;
 }
@@ -1057,6 +1052,16 @@ export function loadTrustedDomainEnvelope(repository, { explicitRequestedId = un
   const mapRead = readPhysicalRelativeFile(context.repository, context.domainMapRef, "instance domain map", [".toml"], 49152);
   const parsed = parseRouteMap(mapRead.text, "instance domain map");
   const envelope = validateDomainMapEnvelope(mapRead.text, parsed, context, "instance domain map", { explicitRequestedId, mapDigest: mapRead.sha256 });
+  return Object.freeze({ context, envelope });
+}
+
+function loadOperationalDomainEnvelope(repository) {
+  const context = loadTrustedInstanceContext(repository);
+  const mapRead = readPhysicalRelativeFile(context.repository, context.domainMapRef, "instance domain map", [".toml"], 49152);
+  const parsed = parseRouteMap(mapRead.text, "instance domain map");
+  const envelope = validateDomainMapEnvelope(mapRead.text, parsed, context, "instance domain map", {
+    mapDigest: mapRead.sha256, mode: "operational",
+  });
   return Object.freeze({ context, envelope });
 }
 
@@ -1172,8 +1177,13 @@ export function projectFormalAssetsForOperationalSnapshot(repository, {
   const { envelope } = loadTrustedDomainEnvelope(repository);
   const trust = trustedEnvelopes.get(envelope);
   if (!trust || !envelopeFresh(trust)) fail("operational formal projection lacks a fresh trusted maintenance envelope");
-  const evidenceRegistry = loadResultValidationEvidence(repository, trust.expected);
-  if (!evidenceRegistry) fail("operational result-validation evidence index is unavailable or invalid");
+  let evidenceRegistry = loadResultValidationEvidence(repository, trust.expected);
+  if (!evidenceRegistry) {
+    const evidenceRef = trust.expected.validationEvidenceIndexRef;
+    if (requiredSourceRefs.has(evidenceRef)) fail("required result-validation evidence index is unavailable or invalid");
+    onIssue({ area: "validations", sourceRef: evidenceRef, code: "validation-index-uninitialized-or-invalid" });
+    evidenceRegistry = Object.freeze({ byId: new Map(), recordsByAssetId: new Map(), recordCount: 0 });
+  }
   const routes = [...trust.maintenanceRoutes].filter((entry) => entry.asset_kind !== "task-family");
   const routeIndex = new Map(trust.maintenanceRoutes.map((entry) => [entry.id, entry]));
   const projectedById = new Map(); const invalidIds = new Set();
@@ -1413,7 +1423,7 @@ export function queryFormalAssetShortlist(repository, { queryText = "", intentHi
   const request = normalizeRetrievalRequest(queryText, intentHints, workSignals);
   if (!request.ok) return Object.freeze({ decision: "query-rejected", reason: request.reason, candidates: Object.freeze([]), disposition: "ask-user-to-rephrase" });
   let envelope;
-  try { ({ envelope } = loadTrustedDomainEnvelope(repository)); }
+  try { ({ envelope } = loadOperationalDomainEnvelope(repository)); }
   catch { return Object.freeze({ decision: "route-map-unavailable", candidates: Object.freeze([]), disposition: "maintenance-required" }); }
   if (!envelope.ordinaryMatchingAllowed) return Object.freeze({ decision: "route-map-rebuild-required", candidates: Object.freeze([]), disposition: "maintenance-required" });
   const ranked = rankRetrievalEntries(envelope.routes, request, {
@@ -1427,7 +1437,8 @@ export function queryFormalAssetShortlist(repository, { queryText = "", intentHi
     if (entry.asset_kind === "task-family") {
       candidates.push(Object.freeze({
         id: entry.id, kind: "task-family", subtype: "", title: entry.title, summary: entry.summary,
-        state: entry.state, requiredLevel: entry.minimum_level, selectionMode: "navigation-only-after-intent-is-clear", executable: false,
+        state: entry.state, requiredLevel: entry.minimum_level, recommendedLevel: entry.minimum_level,
+        selectionMode: "load-after-unique-match-or-explicit-choice", executable: false,
         retrievalEvidence: Object.freeze({ directUserMatch: evidence.directUserMatch, workSignalMatch: evidence.workSignalMatch,
           hintOnlyMatch: evidence.hintOnlyMatch, automaticEvidenceSource: evidence.automaticEvidenceSource }),
       }));
@@ -1450,23 +1461,18 @@ export function queryFormalAssetShortlist(repository, { queryText = "", intentHi
       }) }));
     } else rejectedMetadataCount += 1;
   }
-  if (rejectedMetadataCount >= 8) return Object.freeze({
-    decision: "route-map-rebuild-required", candidates: Object.freeze([]),
-    disposition: "maintenance-required", rejectedMetadataCount, intentHintCount: request.hints.length, workSignalCount: request.workSignals.length,
-  });
   const frozen = Object.freeze(candidates.slice(0, 3));
   const disposition = frozen.length === 0 ? "no-trusted-match"
-    : frozen.length > 1 ? "offer-small-choice"
-      : frozen[0].selectionMode.startsWith("automatic-confirmed-habit") ? frozen[0].selectionMode
-        : frozen[0].kind === "task-family" ? "load-navigation-after-intent-is-clear" : "confirm-single-before-body";
+    : frozen.length > 1 ? "offer-small-choice" : "load-unique-match";
   const result = Object.freeze({ decision: frozen.length ? "shortlist-ready" : "no-match", candidates: frozen, disposition,
-    rejectedMetadataCount, integrityState: rejectedMetadataCount === 0 ? "verified" : "degraded-valid-matches-only",
+    rejectedMetadataCount, isolatedRouteCount: envelope.isolatedRouteCount ?? 0,
+    integrityState: rejectedMetadataCount === 0 && (envelope.isolatedRouteCount ?? 0) === 0 ? "verified" : "degraded-valid-matches-only",
     intentHintCount: request.hints.length, workSignalCount: request.workSignals.length });
   trustedFormalShortlists.set(result, Object.freeze({ repository: realpathSync(repository), envelope, allowedIds: new Set(frozen.map((entry) => entry.id)) }));
   return result;
 }
 
-export function inspectShortlistedFormalAsset(repository, shortlist, routeId, { levelEvidence = undefined } = {}) {
+export function inspectShortlistedFormalAsset(repository, shortlist, routeId) {
   let repositoryReal;
   try { repositoryReal = realpathSync(repository); } catch { return { decision: "deny-untrusted-shortlist", executable: false }; }
   const trust = trustedFormalShortlists.get(shortlist);
@@ -1474,61 +1480,19 @@ export function inspectShortlistedFormalAsset(repository, shortlist, routeId, { 
   if (!trust || trust.repository !== repositoryReal || !trust.allowedIds.has(routeId) || !selected || !envelopeFresh(trustedEnvelopes.get(trust.envelope))) {
     return { decision: "deny-untrusted-shortlist", executable: false };
   }
-  const challenge = (reason) => {
-    const issuedAtMs = Date.now();
-    const challengeNonce = randomBytes(18).toString("hex");
-    const targetFingerprint = confirmationTargetFingerprint(repository, routeId);
-    if (!targetFingerprint) return Object.freeze({ decision: "deny-confirmation-target-drift", executable: false });
-    const challengeDigest = digest(Buffer.from(JSON.stringify({ routeId, shortlist: shortlist.candidates, reason, targetFingerprint, challengeNonce }), "utf8"));
-    const result = Object.freeze({
-      decision: "selection-confirmation-required", executable: false, selected, reason,
-      challengeNonce, challengeDigest, issuedAt: new Date(issuedAtMs).toISOString(), expiresAt: new Date(issuedAtMs + 10 * 60_000).toISOString(),
-      confirmationReceiptContract: "same-process-host-current-user-message-v2",
-      recallUse: projectRecallUse(selected, "candidate-found-not-used"),
-    });
-    trustedSelectionChallenges.set(result, Object.freeze({
-      repository: repositoryReal, routeId, targetFingerprint, challengeNonce, challengeDigest, issuedAtMs, resume: () => selected.kind === "task-family"
-        ? inspectTaskFamilyRoute(repository, trust.envelope, routeId, { levelEvidence })
-        : inspectAssetRoute(repository, trust.envelope, routeId, { levelEvidence }),
-    }));
-    return result;
-  };
-  if (selected.retrievalEvidence?.hintOnlyMatch) return challenge("hint-only-match");
-  if (selected.kind === "task-family") {
-    if (shortlist.candidates.length !== 1 || !selected.retrievalEvidence?.directUserMatch) return challenge("navigation-intent-not-unique");
-    const inspected = inspectTaskFamilyRoute(repository, trust.envelope, routeId, { levelEvidence });
-    return Object.freeze({ ...inspected, recallUse: projectRecallUse(selected, "candidate-found-not-used") });
-  }
-  if (shortlist.candidates.length !== 1 || !selected.selectionMode?.startsWith("automatic-confirmed-habit")
-    || selected.retrievalEvidence?.automaticScopeEvidence !== true) {
-    return challenge("fuzzy-or-choice-match");
-  }
-  const inspected = inspectAssetRoute(repository, trust.envelope, routeId, { levelEvidence });
+  // The shortlist is bounded to three items. A unique match or the caller's
+  // explicit selected ID is enough to re-run the bounded query and load it;
+  // ordinary recall does not mint expiring, same-process confirmation tickets.
+  const inspected = selected.kind === "task-family"
+    ? inspectTaskFamilyRoute(repository, trust.envelope, routeId, { selectionConfirmed: true })
+    : inspectAssetRoute(repository, trust.envelope, routeId, { selectionConfirmed: true });
   return Object.freeze({ ...inspected,
-    recallUse: projectRecallUse(selected, inspected.decision === "load-bounded-body" ? "asset-body-loaded" : "candidate-found-not-used") });
+    selectedBy: shortlist.candidates.length === 1 ? "unique-match" : "explicit-choice",
+    recallUse: projectRecallUse(selected, ["load-bounded-body", "bounded-section-only", "load-bounded-task-family"].includes(inspected.decision)
+      ? "asset-body-loaded" : "candidate-found-not-used") });
 }
 
-export function resumeShortlistedAssetSelection(repository, challenge, receipt) {
-  let repositoryReal;
-  try { repositoryReal = realpathSync(repository); } catch { return { decision: "deny-untrusted-selection-confirmation", executable: false }; }
-  const trust = trustedSelectionChallenges.get(challenge);
-  const keys = receipt && typeof receipt === "object" && !Array.isArray(receipt) && Object.getPrototypeOf(receipt) === Object.prototype ? Object.keys(receipt) : [];
-  const exactKeys = keys.length === 6 && ["basis", "message_ref", "confirmed_at", "confirmed_asset_id", "challenge_nonce", "challenge_digest"].every((key) => keys.includes(key));
-  const confirmedAt = Date.parse(receipt?.confirmed_at ?? ""); const now = Date.now();
-  const valid = trust && trust.repository === repositoryReal && exactKeys && receipt.basis === "host-current-user-message"
-    && stableAssetId.test(receipt.message_ref ?? "") && receipt.confirmed_asset_id === trust.routeId
-    && receipt.challenge_nonce === trust.challengeNonce && receipt.challenge_digest === trust.challengeDigest
-    && Number.isFinite(confirmedAt) && /[zZ]|[+-]\d{2}:\d{2}$/u.test(receipt.confirmed_at)
-    && confirmedAt <= now + 60_000 && confirmedAt >= trust.issuedAtMs && confirmedAt <= trust.issuedAtMs + 10 * 60_000
-    && confirmationTargetFingerprint(repository, trust.routeId) === trust.targetFingerprint;
-  if (!valid || !consumeCurrentMessageOnce(consumedSelectionConfirmationMessages, repository, receipt?.message_ref ?? "", trust.issuedAtMs + 10 * 60_000)) return { decision: "deny-untrusted-selection-confirmation", executable: false };
-  trustedSelectionChallenges.delete(challenge);
-  const result = trust.resume();
-  return Object.freeze({ ...result, selectionConfirmationTrust: "host-asserted-current-user-message-not-cryptographically-verifiable" });
-}
-
-function inspectAssetRouteInternal(repository, envelope, routeId, { levelEvidence = undefined, requestedSelector = undefined } = {}, readConfirmationSatisfied = false) {
-  const currentLevel = resolveTrustedModelLevel(levelEvidence, { expectedPurpose: "read-formal-asset" });
+function inspectAssetRouteInternal(repository, envelope, routeId, { requestedSelector = undefined } = {}, readConfirmationSatisfied = false) {
   const selection = trustedRoute(repository, envelope, routeId, ["active", "provisional"]);
   if (!selection) return { decision: "deny-untrusted-envelope", executable: false };
   const { route, trust } = selection;
@@ -1545,7 +1509,7 @@ function inspectAssetRouteInternal(repository, envelope, routeId, { levelEvidenc
   if (metadataPreflight.requiresReadConfirmation && !readConfirmationSatisfied) return makeReadConfirmationChallenge(repository, {
     contentRole: "protected-context-metadata-only", id: metadataPreflight.id, title: metadataPreflight.title,
     readConfirmationGates: metadataPreflight.readConfirmationGates, actionConfirmationGates: metadataPreflight.actionConfirmationGates,
-  }, () => inspectAssetRouteInternal(repository, envelope, routeId, { levelEvidence, requestedSelector }, true));
+  }, () => inspectAssetRouteInternal(repository, envelope, routeId, { requestedSelector }, true));
 
   const path = resolvePhysicalAssetTarget(repository, route.target, route.asset_kind);
   const fileBytes = statSync(path).size;
@@ -1564,7 +1528,7 @@ function inspectAssetRouteInternal(repository, envelope, routeId, { levelEvidenc
   const evidenceRegistry = evidenceRegistryForAsset(repository, trust.expected, asset);
   const executionMetadata = formalExecutionMetadata(asset, routeIndex, route.id, evidenceRegistry);
   if (!executionMetadata || executionMetadata.ignoredInvalidHostExperienceRefCount > 0) return { decision: "deny-execution-metadata", executable: false, fileBytes };
-  if (![1, 2, 3].includes(currentLevel) || ![1, 2, 3].includes(asset.minimum_level) || route.minimum_level < asset.minimum_level || currentLevel < Math.max(route.minimum_level, asset.minimum_level)) return { decision: "deny-model-level", executable: false, fileBytes };
+  if (![1, 2, 3].includes(asset.minimum_level) || route.minimum_level < asset.minimum_level) return { decision: "deny-model-level-metadata", executable: false, fileBytes };
   const execution = executionBoundary(route, asset, trust.expected);
   if (!execution.valid) return { decision: "deny-confirmation-gate", executable: false, fileBytes, reason: execution.reason };
   const subtype = subtypeCompatibility(asset);
@@ -1588,11 +1552,10 @@ function inspectAssetRouteInternal(repository, envelope, routeId, { levelEvidenc
 }
 
 export function inspectAssetRoute(repository, envelope, routeId, options = {}) {
-  return inspectAssetRouteInternal(repository, envelope, routeId, options, false);
+  return inspectAssetRouteInternal(repository, envelope, routeId, options, options.selectionConfirmed === true);
 }
 
-function inspectAssetForReviewInternal(repository, envelope, routeId, { levelEvidence = undefined, explicitRequestedId, requestedSelector = undefined } = {}, readConfirmationSatisfied = false) {
-  const currentLevel = resolveTrustedModelLevel(levelEvidence, { expectedPurpose: "review-formal-asset" });
+function inspectAssetForReviewInternal(repository, envelope, routeId, { explicitRequestedId, requestedSelector = undefined } = {}, readConfirmationSatisfied = false) {
   if (explicitRequestedId !== routeId || !stableAssetId.test(explicitRequestedId ?? "")) return { decision: "deny-explicit-review-id", executable: false };
   const selection = trustedRoute(repository, envelope, routeId, ["review", "paused", "history", "archived"]);
   if (!selection) return { decision: "deny-untrusted-envelope", executable: false };
@@ -1622,7 +1585,7 @@ function inspectAssetForReviewInternal(repository, envelope, routeId, { levelEvi
   if (reviewExecution.requiresReadConfirmation && !readConfirmationSatisfied) return makeReadConfirmationChallenge(repository, {
     contentRole: "protected-review-metadata-only", id: route.id, title: route.title,
     readConfirmationGates: reviewExecution.readConfirmationGates, actionConfirmationGates: reviewExecution.actionConfirmationGates,
-  }, () => inspectAssetForReviewInternal(repository, envelope, routeId, { levelEvidence, explicitRequestedId, requestedSelector }, true));
+  }, () => inspectAssetForReviewInternal(repository, envelope, routeId, { explicitRequestedId, requestedSelector }, true));
   let read;
   try { read = readFormalAsset(repository, route); }
   catch { return { decision: "deny-frontmatter", executable: false, fileBytes }; }
@@ -1633,8 +1596,9 @@ function inspectAssetForReviewInternal(repository, envelope, routeId, { levelEvi
     if (JSON.stringify(route[field] ?? fallback) !== JSON.stringify(asset[field] ?? fallback)) return { decision: "deny-retrieval-drift", executable: false, fileBytes, field };
   }
   if (Object.hasOwn(route, "subtype") && route.subtype !== asset.subtype) return { decision: "deny-retrieval-drift", executable: false, fileBytes, field: "subtype" };
-  if (![1, 2, 3].includes(currentLevel) || ![1, 2, 3].includes(route.minimum_level) || ![1, 2, 3].includes(asset.minimum_level)
-    || route.minimum_level < asset.minimum_level || currentLevel < Math.max(route.minimum_level, asset.minimum_level)) return { decision: "deny-model-level", executable: false, fileBytes };
+  if (![1, 2, 3].includes(route.minimum_level) || ![1, 2, 3].includes(asset.minimum_level)
+    || route.minimum_level < asset.minimum_level) return { decision: "deny-model-level-metadata", executable: false, fileBytes };
+  const recommendedLevel = Math.max(route.minimum_level, asset.minimum_level);
   if (!envelopeFresh(trust)) return { decision: "deny-stale-envelope", executable: false, fileBytes };
   const routeIndex = new Map(trust.maintenanceRoutes.map((entry) => [entry.id, entry]));
   const evidenceRegistry = evidenceRegistryForAsset(repository, trust.expected, asset);
@@ -1645,7 +1609,7 @@ function inspectAssetForReviewInternal(repository, envelope, routeId, { levelEvi
     const secrets = locateHighConfidenceSecretCandidates(body);
     return secrets.blocked
       ? { decision: "deny-secret-candidate", executable: false, fileBytes, secretFindingCount: secrets.count, secretFindingCategories: Object.freeze([...new Set(secrets.findings.map((finding) => finding.category))]) }
-      : { decision: "review-evidence-only", executable: false, contentRole: "formal-review-evidence-only", authorizedActions: Object.freeze([]), fileBytes, body, executionMetadata, ...reviewExecution };
+      : { decision: "review-evidence-only", executable: false, contentRole: "formal-review-evidence-only", authorizedActions: Object.freeze([]), fileBytes, body, recommendedLevel, executionMetadata, ...reviewExecution };
   }
   const sections = route.body_sections ?? [];
   if (sections.length === 0 || JSON.stringify(sections) !== JSON.stringify(asset.body_sections ?? [])) return { decision: "split-required", executable: false, fileBytes };
@@ -1654,26 +1618,25 @@ function inspectAssetForReviewInternal(repository, envelope, routeId, { levelEvi
   const reviewSecrets = locateHighConfidenceSecretCandidates(selected.selected);
   return reviewSecrets.blocked
     ? { decision: "deny-secret-candidate", executable: false, fileBytes, secretFindingCount: reviewSecrets.count, secretFindingCategories: Object.freeze([...new Set(reviewSecrets.findings.map((finding) => finding.category))]) }
-    : { decision: "review-evidence-only", executable: false, contentRole: "formal-review-evidence-only", authorizedActions: Object.freeze([]), fileBytes, body: selected.selected, sectionBytes: selected.bytes, executionMetadata, ...reviewExecution };
+    : { decision: "review-evidence-only", executable: false, contentRole: "formal-review-evidence-only", authorizedActions: Object.freeze([]), fileBytes, body: selected.selected, sectionBytes: selected.bytes, recommendedLevel, executionMetadata, ...reviewExecution };
 }
 
 export function inspectAssetForReview(repository, envelope, routeId, options = {}) {
   return inspectAssetForReviewInternal(repository, envelope, routeId, options, false);
 }
 
-function inspectTaskFamilyRouteInternal(repository, envelope, routeId, { levelEvidence = undefined } = {}, readConfirmationSatisfied = false) {
-  const currentLevel = resolveTrustedModelLevel(levelEvidence, { expectedPurpose: "read-task-family" });
+function inspectTaskFamilyRouteInternal(repository, envelope, routeId, options = {}, readConfirmationSatisfied = false) {
   const selection = trustedRoute(repository, envelope, routeId, ["on-demand"]);
   if (!selection || selection.route.asset_kind !== "task-family") return { decision: "deny-untrusted-envelope", executable: false };
   const { route, trust } = selection;
-  if (![1, 2, 3].includes(currentLevel) || currentLevel < route.minimum_level) return { decision: "deny-model-level", executable: false };
+  if (![1, 2, 3].includes(route.minimum_level)) return { decision: "deny-model-level-metadata", executable: false };
   const gate = route.confirmation === "none" ? [] : (trust.expected.confirmationGates ?? []).filter((entry) => entry.id === route.confirmation);
   const readGates = gate.filter((entry) => ["before-read", "both"].includes(entry.phase));
   const actionGates = gate.filter((entry) => ["before-action", "both"].includes(entry.phase));
   if (readGates.length && !readConfirmationSatisfied) return makeReadConfirmationChallenge(repository, {
     contentRole: "protected-navigation-metadata-only", id: route.id, title: route.title,
     readConfirmationGates: Object.freeze(readGates), actionConfirmationGates: Object.freeze(actionGates),
-  }, () => inspectTaskFamilyRouteInternal(repository, envelope, routeId, { levelEvidence }, true));
+  }, () => inspectTaskFamilyRouteInternal(repository, envelope, routeId, options, true));
   resolveTaskFamilyTarget(repository, route, trust.expected);
   let read;
   try { read = readPhysicalRelativeFile(repository, route.target, `task-family ${route.id}`, [".md"], 32 * 1024); }
@@ -1698,5 +1661,5 @@ function inspectTaskFamilyRouteInternal(repository, envelope, routeId, { levelEv
 }
 
 export function inspectTaskFamilyRoute(repository, envelope, routeId, options = {}) {
-  return inspectTaskFamilyRouteInternal(repository, envelope, routeId, options, false);
+  return inspectTaskFamilyRouteInternal(repository, envelope, routeId, options, options.selectionConfirmed === true);
 }

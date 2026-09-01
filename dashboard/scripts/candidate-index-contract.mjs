@@ -1,7 +1,7 @@
 import { closeSync, fstatSync, lstatSync, openSync, readSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, relative, resolve, sep } from "node:path";
-import { parseArrayTableDocument, parseMarkdownFrontmatterHead, readTrustedInstanceIdentity, resolvePhysicalAssetTarget, resolveTrustedModelLevel, stableAssetId } from "./asset-route-contract.mjs";
+import { parseArrayTableDocument, parseMarkdownFrontmatterHead, readTrustedInstanceIdentity, resolvePhysicalAssetTarget, stableAssetId } from "./asset-route-contract.mjs";
 import { normalizeRetrievalRequest, rankRetrievalEntries } from "./bounded-retrieval.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
 import { containsForbiddenLocationReference, containsForbiddenStructuredLocation } from "./safe-output-boundary.mjs";
@@ -164,8 +164,11 @@ function validateCandidateIndexMetadata(index, { expectedInstanceId, actualFileB
   const calculated = counts(index.candidates);
   const ids = index.candidates.map((entry) => entry.id);
   const refs = index.candidates.map((entry) => String(entry.source_ref ?? "").toLowerCase());
-  const stateUsable = index.state === "current" || (index.state === "empty" && index.candidates.length === 0);
-  const timeValid = expectedInstanceId === "template" ? index.generated_at === "" : strictZonedDate(index.generated_at);
+  const empty = index.state === "empty" && index.candidates.length === 0;
+  const stateUsable = index.state === "current" || empty;
+  const timeValid = empty
+    ? (expectedInstanceId === "template" ? index.generated_at === "" : index.generated_at === "" || strictZonedDate(index.generated_at))
+    : strictZonedDate(index.generated_at);
   const templateValid = expectedInstanceId !== "template" || (index.state === "empty" && index.candidates.length === 0);
   return index.schema_version === 1 && index.index_id === "evolution-candidates" && index.instance_id === expectedInstanceId
     && clean(index.generated_at ?? "", 64) && timeValid && templateValid && stateUsable
@@ -267,8 +270,7 @@ function selectTrustedCandidate(repository, view, candidateId, { review = false 
   return trust.allowedIds.has(candidateId) ? trust.entries.get(candidateId) ?? null : null;
 }
 
-export function inspectCandidateSource(repository, view, candidateId, { levelEvidence = undefined } = {}) {
-  const currentLevel = resolveTrustedModelLevel(levelEvidence, { expectedPurpose: "read-candidate-evidence" });
+export function inspectCandidateSource(repository, view, candidateId) {
   const entry = selectTrustedCandidate(repository, view, candidateId);
   if (!entry || !entryValid(entry)) return { decision: "deny-untrusted-index-view", executable: false };
   let read;
@@ -279,7 +281,7 @@ export function inspectCandidateSource(repository, view, candidateId, { levelEvi
   try { parsed = parseMarkdownFrontmatterHead(read.text, entry.id); }
   catch { return { decision: "deny-frontmatter", executable: false, fileBytes }; }
   if (!candidateSourceMatchesEntry(parsed.values, entry)) return { decision: "deny-source-drift", executable: false, fileBytes };
-  if (![1, 2, 3].includes(currentLevel) || currentLevel < parsed.values.minimum_level) return { decision: "deny-model-level", executable: false, fileBytes };
+  if (![1, 2, 3].includes(parsed.values.minimum_level)) return { decision: "deny-model-level-metadata", executable: false, fileBytes };
   if (entry.status !== "candidate" || entry.observation_state !== "explicit" || !["explicit-user", "existing-approved-migration"].includes(entry.observation_basis)) return { decision: "frontmatter-review-only", executable: false, fileBytes };
   const trust = trustedCandidateViews.get(view);
   if (!trust || !candidateViewFresh(repository, trust)) return { decision: "deny-stale-index-view", executable: false, fileBytes };
@@ -288,11 +290,10 @@ export function inspectCandidateSource(repository, view, candidateId, { levelEvi
   const secrets = locateHighConfidenceSecretCandidates(body);
   return secrets.blocked || containsForbiddenLocationReference(body)
     ? { decision: "deny-sensitive-or-nonportable-candidate", executable: false, fileBytes, secretFindingCount: secrets.count, secretFindingCategories: Object.freeze([...new Set(secrets.findings.map((finding) => finding.category))]) }
-    : { decision: "load-bounded-body", executable: false, contentRole: "candidate-evidence-only", authorizedActions: Object.freeze([]), fileBytes, body };
+    : { decision: "load-bounded-body", executable: false, contentRole: "candidate-evidence-only", authorizedActions: Object.freeze([]), recommendedLevel: parsed.values.minimum_level, fileBytes, body };
 }
 
-export function inspectCandidateForReview(repository, view, candidateId, { levelEvidence = undefined, explicitRequestedId, reviewEvidenceRequested = false } = {}) {
-  const currentLevel = resolveTrustedModelLevel(levelEvidence, { expectedPurpose: "review-candidate-evidence" });
+export function inspectCandidateForReview(repository, view, candidateId, { explicitRequestedId, reviewEvidenceRequested = false } = {}) {
   if (explicitRequestedId !== candidateId || !stableAssetId.test(explicitRequestedId ?? "")) return { decision: "deny-explicit-review-id", executable: false };
   const entry = selectTrustedCandidate(repository, view, candidateId, { review: true });
   if (!entry || !entryValid(entry)) return { decision: "deny-untrusted-index-view", executable: false };
@@ -309,7 +310,7 @@ export function inspectCandidateForReview(repository, view, candidateId, { level
   catch { return { decision: "deny-frontmatter", executable: false, fileBytes }; }
   const sourceAsset = parsed.values;
   if (!candidateSourceMatchesEntry(sourceAsset, entry)) return { decision: "deny-source-drift", executable: false, fileBytes };
-  if (![1, 2, 3].includes(currentLevel) || currentLevel < sourceAsset.minimum_level) return { decision: "deny-model-level", executable: false, fileBytes };
+  if (![1, 2, 3].includes(sourceAsset.minimum_level)) return { decision: "deny-model-level-metadata", executable: false, fileBytes };
   const trust = trustedCandidateViews.get(view);
   if (!trust || !candidateViewFresh(repository, trust)) return { decision: "deny-stale-index-view", executable: false, fileBytes };
   const source = read.text.replaceAll("\r\n", "\n");
@@ -317,7 +318,7 @@ export function inspectCandidateForReview(repository, view, candidateId, { level
   const secrets = locateHighConfidenceSecretCandidates(body);
   return secrets.blocked || containsForbiddenLocationReference(body)
     ? { decision: "deny-sensitive-or-nonportable-candidate", executable: false, fileBytes, secretFindingCount: secrets.count, secretFindingCategories: Object.freeze([...new Set(secrets.findings.map((finding) => finding.category))]) }
-    : { decision: "review-evidence-only", executable: false, contentRole: "candidate-review-evidence-only", authorizedActions: Object.freeze([]), fileBytes, body };
+    : { decision: "review-evidence-only", executable: false, contentRole: "candidate-review-evidence-only", authorizedActions: Object.freeze([]), recommendedLevel: sourceAsset.minimum_level, fileBytes, body };
 }
 
 export function loadCandidateIndex(repository, { instanceContext, explicitRequestedId, queryText, intentHints = [] } = {}) {
@@ -327,15 +328,29 @@ export function loadCandidateIndex(repository, { instanceContext, explicitReques
   const indexRead = readIndexSnapshot(repository); const actualFileBytes = indexRead.fileBytes;
   const parsed = parseArrayTableDocument(indexRead.text, "candidates", "candidate index");
   const index = { ...parsed.root, candidates: parsed.entries };
-  if (!validateCandidateIndexMetadata(index, { expectedInstanceId: trustedIdentity.instanceId, actualFileBytes })) fail("candidate index or trusted instance identity is invalid");
-  const physicalIdentities = new Set();
-  for (const entry of index.candidates) {
-    const sourcePath = resolvePhysicalAssetTarget(repository, entry.source_ref, "evolution");
-    const info = statSync(sourcePath, { bigint: true });
-    const identity = `${info.dev}:${info.ino}`;
-    if (physicalIdentities.has(identity)) fail("candidate index contains two references to the same physical file");
-    physicalIdentities.add(identity);
+  const readableRoot = index.schema_version === 1 && index.index_id === "evolution-candidates"
+    && index.instance_id === trustedIdentity.instanceId && parsed.entries.length <= 128
+    && Number.isSafeInteger(actualFileBytes) && actualFileBytes >= 0 && actualFileBytes <= 32768;
+  if (!readableRoot) fail("candidate index or trusted instance identity is invalid");
+  const idCounts = new Map(); const refCounts = new Map();
+  for (const entry of parsed.entries) {
+    if (stableAssetId.test(entry?.id ?? "")) idCounts.set(entry.id, (idCounts.get(entry.id) ?? 0) + 1);
+    const ref = String(entry?.source_ref ?? "").toLowerCase();
+    if (normalizedSourceRef(entry?.source_ref)) refCounts.set(ref, (refCounts.get(ref) ?? 0) + 1);
   }
+  const usableEntries = parsed.entries.filter((entry) => entryValid(entry)
+    && idCounts.get(entry.id) === 1 && refCounts.get(entry.source_ref.toLowerCase()) === 1);
+  const isolatedEntryCount = parsed.entries.length - usableEntries.length;
+  const calculated = counts(usableEntries);
+  const metadataDrift = !["empty", "current"].includes(index.state)
+    || !Number.isSafeInteger(index.source_revision) || index.source_revision < 0
+    || index.budget_bytes !== 32768 || index.overflow !== false
+    || index.candidate_count !== parsed.entries.length || index.indexed_count !== parsed.entries.length
+    || index.active_count !== counts(parsed.entries.filter(entryValid)).active
+    || !clean(index.generated_at ?? "", 64)
+    || (usableEntries.length === 0
+      ? !(index.generated_at === "" || strictZonedDate(index.generated_at))
+      : !strictZonedDate(index.generated_at));
   const retrievalRequest = queryText === undefined ? null : normalizeRetrievalRequest(queryText, intentHints);
   if (retrievalRequest && !retrievalRequest.ok) fail(`candidate query rejected: ${retrievalRequest.reason}`);
   const verifySelectedSource = (entry) => {
@@ -348,7 +363,7 @@ export function loadCandidateIndex(repository, { instanceContext, explicitReques
     .filter((field) => Object.hasOwn(entry, field))
     .map((field) => [field, Array.isArray(entry[field]) ? Object.freeze([...entry[field]]) : entry[field]])));
   const rankedEntries = retrievalRequest
-    ? selectCandidateShortlist(index.candidates, retrievalRequest.query, retrievalRequest.hints, { limit: Math.max(1, Math.min(index.candidates.length, 128)) })
+    ? selectCandidateShortlist(usableEntries, retrievalRequest.query, retrievalRequest.hints, { limit: Math.max(1, Math.min(usableEntries.length, 128)) })
     : [];
   const selectedEntries = [];
   let rejectedSourceCount = 0;
@@ -357,14 +372,17 @@ export function loadCandidateIndex(repository, { instanceContext, explicitReques
     try { selectedEntries.push(verifySelectedSource(entry)); }
     catch { rejectedSourceCount += 1; }
   }
-  if (rejectedSourceCount >= 8) fail("candidate index has too many ranked source drifts and requires maintenance");
   const matchingCandidates = Object.freeze(selectedEntries.map(project));
-  const metadata = Object.freeze(Object.fromEntries([...rootFields]
+  const metadata = Object.freeze({ ...Object.fromEntries([...rootFields]
     .filter((field) => Object.hasOwn(index, field))
-    .map((field) => [field, index[field]])));
-  const explicitlySelected = explicitRequestedId ? index.candidates.find((entry) => entry.id === explicitRequestedId) : undefined;
+    .map((field) => [field, index[field]])), state: calculated.indexed === 0 ? "empty" : "current",
+    budget_bytes: 32768, overflow: false, candidate_count: calculated.indexed,
+    indexed_count: calculated.indexed, active_count: calculated.active });
+  const explicitlySelected = explicitRequestedId ? usableEntries.find((entry) => entry.id === explicitRequestedId) : undefined;
   const view = Object.freeze({ metadata, matchingCandidates, explicitCandidate: explicitlySelected ? project(verifySelectedSource(explicitlySelected)) : null,
-    integrityState: rejectedSourceCount === 0 ? "verified" : "degraded-valid-matches-only", rejectedSourceCount, actualFileBytes });
+    integrityState: rejectedSourceCount === 0 && isolatedEntryCount === 0 && !metadataDrift
+      ? "verified" : "degraded-valid-matches-only",
+    rejectedSourceCount, isolatedEntryCount, metadataRepairPending: metadataDrift, actualFileBytes });
   const fullEntries = new Map();
   for (const entry of [...selectedEntries, ...(explicitlySelected ? [explicitlySelected] : [])]) fullEntries.set(entry.id, Object.freeze({ ...entry }));
   trustedCandidateViews.set(view, Object.freeze({
@@ -508,7 +526,7 @@ function projectCandidateSnapshotEntry(entry) {
     : entry.observation_state !== "explicit"
       ? "先用普通语言询问用户是否允许继续观察"
       : ["medium", "high"].includes(entry.risk_tier)
-        ? "在下一次合适的真实任务中核验证据，再由 Level 3 向用户展示完整预览并取得明确确认"
+        ? "在下一次合适的真实任务中核验证据，再做一次定向复核并向用户展示完整预览"
         : "在下一次合适的真实任务中继续验证，满足政策后再向用户展示可撤销的保留建议";
   return Object.freeze({
     id: entry.id, title: entry.title, summary: entry.summary, status: entry.status,
@@ -542,11 +560,17 @@ export function projectCandidatesForOperationalSnapshot(repository, {
   if (!(requiredSourceRefs instanceof Set) || typeof onIssue !== "function") fail("operational candidate projection requires bounded isolation controls");
   const identity = readTrustedInstanceIdentity(repository, instanceContext);
   if (!identity) fail("operational candidate projection lacks trusted instance identity");
-  const indexRead = readIndexSnapshot(repository);
-  const parsed = parseArrayTableDocument(indexRead.text, "candidates", "candidate index");
-  const index = { ...parsed.root, candidates: parsed.entries };
-  if (!validateCandidateIndexMetadata(index, { expectedInstanceId: identity.instanceId, actualFileBytes: indexRead.fileBytes })) {
-    fail("operational candidate projection found an invalid index");
+  const indexRef = "instance/evolution/index.toml";
+  let index;
+  try {
+    const indexRead = readIndexSnapshot(repository);
+    const parsed = parseArrayTableDocument(indexRead.text, "candidates", "candidate index");
+    index = { ...parsed.root, candidates: parsed.entries };
+    if (!validateCandidateIndexMetadata(index, { expectedInstanceId: identity.instanceId, actualFileBytes: indexRead.fileBytes })) throw new Error("invalid candidate index");
+  } catch (error) {
+    if (requiredSourceRefs.has(indexRef)) throw error;
+    onIssue({ area: "evolution", sourceRef: indexRef, code: "candidate-index-uninitialized-or-invalid" });
+    index = { candidates: [] };
   }
   const projected = [];
   const indexedRefs = new Set(index.candidates.map((entry) => entry.source_ref.toLowerCase()));

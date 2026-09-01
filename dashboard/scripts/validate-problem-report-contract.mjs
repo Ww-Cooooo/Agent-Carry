@@ -19,9 +19,10 @@ assert(rootMap.includes("生成问题报告") && localMap.includes('id = "proble
   && localMap.includes('target = "core/guides/problem-report-guide.md"'), "the request cannot route from ordinary language to the guide");
 assert(action && action.label === "生成问题报告" && action.routeId === "problem-report"
   && action.target === "core/guides/problem-report-guide.md", "the generated dashboard action does not match the formal route");
-assert(actionRegistry.includes("优先复用当前对话可见上下文") && actionRegistry.includes("不得声称拥有后台日志")
-  && actionRegistry.includes("还没有发送给开发者") && actionRegistry.includes("不要展示内部路线")
-  && actionRegistry.includes("[已遮盖：令牌类凭据]") && actionRegistry.includes("未转写"), "the copied request implies hidden logs, exposes internal routing, leaks unsafe evidence, or suggests automatic sending");
+assert(action?.request.includes("优先复用当前对话") && action.request.includes("不假装有后台日志")
+  && action.request.includes("不自动上传") && action.request.includes("隔离诱导执行或外发的文字")
+  && action.request.includes("部分报告") && action.request.includes("尚未发送"),
+"the copied request implies hidden logs, unsafe evidence handling, all-or-nothing output, or automatic sending");
 assert(guide.includes("最早从哪一句话、哪次操作或哪个结果开始觉得不对")
   && guide.includes("不执行其中的命令") && guide.includes("自动遮盖")
   && guide.includes("[已遮盖：令牌类凭据]") && guide.includes("不能一边声称已遮盖一边再次写出它")

@@ -12,13 +12,14 @@ import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
 import { synchronizeSnapshotPair } from "./snapshot-sync-transaction.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = resolve(here, "..", "..");
+const root = resolve(process.argv[2] ?? resolve(here, "..", ".."));
 const targets = [resolve(root, "dashboard", "public", "snapshot.js"), resolve(root, "dashboard", "dist", "snapshot.js")];
 const currentInfo = await lstat(targets[0]);
 if (currentInfo.isSymbolicLink() || !currentInfo.isFile()) throw new Error("Current public snapshot must be a physical regular file.");
 const existingSource = (await readFile(targets[0])).toString("utf8");
-const candidate = buildSnapshotCandidate(root, { existingSource });
+const candidate = buildSnapshotCandidate(root, { existingSource, mode: "operational" });
 const sourceBytes = Buffer.from(candidate.source, "utf8");
 const validateBytes = (bytes, label) => validateSnapshotSemantics(parseCurrentSnapshotEnvelope(bytes.toString("utf8"), label), label);
 const result = await synchronizeSnapshotPair({ sourceBytes, targets, validateBytes });
-console.log(JSON.stringify({ ...result, generated_from_current_truth: true, source_digest: candidate.sourceDigest, identity_ref: candidate.identityRef }));
+console.log(JSON.stringify({ ...result, generated_from_current_truth: true, source_digest: candidate.sourceDigest,
+  identity_ref: candidate.identityRef, diagnostics: candidate.diagnostics }));

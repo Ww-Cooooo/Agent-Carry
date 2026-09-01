@@ -94,6 +94,11 @@ const candidateIndexRootOrder = Object.freeze([
   "schema_version", "index_id", "instance_id", "state", "source_revision", "generated_at", "budget_bytes", "overflow",
   "candidate_count", "indexed_count", "active_count",
 ]);
+const controlRootOrder = Object.freeze([
+  "schema_version", "record_type", "instance_id", "source_revision", "projection_revision", "update_state",
+  "pending_operation_id", "pending_event_id", "pending_signal_id", "pending_trigger_id", "pending_source_ref",
+  "base_revision", "updated_at",
+]);
 const candidateIndexEntryOrder = Object.freeze([
   "id", "title", "summary", "topic_key", "subject_key", "triggers", "aliases", "scope", "conditions", "excludes",
   "target_kind", "target_subtype", "candidate_relation", "status", "observation_state", "observation_basis", "risk_tier",
@@ -661,6 +666,31 @@ function existingOperationalRecoveryRoute() {
 export function operationalDerivedStateGate(repositoryReal, operation, {
   currentCandidateId = "", currentCandidateSourceRef = "", currentSignalId = "", currentSignalSourceRef = "",
 } = {}) {
+  // Learning capture owns a durable source before it owns any candidate, signal,
+  // reminder, or dashboard projection. Promotion already carries an explicit
+  // candidate handoff and validates that source itself. Neither normal path
+  // should scan and rewrite every derived record before it can continue.
+  if (["learning-capture-plan", "learning-promotion"].includes(operation)) {
+    try {
+      const manifestRead = stableRead(repositoryReal, MANIFEST_REF, 2560);
+      const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
+      if (manifest.root.state !== "instance") throw new Error("instantiated instance required");
+      return Object.freeze({ proceed: true, repair: Object.freeze({
+        decision: "operational-source-first-route", attempted: false,
+        repairedTargetCount: 0, executable: false,
+      }) });
+    } catch {
+      const userReport = derivedStateUserReport("source-truth-invalid");
+      return Object.freeze({
+        proceed: false,
+        result: deepFreeze({
+          decision: `${operation}-hard-stop-denied`, reason: "instance-source-truth-invalid",
+          executable: false, ordinaryTasksContinue: false,
+          pausedCapabilities: Object.freeze([operation]), userReport,
+        }),
+      });
+    }
+  }
   try {
     const manifestRead = stableRead(repositoryReal, MANIFEST_REF, 2560);
     const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
@@ -733,9 +763,25 @@ function readStrictDerivedIdentity(repositoryReal) {
   const manifest = validateInstanceManifestStructure(parseSectionedToml(manifestRead.text, "instance manifest"));
   if (manifest.root.state !== "instance") fail("derived operational repair requires an instantiated manifest");
   const controlRead = stableRead(repositoryReal, CONTROL_REF, CONTROL_MAX_BYTES);
-  const control = validateControl(rootOnly(controlRead.text, "signal control"), manifest.root.instance_id);
+  const sourceControl = rootOnly(controlRead.text, "signal control");
+  let control; let controlNeedsInitialization = false;
+  try { control = validateControl(sourceControl, manifest.root.instance_id); }
+  catch {
+    const pristineTemplate = exactKeys(sourceControl, controlFields)
+      && sourceControl.schema_version === 1 && sourceControl.record_type === "cross-session-signal-control"
+      && sourceControl.instance_id === "template" && sourceControl.source_revision === 0
+      && sourceControl.projection_revision === 0 && sourceControl.update_state === "clean"
+      && sourceControl.base_revision === 0 && sourceControl.updated_at === ""
+      && ["pending_operation_id", "pending_event_id", "pending_signal_id", "pending_trigger_id", "pending_source_ref"]
+        .every((field) => sourceControl[field] === "");
+    if (!pristineTemplate) throw new Error("signal control does not match this instance");
+    control = validateControl({ ...sourceControl, instance_id: manifest.root.instance_id,
+      updated_at: manifest.root.created_at }, manifest.root.instance_id);
+    controlNeedsInitialization = true;
+  }
   if (control.update_state !== "clean") fail("derived operational repair cannot rewrite a pending or recovery-required signal transaction");
-  return Object.freeze({ instanceId: manifest.root.instance_id, control, manifestRead, controlRead });
+  return Object.freeze({ instanceId: manifest.root.instance_id, control, controlNeedsInitialization,
+    manifestRead, manifest, controlRead });
 }
 
 function candidateSourcesForRepair(repositoryReal, entries) {
@@ -815,14 +861,21 @@ function buildDerivedRepairCandidates(repositoryReal) {
   const identity = readStrictDerivedIdentity(repositoryReal);
   const candidateRead = stableRead(repositoryReal, CANDIDATE_INDEX_REF, CANDIDATE_INDEX_BUDGET_BYTES);
   const candidateParsed = parseArrayTableDocument(candidateRead.text, "candidates", "candidate index repair source");
+  const pristineCandidateIndex = exactKeys(candidateParsed.root, candidateIndexRootFields)
+    && candidateParsed.root.instance_id === "template" && candidateParsed.root.state === "empty"
+    && candidateParsed.root.source_revision === 0 && candidateParsed.root.generated_at === ""
+    && candidateParsed.root.budget_bytes === CANDIDATE_INDEX_BUDGET_BYTES && candidateParsed.root.overflow === false
+    && candidateParsed.root.candidate_count === 0 && candidateParsed.root.indexed_count === 0
+    && candidateParsed.root.active_count === 0 && candidateParsed.entries.length === 0;
   if (!exactKeys(candidateParsed.root, candidateIndexRootFields) || candidateParsed.root.overflow !== false
     || !safeInteger(candidateParsed.root.source_revision)
-    || !strictZonedDate(candidateParsed.root.generated_at)) fail("candidate index has non-repairable root metadata");
+    || (!pristineCandidateIndex && !strictZonedDate(candidateParsed.root.generated_at))) fail("candidate index has non-repairable root metadata");
   const candidateSources = candidateSourcesForRepair(repositoryReal, candidateParsed.entries);
   const candidateRoot = {
     schema_version: 1, index_id: "evolution-candidates", instance_id: identity.instanceId,
     state: candidateParsed.entries.length === 0 ? "empty" : "current",
-    source_revision: candidateParsed.root.source_revision, generated_at: candidateParsed.root.generated_at,
+    source_revision: candidateParsed.root.source_revision,
+    generated_at: pristineCandidateIndex ? identity.manifest.root.created_at : candidateParsed.root.generated_at,
     budget_bytes: CANDIDATE_INDEX_BUDGET_BYTES, overflow: false,
     candidate_count: candidateParsed.entries.length, indexed_count: candidateParsed.entries.length,
     active_count: candidateParsed.entries.filter(candidateEntryActive).length,
@@ -876,7 +929,12 @@ function buildDerivedRepairCandidates(repositoryReal) {
   const signalMap = validateSignalMap(parseArrayTableDocument(signalProposal.text, "signals", "canonical signal projection repair proposal"),
     identity.instanceId, signalProposal.byteLength);
   verifyProjectionClosure(identity.control, signalMap, timeMap);
-  return Object.freeze({ identity, candidates: Object.freeze([candidateProposal, timeProposal, signalProposal]) });
+  const controlProposal = identity.controlNeedsInitialization
+    ? proposedSnapshot(CONTROL_REF, `${serializeCanonicalRoot(identity.control, controlRootOrder, "signal control")}\n`, CONTROL_MAX_BYTES)
+    : null;
+  return Object.freeze({ identity, candidates: Object.freeze([
+    ...(controlProposal ? [controlProposal] : []), candidateProposal, timeProposal, signalProposal,
+  ]) });
 }
 
 function installDerivedRepairCandidates(repositoryReal, proposal, { testFaultAfterInstall = 0 } = {}) {

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -9,6 +10,7 @@ import {
   instanceComponentPlanIsFresh,
   planInstanceComponentUpgrade,
 } from "./instance-component-contract.mjs";
+import { auditCopiedInstanceRuntimeBoundary } from "./copied-instance-runtime-boundary.mjs";
 
 const assert = (condition, message) => { if (!condition) throw new Error(`Instance component self-test failed: ${message}`); };
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -348,11 +350,112 @@ state = "active"
     && conflictAdoption.userReport.requiresUserDecision,
   "an explicit adoption conflict was treated as a routine migration or global crash");
 
+  const runtimeSource = resolve(fixture, "runtime-boundary-source");
+  const runtimeCandidate = resolve(fixture, "runtime-boundary-candidate");
+  const sharedRuntime = resolve(fixture, "runtime-boundary-shared");
+  const runtimeBindingRef = ".assistant-local/tools/runtime-config.json";
+  const runtimeBinding = resolve(runtimeCandidate, ...runtimeBindingRef.split("/"));
+  const sourceRuntime = resolve(runtimeSource, ".assistant-local/tools/video-runtime");
+  const candidateRuntime = resolve(runtimeCandidate, ".assistant-local/tools/video-runtime");
+  mkdirSync(sourceRuntime, { recursive: true });
+  mkdirSync(candidateRuntime, { recursive: true });
+  mkdirSync(sharedRuntime, { recursive: true });
+  mkdirSync(dirname(runtimeBinding), { recursive: true });
+  writeFileSync(resolve(sourceRuntime, "cache.db"), "source-cache-must-not-change\n");
+  writeFileSync(runtimeBinding, `${JSON.stringify({ paths: { vendor: sourceRuntime, executable: resolve(sourceRuntime, "tool.exe") } }, null, 2)}\n`);
+  const sourceCacheBefore = readFileSync(resolve(sourceRuntime, "cache.db"));
+  const copiedBoundary = auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeBindingRef],
+  });
+  const copiedBoundaryAgain = auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeBindingRef],
+  });
+  assert(copiedBoundary.decision === "runtime-execution-component-isolated" && !copiedBoundary.executionAllowed
+    && copiedBoundary.affectedScope === "current-component-only" && copiedBoundary.capabilityStatus === "limited"
+    && copiedBoundary.counts.sourceReferenceCount === 2
+    && copiedBoundary.issues.every((item) => item.code === "binding-reaches-source-instance")
+    && copiedBoundary.userReport.impact.includes("其他无关能力仍可继续")
+    && copiedBoundary.userReport.dataSafety.includes("没有启动")
+    && JSON.stringify(copiedBoundaryAgain) === JSON.stringify(copiedBoundary)
+    && Buffer.compare(sourceCacheBefore, readFileSync(resolve(sourceRuntime, "cache.db"))) === 0,
+  "a copied instance could execute a runtime that still reaches the source instance, or the read-only result was unstable");
+
+  writeFileSync(runtimeBinding, `${JSON.stringify({ paths: { vendor: candidateRuntime, executable: resolve(candidateRuntime, "tool.exe") } }, null, 2)}\n`);
+  const reboundBoundary = auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeBindingRef],
+  });
+  assert(reboundBoundary.decision === "runtime-execution-compatible" && reboundBoundary.executionAllowed
+    && reboundBoundary.counts.candidateReferenceCount === 2 && reboundBoundary.issues.length === 0,
+  "a candidate-private runtime binding could not pass the copied-instance boundary");
+  const runtimeCli = spawnSync(process.execPath, [
+    resolve(repository, "dashboard/scripts/copied-instance-runtime-boundary.mjs"),
+    "--source", runtimeSource,
+    "--candidate", runtimeCandidate,
+    "--binding", runtimeBindingRef,
+  ], { encoding: "utf8" });
+  const runtimeCliResult = runtimeCli.status === 0 ? JSON.parse(runtimeCli.stdout) : null;
+  assert(runtimeCliResult?.executionAllowed === true && runtimeCliResult.decision === "runtime-execution-compatible"
+    && runtimeCli.stderr === "", `the bundled runtime-boundary CLI did not expose the validated preflight: ${runtimeCli.stderr}`);
+
+  const runtimeTomlRef = ".assistant-local/tools/runtime-binding.toml";
+  writeFileSync(resolve(runtimeCandidate, ...runtimeTomlRef.split("/")), `model = ${JSON.stringify(resolve(candidateRuntime, "model.bin"))}\n`);
+  const tomlBoundary = auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeTomlRef],
+  });
+  assert(tomlBoundary.executionAllowed && tomlBoundary.counts.candidateReferenceCount === 1,
+    "a bounded TOML candidate-private binding could not pass the copied-instance boundary");
+
+  writeFileSync(runtimeBinding, `${JSON.stringify({ paths: { executable: resolve(sharedRuntime, "tool.exe") } }, null, 2)}\n`);
+  const unreviewedBoundary = auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeBindingRef],
+  });
+  const reviewedBoundary = auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeBindingRef],
+    allowedExternalRoots: [sharedRuntime],
+  });
+  assert(!unreviewedBoundary.executionAllowed && unreviewedBoundary.counts.unreviewedExternalCount === 1
+    && reviewedBoundary.executionAllowed && reviewedBoundary.counts.allowedExternalReferenceCount === 1
+    && Buffer.compare(sourceCacheBefore, readFileSync(resolve(sourceRuntime, "cache.db"))) === 0,
+  "an undeclared shared runtime was accepted, a reviewed external boundary was rejected, or the source cache changed");
+
+  writeFileSync(runtimeBinding, `${JSON.stringify({ paths: { cache: "../runtime-cache" } }, null, 2)}\n`);
+  const relativeBoundary = auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeBindingRef],
+  });
+  assert(!relativeBoundary.executionAllowed && relativeBoundary.counts.dynamicReferenceCount === 1
+    && relativeBoundary.issues[0]?.code === "binding-relative-or-dynamic-path-unresolved"
+    && relativeBoundary.userReport.impact.includes("动态或相对路径"),
+  "an unresolved relative runtime path was accepted or hidden from the user report");
+  expectFailure(() => auditCopiedInstanceRuntimeBoundary({
+    sourceRoot: runtimeSource,
+    candidateRoot: runtimeCandidate,
+    bindingRefs: [runtimeBindingRef],
+    allowedExternalRoots: [resolve(fixture, "missing-shared-runtime")],
+  }), "does not exist", "a nonexistent external runtime was accepted as reviewed");
+
   for (const [ref, fragments] of [
     ["AGENTS.md", ["INSTANCE_EVOLUTION_COMPATIBILITY.md", "不增加一轮用户确认", "单项故障局部隔离", "自然语言说明影响"]],
     ["assistant.toml", ["instance/components/registry.toml", "never-read-or-enumerate-at-ordinary-startup", "compatibility_registration_adds_user_confirmation = false", "preserve-and-isolate-with-preview"]],
-    ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", ["一次性完成活跃资源纳管", "它不是软件商店", "不触发全产品回归", "auto-repairable", "migration-needed", "component-isolated", "user-decision-needed"]],
-    ["core/schemas/instance-component.schema.md", ["普通启动不得读取注册表", "stop-and-preview", "second_run", "严格发布审计", "自然语言用户报告"]],
+    ["core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md", ["一次性完成活跃资源纳管", "它不是软件商店", "不触发全产品回归", "auto-repairable", "migration-needed", "component-isolated", "user-decision-needed", "复制实例目录只复制了文件", "copied-instance-runtime-boundary.mjs"]],
+    ["core/schemas/instance-component.schema.md", ["普通启动和首次创建都不读取注册表", "stop-and-preview", "second_run", "严格发布审计", "自然语言用户报告", "目录副本存在", "当前组件标为 `limited`"]],
+    ["core/schemas/extension-manifest.schema.md", ["复制目录本身不构成运行时隔离", "copied-instance-runtime-boundary.mjs", "源实例字节不变"]],
+    ["core/guides/upgrade-guide.md", ["隔离目录只证明候选文件与正式实例分开", "本次明确使用的少量绑定文件", "用户也不需要手工运行它"]],
+    ["core/protocols/RESULT_VALIDATION.md", ["本次明确绑定能够到达的外部可写状态", "把该项记为 `limited`"]],
+    ["core/protocols/TASK_ORCHESTRATION_SOP.md", ["对复制实例中会启动本机软件的组件", "失败只暂停该组件", "纯文档和不启动本机工具的任务不增加这一步"]],
     ["core/maps/assistant-maintenance.toml", ["可确定差异自动修复", "单项故障局部隔离并自然语言汇报"]],
   ]) {
     const source = readFileSync(resolve(repository, ref), "utf8");
@@ -373,7 +476,7 @@ state = "active"
   assert(compatibilityDependencies && !compatibilityDependencies.includes("component-change") && !compatibilityDependencies.includes("upgrade-system"),
     "the compatibility component created a direct component-change or upgrade-system self-governance loop");
 
-  console.log("Instance component contract passed strict audit, tolerant representation, transparent repair, local isolation, ownership, no-extra-confirmation, interface, adoption, drift, device-local, dependency-reference and deterministic-plan checks.");
+  console.log("Instance component contract passed strict audit, tolerant representation, transparent repair, local isolation, copied-runtime boundary, ownership, no-extra-confirmation, interface, adoption, drift, device-local, dependency-reference and deterministic-plan checks.");
 } finally {
   rmSync(fixture, { recursive: true, force: true });
 }

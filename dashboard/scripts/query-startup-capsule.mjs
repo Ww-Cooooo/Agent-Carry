@@ -7,8 +7,8 @@ import { syncStartupCapsule } from "./sync-startup-capsule.mjs";
 
 export const modelVisibleStartupFiles = Object.freeze(["AGENTS.md", "BOOTSTRAP.md", "core/maps/root-map.toml"]);
 
-function startupRepairReport({ repaired }) {
-  return Object.freeze(repaired ? {
+function startupRepairReport() {
+  return Object.freeze({
     state: "repaired",
     attempt_count: 1,
     impact: "只重建了启动胶囊这一份派生文件。",
@@ -17,15 +17,70 @@ function startupRepairReport({ repaired }) {
     still_usable: "普通启动和其他能力可以继续。",
     next_step: "无需额外操作；继续当前任务即可。",
     user_summary: "发现启动胶囊与正式清单不一致，已在本机自动重建并验证通过；实例数据没有改动，现在继续启动。",
-  } : {
-    state: "repair-failed",
-    attempt_count: 1,
-    impact: "启动胶囊仍未通过严格回读，本次普通启动暂未继续。",
-    data_state: "实例清单和用户资产未改动；原胶囊已保留或恢复。",
-    recoverability: "问题仍局限在启动胶囊，可再次检查真源和文件状态。",
-    still_usable: "磁盘上的实例数据仍在，但当前启动路由不能把未验证状态当成有效。",
-    next_step: "让 Agent 检查启动胶囊文件状态和正式清单，不要删除或猜测重建其他资产。",
-    user_summary: "启动胶囊自动修复没有通过验证；实例清单和用户资产没有改动。请让 Agent 只检查启动胶囊和正式清单。",
+  });
+}
+
+function startupFallbackReport({ repairAttempted }) {
+  return Object.freeze({
+    state: "fallback-active",
+    attempt_count: repairAttempted ? 1 : 0,
+    impact: "启动胶囊暂未恢复；本次改用严格清单生成的最小只读启动投影。",
+    data_state: "实例清单和用户资产没有改动；原胶囊已保留或恢复。",
+    recoverability: "问题仍局限在启动胶囊，可稍后单独重建。",
+    still_usable: "普通对话、查看信息和不需要持久写入的任务可以继续。",
+    next_step: "继续当前任务；准备持久保存、升级或外发前，让 Agent 只重试启动胶囊修复。",
+    user_summary: "启动胶囊暂未修复，但正式清单有效；我已切换到最小只读启动方式继续，用户数据没有改动。持久变更前会先重试胶囊修复。",
+  });
+}
+
+const allowedSignalFields = ["decision", "reason", "operationId", "sourceRevision", "projectionRevision", "nextWakeupAt", "nextWakeupRef",
+  "deferredSignalId", "signalId", "routeId", "selectionPolicy", "overflow", "scheduledCount", "bodyReads"];
+
+function signalSummary(root) {
+  const signal = inspectCrossSessionSignalStartup(root);
+  if (signal.decision === "startup-recovery-required") {
+    return Object.freeze({
+      decision: "startup-signal-degraded",
+      reason: signal.reason,
+      affectedScope: "cross-session-reminders-only",
+      ordinaryWorkAllowed: true,
+      bodyReads: signal.bodyReads ?? 0,
+      userSummary: "跨会话提醒暂未初始化或需要修复；普通对话、当前任务、记忆召回和其他能力继续可用。",
+      nextStep: "先继续当前任务；真正需要跨会话提醒时再初始化或修复这一项。",
+    });
+  }
+  return Object.freeze(Object.fromEntries(allowedSignalFields
+    .filter((field) => Object.hasOwn(signal, field))
+    .map((field) => [field, signal[field]])));
+}
+
+function degradedStartupProjection(root, reason, { repairAttempted = false } = {}) {
+  try {
+    const expected = buildStartupCapsule(root);
+    return Object.freeze({
+      decision: "startup-degraded",
+      reason,
+      executable: false,
+      persistence_limited: true,
+      ...expected.values,
+      repair: startupFallbackReport({ repairAttempted }),
+      signal: signalSummary(root),
+    });
+  } catch {
+    return null;
+  }
+}
+
+function sourceRepairRequired(reason = "manifest-or-core-contract-invalid") {
+  return Object.freeze({
+    decision: "startup-repair-required",
+    reason,
+    repairable: false,
+    executable: false,
+    affected_scope: "identity-dependent-persistent-actions",
+    ordinary_work_allowed: true,
+    user_summary: "启动身份真源需要修复；我不会猜测身份或继续持久写入，但普通对话、解释问题和不依赖实例身份的只读协助仍可继续。",
+    next_step: "先继续说明当前目标；准备保存、升级或外发前，只修复实例清单或核心身份这一处。",
   });
 }
 
@@ -38,18 +93,16 @@ export function buildVerifiedStartupProjection(repository, { repairDerived = fal
       syncStartupCapsule(root, { write: true, testFaultAfterInstall });
       capsule = inspectStartupCapsule(root);
       if (capsule.decision !== "startup-capsule-valid") throw new Error("startup capsule did not validate after one repair attempt");
-      repair = startupRepairReport({ repaired: true });
+      repair = startupRepairReport();
     } catch {
-      return Object.freeze({ decision: "startup-repair-required", reason: "capsule-auto-repair-failed",
-        repairable: true, executable: false, repair: startupRepairReport({ repaired: false }) });
+      return degradedStartupProjection(root, "capsule-auto-repair-failed", { repairAttempted: true })
+        ?? sourceRepairRequired();
     }
   }
-  if (capsule.decision !== "startup-capsule-valid") return capsule;
-  const signal = inspectCrossSessionSignalStartup(root);
-  const allowedSignalFields = ["decision", "reason", "operationId", "sourceRevision", "projectionRevision", "nextWakeupAt", "nextWakeupRef",
-    "deferredSignalId", "signalId", "routeId", "selectionPolicy", "overflow", "scheduledCount", "bodyReads"];
-  const signalSummary = Object.fromEntries(allowedSignalFields.filter((field) => Object.hasOwn(signal, field)).map((field) => [field, signal[field]]));
-  return Object.freeze({ ...capsule, ...(repair ? { repair } : {}), signal: Object.freeze(signalSummary) });
+  if (capsule.decision !== "startup-capsule-valid") {
+    return degradedStartupProjection(root, capsule.reason) ?? sourceRepairRequired(capsule.reason);
+  }
+  return Object.freeze({ ...capsule, ...(repair ? { repair } : {}), signal: signalSummary(root) });
 }
 
 export function measureModelVisibleStartupContext(repository) {

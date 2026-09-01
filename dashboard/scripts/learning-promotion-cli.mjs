@@ -53,7 +53,8 @@ function summarize(result) {
     "decision", "reason", "executable", "transactionId", "transactionNonce", "planDigest", "status", "updated",
     "idempotent", "candidateId", "formalId", "writeTargetCount", "stepCount", "relatedSignalCount",
     "authorizationBasis", "contentIncluded", "checkpoint", "writeCount", "restoredTargetCount", "resumable",
-    "closedState", "recoveryEvidencePreserved", "inspectedCount", "removedPreparedCount", "preservedCount",
+    "closedState", "recoveryEvidencePreserved", "projectionPending", "ordinaryTasksContinue",
+    "inspectedCount", "removedPreparedCount", "preservedCount",
   ];
   const summary = Object.fromEntries(allowed.filter((field) => Object.hasOwn(result ?? {}, field))
     .map((field) => [field, field === "reason" ? boundedReason(result[field]) : result[field]]));
@@ -71,7 +72,7 @@ function run() {
   if (!requestPath) throw new Error(`${command} requires one bounded request JSON file`);
   const request = readBoundedJson(requestPath, `${command} request`);
   if (command === "prepare-handoff") {
-    // This command only reuses an already persisted and cross-checked Level 3
+    // This command only reuses an already persisted and cross-checked review
     // handoff. It never treats request JSON as proof of a current-user role.
     return preparePersistentPromotionFromHandoff(repositoryReal, request);
   }

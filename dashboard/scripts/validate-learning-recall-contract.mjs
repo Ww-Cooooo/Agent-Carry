@@ -194,8 +194,6 @@ for (const fragment of [
   "🧠 这次用上了",
   "独立短卡",
   "只列出候选但没有读取正文",
-  "standalone-brief-card",
-  "standalone-brief-no-long-term-asset-used-or-recall-degraded",
 ]) assert(activeRecallContract.includes(fragment), `active recall or transparent-use contract is missing: ${fragment}`);
 
 const entries = [

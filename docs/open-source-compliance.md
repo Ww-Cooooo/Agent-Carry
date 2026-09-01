@@ -63,7 +63,8 @@ Codex、Claude Code、DeepSeek、QoderWork 等名称只用于兼容示例。项�
 2. `npm run check:compliance`：检查项目许可证、已审核 SPDX 集合、shadcn/ui 来源映射、字体来源与转换证据、许可证摘要，以及未登记二进制文件和误提交的 `node_modules`。普通本地构建只允许忽略安装工具实际放在 `dashboard/node_modules/` 的依赖，根目录或其他位置的同名目录仍会失败。
 
 该检查支持两种明确入口：在 Git 工作区中使用 Git 的公开文件集合；在 GitHub 自动生成、没有 `.git` 元数据的源码 ZIP 中，使用 `dashboard/public/licenses/public-distribution-files.json` 这份严格排序的公开分发清单。普通本地构建使用显式的本地依赖模式，只忽略安装工具实际放在 `dashboard/node_modules/` 的依赖；正式候选与源码归档发布门使用严格归档模式，遍历整棵目录，并拒绝维护者私密目录、非占位的 `.assistant-*` 内容、被写入正文的非空 `.gitkeep`、任意位置的 `node_modules`、未登记普通文件、符号链接和其他非常规文件，不能先忽略再宣称整包干净。公开文件发生变化时，维护者先运行 `npm run compliance:manifest` 更新清单，再运行正式构建；清单缺失、损坏、重复、乱序、含危险路径或与候选不一致都会失败关闭。
-3. `npm run build`：在前两项通过后生成离线看板，并再次确认最终 `dist` 包含字体、依赖声明、改写源码许可证且没有远程资源。
+3. `npm run build`：运行少量产品生命线并生成离线看板，确认最终 `dist` 没有远程资源。它不再把全部专项检查和历史发布证明塞进每次开发构建。
+4. `npm run check:release`：只在准备公开候选时运行当前版本身份、私密边界、许可证、合规和正式空模板检查。历史版本正文不因普通开发改动反复参加构建。
 
 README 等文档中的项目截图也属于受管资产。门禁会根据 `docs/assets/project-assets.json` 核对路径、SHA-256、生成来源和 Apache-2.0 声明，避免个人实例截图或来源不明的视觉素材被顺手提交。
 

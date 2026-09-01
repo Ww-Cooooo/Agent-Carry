@@ -7,7 +7,7 @@ const dashboardDirectory = resolve(scriptDirectory, "..");
 const repositoryDirectory = resolve(dashboardDirectory, "..");
 export const registryPath = resolve(repositoryDirectory, "core", "maps", "dashboard-actions.toml");
 export const generatedPath = resolve(dashboardDirectory, "src", "generated", "dashboard-actions.json");
-const allowedFields = new Set(["action_id", "label", "root_category", "purpose", "route_id", "target", "writes_files", "template_only", "confirmation_point", "forbidden", "result_fields", "request_template"]);
+const allowedFields = new Set(["action_id", "label", "root_category", "purpose", "route_id", "target", "writes_files", "template_only", "confirmation_point", "request_template"]);
 
 function fail(message) { throw new Error(`Dashboard action generation failed: ${message}`); }
 function parseValue(raw, key) {
@@ -38,9 +38,13 @@ export function compileDashboardActions(source = readFileSync(registryPath, "utf
   const actions = starts.map((start, index) => {
     const values = parseBlock(normalized.slice(start.index + start[0].length, starts[index + 1]?.index ?? normalized.length), `action ${index + 1}`);
     for (const field of ["action_id", "label", "root_category", "route_id", "target", "request_template"]) if (typeof values[field] !== "string" || values[field].length === 0) fail(`action ${index + 1} lacks ${field}`);
-    if (!Array.isArray(values.forbidden) || values.forbidden.length === 0 || !Array.isArray(values.result_fields) || values.result_fields.length === 0) fail(`${values.action_id} lacks formal forbidden/result arrays`);
     if (!["domain-lifecycle", "local-operations", "assistant-maintenance"].includes(values.root_category)) fail(`${values.action_id} has an unknown root category`);
-    for (const anchor of [values.action_id, values.root_category, values.route_id, values.target]) if (!values.request_template.includes(anchor)) fail(`${values.action_id} request is missing anchor ${anchor}`);
+    // Routing metadata is already carried by this registry. The user-facing
+    // request only needs the action identity and plain-language intent; copying
+    // every path and protocol anchor into it creates a second source of truth.
+    if (!values.request_template.includes(values.action_id) || values.request_template.length > 3000) {
+      fail(`${values.action_id} request must identify the action and stay bounded`);
+    }
     return {
       action_id: values.action_id,
       label: values.label,

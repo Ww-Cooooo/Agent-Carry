@@ -48,6 +48,7 @@ const SIGNAL_MAP_REF = "instance/maps/signal-map.toml";
 const TIME_MAP_REF = "instance/maps/time-trigger-map.toml";
 const PUBLIC_SNAPSHOT_REF = "dashboard/public/snapshot.js";
 const DIST_SNAPSHOT_REF = "dashboard/dist/snapshot.js";
+const PROMOTION_CORE_STEP_COUNT = 3;
 const limits = Object.freeze({
   manifest: 16 * 1024,
   candidate: 32 * 1024,
@@ -78,6 +79,10 @@ const payloadAuthorizationFields = new Set([
 ]);
 const payloadReviewFields = new Set([
   "reason", "required_level", "exact_preview_may_reuse_authorization",
+  "material_change_requires_new_confirmation", "result_validation_claimed", "executable",
+]);
+const currentPayloadReviewFields = new Set([
+  "reason", "recommended_level", "exact_preview_may_reuse_authorization",
   "material_change_requires_new_confirmation", "result_validation_claimed", "executable",
 ]);
 const controlFields = new Set([
@@ -125,8 +130,9 @@ const planFields = new Set([
   "schema_version", "plan_type", "transaction_id", "repository_binding", "instance_id", "manifest_digest",
   "candidate_id", "candidate_revision", "candidate_source_ref", "candidate_source_digest", "candidate_index_digest",
   "authorization", "formal_id", "formal_kind", "formal_subtype", "formal_target", "formal_preview_digest",
-  "transaction_at", "read_bindings", "blobs", "preimages", "steps", "final_digests", "rollback", "write_set", "plan_digest",
+  "transaction_at", "projection_issues", "read_bindings", "blobs", "preimages", "steps", "final_digests", "rollback", "write_set", "plan_digest",
 ]);
+const legacyPlanFields = new Set([...planFields].filter((field) => field !== "projection_issues"));
 const authorizationFields = new Set([
   "basis", "message_ref", "message_digest", "confirmed_at", "review_payload_id", "review_payload_ref",
   "review_payload_digest", "formal_preview_digest", "reuse_scope", "current_user_role_evidence",
@@ -166,6 +172,7 @@ function noPoisonKeys(value) {
   if (Object.keys(value).some((key) => ["__proto__", "prototype", "constructor"].includes(key))) return false;
   return Object.values(value).every(noPoisonKeys);
 }
+function projectionIssuesOf(plan) { return Array.isArray(plan?.projection_issues) ? plan.projection_issues : []; }
 function decode(buffer, label) {
   try { return utf8.decode(buffer); } catch { throw new Error(`${label} is not valid UTF-8`); }
 }
@@ -306,15 +313,19 @@ function parseHandoff(repositoryReal, request, { proposedFormalPreview = undefin
   const candidateSource = candidateParsed.values;
   if (candidateSource.source_revision !== request.candidate_revision
     || !Array.isArray(candidateSource.source_refs) || !candidateSource.source_refs.includes(request.review_payload_id)) {
-    throw new Error("candidate does not close over the requested Level 3 payload");
+    throw new Error("candidate does not close over the requested review payload");
   }
   const payloadRead = stableRead(repositoryReal, request.review_payload_ref, limits.payload);
-  if (payloadRead.digest !== request.review_payload_digest) throw new Error("Level 3 payload digest does not match the reviewed handoff");
+  if (payloadRead.digest !== request.review_payload_digest) throw new Error("review payload digest does not match the reviewed handoff");
   let payload;
-  try { payload = JSON.parse(payloadRead.text); } catch { throw new Error("Level 3 payload is not strict JSON"); }
+  try { payload = JSON.parse(payloadRead.text); } catch { throw new Error("review payload is not strict JSON"); }
+  const reviewShapeValid = exactKeys(payload?.review, currentPayloadReviewFields)
+    || exactKeys(payload?.review, payloadReviewFields);
+  const reviewLevel = payload?.review?.recommended_level ?? payload?.review?.required_level;
   if (!noPoisonKeys(payload) || !exactKeys(payload, payloadFields) || !exactKeys(payload.authorization, payloadAuthorizationFields)
-    || !exactKeys(payload.review, payloadReviewFields) || payload.schema_version !== 1
-    || payload.record_type !== "awaiting-level3-learning-review" || payload.state !== "awaiting-level3-review"
+    || !reviewShapeValid || payload.schema_version !== 1
+    || !["awaiting-learning-review", "awaiting-level3-learning-review"].includes(payload.record_type)
+    || !["awaiting-review", "awaiting-level3-review"].includes(payload.state)
     || payload.id !== request.review_payload_id || basename(request.review_payload_ref) !== `${payload.id}.json`
     || payload.candidate_id !== candidate.id || payload.formal_id !== request.formal_id
     || !formalKinds.has(payload.formal_kind) || payload.formal_preview_digest !== request.formal_preview_digest
@@ -322,10 +333,10 @@ function parseHandoff(repositoryReal, request, { proposedFormalPreview = undefin
     || !stableAssetId.test(payload.authorization.message_ref ?? "") || !digestPattern.test(payload.authorization.message_digest ?? "")
     || !strictDate(payload.authorization.message_at) || payload.authorization.content_scope !== "exact-formal-preview-and-user-visible-scope"
     || payload.authorization.exact_content_authorized !== true || payload.authorization.future_actions_authorized !== false
-    || payload.review.required_level !== 3 || payload.review.exact_preview_may_reuse_authorization !== true
+    || reviewLevel !== 3 || payload.review.exact_preview_may_reuse_authorization !== true
     || payload.review.material_change_requires_new_confirmation !== true || payload.review.result_validation_claimed !== false
     || payload.review.executable !== false || !clean(payload.review.reason, 1000, false)) {
-    throw new Error("Level 3 payload identity, authorization, or review boundary is invalid");
+    throw new Error("review payload identity, authorization, or boundary is invalid");
   }
   const authorizedPreview = strictBase64(payload.formal_preview_base64);
   if (!authorizedPreview || authorizedPreview.length === 0 || authorizedPreview.length > limits.formal
@@ -346,11 +357,6 @@ function parseHandoff(repositoryReal, request, { proposedFormalPreview = undefin
     }
   }
   const candidateBody = candidateRead.text.replaceAll("\r\n", "\n").slice(candidateParsed.bodyOffset);
-  const expectedPayloadClosure = `交接载荷 ID：${request.review_payload_id}；相对引用：${request.review_payload_ref}；载荷摘要：${request.review_payload_digest}。`;
-  if (!candidateBody.includes(expectedPayloadClosure)
-    || !candidateBody.includes(`正式预览摘要：${request.formal_preview_digest}`)) {
-    throw new Error("candidate body does not close over the exact payload and formal preview digests");
-  }
   const formalParsed = parseMarkdownFrontmatterHead(authorizedText, "authorized formal preview");
   const asset = formalParsed.values; const body = authorizedText.slice(formalParsed.bodyOffset);
   const targetKindMatches = candidate.targetKind === "preference"
@@ -396,12 +402,12 @@ function parseHandoff(repositoryReal, request, { proposedFormalPreview = undefin
   const route = routeProjection(asset, request.formal_target);
   if (Buffer.byteLength(JSON.stringify(route.route), "utf8") > 2048 || envelope.routeCount + 1 > 96
     || envelope.bytes + route.byte_length > 32768) throw new Error("domain map soft budget cannot accept the direct formal route");
-  return Object.freeze({ decision: "verified-level3-handoff", repositoryReal, manifestRead, manifest, context, envelope,
+  return Object.freeze({ decision: "verified-review-handoff", repositoryReal, manifestRead, manifest, context, envelope,
     maintenanceDigest: trustedMaintenanceStateDigest(repositoryReal, envelope), candidate, candidateTrust, candidateRead,
     candidateSource, candidateBody,
     indexRead, index, entry, payloadRead, payload, authorizedPreview, authorizedText, asset, body, route, targetProof,
     formalPreviewDigest: request.formal_preview_digest, formalTarget: request.formal_target,
-    authorization: Object.freeze({ basis: "verified-existing-level3-handoff", message_ref: payload.authorization.message_ref,
+    authorization: Object.freeze({ basis: "verified-existing-review-handoff", message_ref: payload.authorization.message_ref,
       message_digest: payload.authorization.message_digest, confirmed_at: payload.authorization.message_at,
       review_payload_id: payload.id, review_payload_ref: request.review_payload_ref,
       review_payload_digest: payloadRead.digest, formal_preview_digest: request.formal_preview_digest,
@@ -720,19 +726,10 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
   const signalMapBuffer = Buffer.from(serializeArrayTable(signalRoot, [...signalMapRootFields], "signals",
     remainingSignalEntries, signalMapEntryOrder), "utf8");
   if (timeBuffer.length > limits.timeMap || signalMapBuffer.length > limits.signalMap) throw new Error("closed signal projections exceed their budgets");
-  const eventHex = sha256(`${transactionId}\u0000${handoff.asset.id}`).slice("sha256:".length);
-  const operationId = `operation.promotion.${eventHex.slice(0, 24)}`;
-  const eventId = `event.promotion.${eventHex.slice(24, 48)}`;
-  const firstSignalId = updatedSignals[0]?.root.id ?? "";
-  const pendingControl = { ...control, source_revision: nextRevision, update_state: "pending",
-    pending_operation_id: operationId, pending_event_id: eventId, pending_signal_id: firstSignalId,
-    pending_trigger_id: firstSignalId, pending_source_ref: handoff.entry.source_ref,
-    base_revision: control.projection_revision, updated_at: transactionAt };
-  const cleanControl = { ...pendingControl, projection_revision: nextRevision, update_state: "clean",
+  const cleanControl = { ...control, source_revision: nextRevision, projection_revision: nextRevision, update_state: "clean",
     pending_operation_id: "", pending_event_id: "", pending_signal_id: "", pending_trigger_id: "",
-    pending_source_ref: "", base_revision: nextRevision };
+    pending_source_ref: "", base_revision: nextRevision, updated_at: transactionAt };
   const controlOrder = [...controlFields];
-  const pendingControlBuffer = Buffer.from(`${serializeRoot(pendingControl, controlOrder)}\n`, "utf8");
   const cleanControlBuffer = Buffer.from(`${serializeRoot(cleanControl, controlOrder)}\n`, "utf8");
   const domainRead = stableRead(repositoryReal, handoff.context.domainMapRef, limits.domainMap);
   if (trustedMaintenanceStateDigest(repositoryReal, handoff.envelope) !== handoff.maintenanceDigest
@@ -741,9 +738,8 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
   if (domainBuffer.length > limits.domainMap) throw new Error("domain map hard budget would be exceeded");
   const formalRead = stableRead(repositoryReal, handoff.formalTarget, limits.formal, { allowMissing: true });
   if (formalRead) throw new Error("formal target became occupied");
-  const publicRead = stableRead(repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
-  const distRead = stableRead(repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
-  if (publicRead.digest !== distRead.digest) throw new Error("dashboard public/dist snapshots already drifted");
+  let publicRead = null;
+  let distRead = null;
   const proposed = new Map([
     [handoff.formalTarget, handoff.authorizedPreview],
     [handoff.context.domainMapRef, domainBuffer], [handoff.entry.source_ref, candidateBuffer], [INDEX_REF, indexBuffer],
@@ -752,7 +748,10 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
   ]);
   let projectionRoot;
   let snapshotSource;
+  const projectionIssues = [];
   try {
+    publicRead = stableRead(repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
+    distRead = stableRead(repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
     projectionRoot = createProjectionRoot(repositoryReal, transactionAt);
     const budget = { directories: 0, files: 0 };
     for (const ref of ["assistant.toml", "AGENTS.md", "BOOTSTRAP.md", "core", "instance"])
@@ -776,27 +775,45 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
       mode: "operational", requiredSourceRefs });
     if (second.updated || second.source !== snapshot.source) throw new Error("promotion snapshot is not byte-idempotent");
     snapshotSource = snapshot.source;
-  } finally { if (projectionRoot) removeOwnedProjectionRoot(projectionRoot, repositoryReal); }
-  const snapshotBuffer = Buffer.from(snapshotSource, "utf8");
-  if (snapshotBuffer.length > limits.snapshot) throw new Error("promotion snapshot exceeds its byte envelope");
-  proposed.set(PUBLIC_SNAPSHOT_REF, snapshotBuffer); proposed.set(DIST_SNAPSHOT_REF, snapshotBuffer);
+  } catch {
+    projectionIssues.push("dashboard-public-snapshot", "dashboard-dist-snapshot");
+  } finally {
+    if (projectionRoot && existsSync(projectionRoot)) {
+      try { removeOwnedProjectionRoot(projectionRoot, repositoryReal); }
+      catch {
+        projectionIssues.push("projection-cleanup-pending");
+      }
+    }
+  }
+  let snapshotBuffer = null;
+  if (typeof snapshotSource === "string") {
+    snapshotBuffer = Buffer.from(snapshotSource, "utf8");
+    if (snapshotBuffer.length > limits.snapshot) {
+      projectionIssues.splice(0, projectionIssues.length, "dashboard-public-snapshot", "dashboard-dist-snapshot");
+      snapshotBuffer = null;
+    } else {
+      proposed.set(PUBLIC_SNAPSHOT_REF, snapshotBuffer); proposed.set(DIST_SNAPSHOT_REF, snapshotBuffer);
+    }
+  }
 
   const reads = new Map([
     [CONTROL_REF, controlRead], [handoff.formalTarget, formalRead],
     [handoff.context.domainMapRef, domainRead], [handoff.entry.source_ref, handoff.candidateRead], [INDEX_REF, handoff.indexRead],
     ...updatedSignals.map((signal) => [signal.ref, signal.read]), [TIME_MAP_REF, timeMapRead], [SIGNAL_MAP_REF, signalMapRead],
-    [PUBLIC_SNAPSHOT_REF, publicRead], [DIST_SNAPSHOT_REF, distRead],
+    ...(snapshotBuffer ? [[PUBLIC_SNAPSHOT_REF, publicRead], [DIST_SNAPSHOT_REF, distRead]] : []),
   ]);
   const phases = [
-    ["control-pending", CONTROL_REF, pendingControlBuffer],
     ["formal-asset", handoff.formalTarget, handoff.authorizedPreview],
     ["instance-domain-map", handoff.context.domainMapRef, domainBuffer],
     ["archived-source-candidate", handoff.entry.source_ref, candidateBuffer],
     ["evolution-candidate-index", INDEX_REF, indexBuffer],
     ...updatedSignals.map((signal) => ["related-learning-signal-resolved", signal.ref, signal.buffer]),
     ["time-projection", TIME_MAP_REF, timeBuffer], ["startup-signal-projection", SIGNAL_MAP_REF, signalMapBuffer],
-    ["dashboard-public-snapshot", PUBLIC_SNAPSHOT_REF, snapshotBuffer],
-    ["dashboard-dist-snapshot", DIST_SNAPSHOT_REF, snapshotBuffer], ["control-clean", CONTROL_REF, cleanControlBuffer],
+    ["control-clean", CONTROL_REF, cleanControlBuffer],
+    ...(snapshotBuffer ? [
+      ["dashboard-public-snapshot", PUBLIC_SNAPSHOT_REF, snapshotBuffer],
+      ["dashboard-dist-snapshot", DIST_SNAPSHOT_REF, snapshotBuffer],
+    ] : []),
   ];
   const blobs = blobStore(); const preimages = [];
   for (const [target, read] of reads) {
@@ -822,7 +839,8 @@ function buildPromotionPlan(repositoryReal, handoff, { transactionId, transactio
     candidate_source_digest: handoff.candidateRead.digest, candidate_index_digest: handoff.indexRead.digest,
     authorization: handoff.authorization, formal_id: handoff.asset.id, formal_kind: handoff.asset.kind,
     formal_subtype: handoff.asset.subtype ?? "", formal_target: handoff.formalTarget,
-    formal_preview_digest: handoff.formalPreviewDigest, transaction_at: transactionAt, read_bindings: readBindings,
+    formal_preview_digest: handoff.formalPreviewDigest, transaction_at: transactionAt,
+    projection_issues: [...new Set(projectionIssues)].sort((left, right) => left.localeCompare(right, "en")), read_bindings: readBindings,
     blobs: blobs.values(), preimages, steps, final_digests: finalDigests, rollback, write_set: writeSet,
   };
   return Object.freeze({ ...core, plan_digest: sha256(canonical(core)) });
@@ -924,13 +942,15 @@ function removeEmptyStoreParents(repositoryReal) {
 }
 
 export function validatePersistentPromotionPlan(plan) {
-  if (!exactKeys(plan, planFields) || plan.schema_version !== 1 || plan.plan_type !== "learning-promotion-transaction"
+  if (!(exactKeys(plan, planFields) || exactKeys(plan, legacyPlanFields))
+    || plan.schema_version !== 1 || plan.plan_type !== "learning-promotion-transaction"
     || !stableAssetId.test(plan.transaction_id ?? "") || !digestPattern.test(plan.repository_binding ?? "")
     || !stableAssetId.test(plan.instance_id ?? "") || !digestPattern.test(plan.manifest_digest ?? "")
     || !stableAssetId.test(plan.candidate_id ?? "") || !safeInteger(plan.candidate_revision, 1)
     || !portableRef(plan.candidate_source_ref, { prefix: "instance/evolution/", extension: ".md" })
     || !digestPattern.test(plan.candidate_source_digest ?? "") || !digestPattern.test(plan.candidate_index_digest ?? "")
-    || !exactKeys(plan.authorization, authorizationFields) || !["verified-existing-level3-handoff", "trusted-same-process-current-user-receipt"].includes(plan.authorization.basis)
+    || !exactKeys(plan.authorization, authorizationFields)
+    || !["verified-existing-review-handoff", "verified-existing-level3-handoff", "trusted-same-process-current-user-receipt"].includes(plan.authorization.basis)
     || !stableAssetId.test(plan.authorization.message_ref ?? "") || !digestPattern.test(plan.authorization.message_digest ?? "")
     || !strictDate(plan.authorization.confirmed_at) || plan.authorization.formal_preview_digest !== plan.formal_preview_digest
     || plan.authorization.reuse_scope !== "exact-formal-preview-bytes-only"
@@ -942,7 +962,7 @@ export function validatePersistentPromotionPlan(plan) {
     || !digestPattern.test(plan.plan_digest ?? "")) return false;
   const { plan_digest: planDigest, ...core } = plan;
   if (sha256(canonical(core)) !== planDigest) return false;
-  if (plan.authorization.basis === "verified-existing-level3-handoff") {
+  if (["verified-existing-review-handoff", "verified-existing-level3-handoff"].includes(plan.authorization.basis)) {
     if (!stableAssetId.test(plan.authorization.review_payload_id ?? "")
       || !portableRef(plan.authorization.review_payload_ref, { prefix: "instance/evolution/review-payloads/", extension: ".json" })
       || !digestPattern.test(plan.authorization.review_payload_digest ?? "")
@@ -980,35 +1000,49 @@ export function validatePersistentPromotionPlan(plan) {
         precondition_digest: step.precondition_digest, proposed_digest: step.proposed_digest })) !== step.step_digest) return false;
     state.set(step.target, step.proposed_digest);
   }
+  const projectionIssues = projectionIssuesOf(plan);
+  const allowedProjectionIssues = new Set(["dashboard-public-snapshot", "dashboard-dist-snapshot", "projection-cleanup-pending"]);
+  if (new Set(projectionIssues).size !== projectionIssues.length
+    || projectionIssues.some((item) => !allowedProjectionIssues.has(item))
+    || JSON.stringify([...projectionIssues].sort((left, right) => left.localeCompare(right, "en"))) !== JSON.stringify(projectionIssues)) return false;
+  const snapshotProjectionMissing = projectionIssues.includes("dashboard-public-snapshot")
+    || projectionIssues.includes("dashboard-dist-snapshot");
+  if (projectionIssues.includes("dashboard-public-snapshot") !== projectionIssues.includes("dashboard-dist-snapshot")) return false;
   const phases = plan.steps.map((step) => step.phase);
-  const fixedPrefix = ["control-pending", "formal-asset", "instance-domain-map", "archived-source-candidate", "evolution-candidate-index"];
-  const fixedSuffix = ["time-projection", "startup-signal-projection", "dashboard-public-snapshot", "dashboard-dist-snapshot", "control-clean"];
+  const fixedPrefix = ["formal-asset", "instance-domain-map", "archived-source-candidate", "evolution-candidate-index"];
+  const fixedSuffix = ["time-projection", "startup-signal-projection", "control-clean",
+    ...(snapshotProjectionMissing ? [] : ["dashboard-public-snapshot", "dashboard-dist-snapshot"])];
   const relatedCount = phases.length - fixedPrefix.length - fixedSuffix.length;
   if (relatedCount < 0 || JSON.stringify(phases.slice(0, fixedPrefix.length)) !== JSON.stringify(fixedPrefix)
     || JSON.stringify(phases.slice(-fixedSuffix.length)) !== JSON.stringify(fixedSuffix)
     || phases.slice(fixedPrefix.length, fixedPrefix.length + relatedCount)
       .some((phase) => phase !== "related-learning-signal-resolved")
-    || plan.steps[0].target !== CONTROL_REF || plan.steps.at(-1).target !== CONTROL_REF
-    || plan.steps[1].target !== plan.formal_target || plan.steps[3].target !== plan.candidate_source_ref
-    || plan.steps[4].target !== INDEX_REF || plan.steps.at(-5).target !== TIME_MAP_REF
-    || plan.steps.at(-4).target !== SIGNAL_MAP_REF || plan.steps.at(-3).target !== PUBLIC_SNAPSHOT_REF
-    || plan.steps.at(-2).target !== DIST_SNAPSHOT_REF
-    || !portableRef(plan.steps[2].target, { prefix: "instance/maps/", extension: ".toml" })
+    || plan.steps[0].target !== plan.formal_target || plan.steps[2].target !== plan.candidate_source_ref
+    || plan.steps[3].target !== INDEX_REF
+    || plan.steps[fixedPrefix.length + relatedCount].target !== TIME_MAP_REF
+    || plan.steps[fixedPrefix.length + relatedCount + 1].target !== SIGNAL_MAP_REF
+    || plan.steps[fixedPrefix.length + relatedCount + 2].target !== CONTROL_REF
+    || (!snapshotProjectionMissing && (plan.steps.at(-2).target !== PUBLIC_SNAPSHOT_REF
+      || plan.steps.at(-1).target !== DIST_SNAPSHOT_REF))
+    || !portableRef(plan.steps[1].target, { prefix: "instance/maps/", extension: ".toml" })
     || plan.steps.slice(fixedPrefix.length, fixedPrefix.length + relatedCount)
       .some((step) => !portableRef(step.target, { prefix: "instance/signals/", extension: ".toml" }) || step.target === CONTROL_REF)) return false;
   const targetStepCounts = new Map();
   for (const step of plan.steps) targetStepCounts.set(step.target, (targetStepCounts.get(step.target) ?? 0) + 1);
-  if ([...targetStepCounts].some(([target, count]) => count !== (target === CONTROL_REF ? 2 : 1))) return false;
+  if ([...targetStepCounts].some(([, count]) => count !== 1)) return false;
   const finals = new Map(plan.final_digests.map((item) => [item.target, item.digest]));
   const writes = new Map(plan.write_set.map((item) => [item.target, item.digest]));
   if (finals.size !== state.size || writes.size !== state.size || [...state].some(([target, digest]) => finals.get(target) !== digest || writes.get(target) !== digest)) return false;
   if (plan.rollback.length !== preimages.size || plan.rollback.some((item, index) => !exactKeys(item, new Set(["target", "restore_digest"]))
     || item.target !== [...plan.preimages].reverse()[index].target || item.restore_digest !== preimages.get(item.target))) return false;
   const publicDigest = finals.get(PUBLIC_SNAPSHOT_REF); const distDigest = finals.get(DIST_SNAPSHOT_REF);
-  const payloadBinding = plan.authorization.basis !== "verified-existing-level3-handoff"
+  const payloadBinding = !["verified-existing-review-handoff", "verified-existing-level3-handoff"].includes(plan.authorization.basis)
     || plan.read_bindings.some((item) => item.target === plan.authorization.review_payload_ref
       && item.digest === plan.authorization.review_payload_digest);
-  return payloadBinding && digestPattern.test(publicDigest ?? "") && publicDigest === distDigest && blobs.has(plan.formal_preview_digest)
+  const snapshotBinding = snapshotProjectionMissing
+    ? publicDigest === undefined && distDigest === undefined && !preimages.has(PUBLIC_SNAPSHOT_REF) && !preimages.has(DIST_SNAPSHOT_REF)
+    : digestPattern.test(publicDigest ?? "") && publicDigest === distDigest;
+  return payloadBinding && snapshotBinding && blobs.has(plan.formal_preview_digest)
     && finals.get(plan.formal_target) === plan.formal_preview_digest
     && [...preimages.keys()].every((target) => !readBindings.has(target));
 }
@@ -1057,7 +1091,9 @@ function preparationSummary(record, plan, nonce, decision, { updated = true, use
     transactionNonce: nonce, planDigest: plan.plan_digest, status: record.status, updated,
     candidateId: plan.candidate_id, formalId: plan.formal_id, writeTargetCount: plan.write_set.length,
     stepCount: plan.steps.length, relatedSignalCount: plan.steps.filter((step) => step.phase === "related-learning-signal-resolved").length,
-    authorizationBasis: plan.authorization.basis, contentIncluded: false, ...(userReport ? { userReport } : {}) });
+    authorizationBasis: plan.authorization.basis, contentIncluded: false,
+    ...(projectionIssuesOf(plan).length ? { projectionPending: Object.freeze([...projectionIssuesOf(plan)]), ordinaryTasksContinue: true } : {}),
+    ...(userReport ? { userReport } : {}) });
 }
 
 export function preparePersistentPromotionFromHandoff(repository, request,
@@ -1079,7 +1115,16 @@ export function preparePersistentPromotionFromHandoff(repository, request,
       { userReport: operationalGate.repair.userReport ?? null });
   } catch (error) {
     return Object.freeze({ decision: "persistent-learning-promotion-prepare-denied", reason: error.message,
-      executable: false, contentIncluded: false });
+      executable: false, contentIncluded: false, ordinaryTasksContinue: true,
+      pausedCapabilities: Object.freeze(["learning-promotion"]),
+      userReport: Object.freeze({
+        impact: "本次学习晋升暂时没有继续；故障只限制这一项，不影响整个助手。",
+        data_state: "候选正文、正式资产和用户数据均保持原样，没有删除或猜测改写。",
+        recoverability: "修正这项候选的来源、索引或复核交接后，可以重新发起晋升。",
+        still_usable: "普通对话、现有资产和其他独立能力仍可继续使用。",
+        next_step: "让 Agent 只检查这项候选及其复核交接，不要重建整个实例。",
+        user_summary: "本次学习晋升暂时没有继续，现有数据未改动；普通任务仍可继续。请只检查这项候选及其复核交接。",
+      }) });
   }
 }
 
@@ -1241,7 +1286,9 @@ export function inspectPersistentPromotionTransaction(repository, { transactionI
     const loaded = loadBundle(repository, { transactionId, transactionNonce }); const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
     const decision = state.state === "final" ? "persistent-learning-promotion-final"
       : state.state === "preimage" ? "persistent-learning-promotion-preimage"
-        : state.state === "prefix" ? "persistent-learning-promotion-resume-or-rollback-required"
+        : state.state === "prefix" && state.checkpoint >= PROMOTION_CORE_STEP_COUNT
+          ? "persistent-learning-promotion-core-complete-projections-pending"
+          : state.state === "prefix" ? "persistent-learning-promotion-resume-or-rollback-required"
           : "persistent-learning-promotion-drift-recovery-required";
     return Object.freeze({ decision, executable: false, transactionId, status: loaded.record.status,
       planDigest: loaded.plan.plan_digest, checkpoint: state.checkpoint, stepCount: loaded.plan.steps.length,
@@ -1297,7 +1344,27 @@ function finalizeRecord(loaded) {
   const now = new Date().toISOString();
   if (loaded.record.status !== "completed") atomicJson(loaded.recordPath, { ...loaded.record, status: "completed", updated_at: now }, { replace: true });
 }
+function verifyPromotionCoreSemantics(loaded) {
+  if (digestAt(loaded.repositoryReal, loaded.plan.formal_target) !== loaded.plan.formal_preview_digest) {
+    throw new Error("promoted formal asset is not the authorized exact content");
+  }
+  const routed = loadTrustedDomainEnvelope(loaded.repositoryReal, { explicitRequestedId: loaded.plan.formal_id });
+  if (routed.envelope.explicitRoute?.id !== loaded.plan.formal_id
+    || routed.envelope.explicitRoute?.target !== loaded.plan.formal_target) {
+    throw new Error("promoted formal asset is not reachable through its instance route");
+  }
+  const candidate = parseMarkdownFrontmatterHead(
+    stableRead(loaded.repositoryReal, loaded.plan.candidate_source_ref, limits.candidate).text,
+    "promoted source candidate",
+  ).values;
+  if (candidate.status !== "archived" || candidate.resolution !== "promoted"
+    || candidate.resolved_to !== loaded.plan.formal_id) {
+    throw new Error("source candidate was not closed after formal promotion");
+  }
+}
 function verifyFinalSemantics(loaded) {
+  verifyPromotionCoreSemantics(loaded);
+  if (projectionIssuesOf(loaded.plan).includes("dashboard-public-snapshot")) return;
   const publicRead = stableRead(loaded.repositoryReal, PUBLIC_SNAPSHOT_REF, limits.snapshot);
   const distRead = stableRead(loaded.repositoryReal, DIST_SNAPSHOT_REF, limits.snapshot);
   if (publicRead.digest !== distRead.digest) throw new Error("committed snapshot pair is not byte-identical");
@@ -1312,6 +1379,28 @@ function verifyFinalSemantics(loaded) {
     requiredSourceRefs: loaded.plan.steps.map((step) => step.target) });
   if (second.updated || second.source !== publicRead.text) throw new Error("committed snapshot is not byte-idempotent from current truth sources");
 }
+function promotionProjectionPendingResult(loaded, state, decision = "persistent-learning-promotion-core-complete-projections-pending") {
+  verifyPromotionCoreSemantics(loaded);
+  const pending = [...new Set([
+    ...loaded.plan.steps.slice(state.checkpoint).map((step) => step.phase),
+    ...projectionIssuesOf(loaded.plan),
+  ])];
+  return Object.freeze({
+    decision, status: "limited", executable: false, transactionId: loaded.plan.transaction_id,
+    planDigest: loaded.plan.plan_digest, updated: true, checkpoint: state.checkpoint,
+    projectionPending: Object.freeze(pending),
+    ordinaryTasksContinue: true, recoveryEvidencePreserved: true, contentIncluded: false,
+  });
+}
+function promotionCompleteResult(loaded, decision, { updated, idempotent, writeCount }) {
+  const pending = projectionIssuesOf(loaded.plan);
+  return Object.freeze({
+    decision: pending.length ? `${decision}-projections-pending` : decision,
+    ...(pending.length ? { status: "limited", projectionPending: Object.freeze([...pending]), ordinaryTasksContinue: true } : {}),
+    executable: false, transactionId: loaded.plan.transaction_id, planDigest: loaded.plan.plan_digest,
+    updated, idempotent, writeCount, contentIncluded: false,
+  });
+}
 function executeFromCheckpoint(loaded, checkpoint, { faultAfterStep = 0 } = {}) {
   const blobs = blobMap(loaded.plan); let writes = 0;
   for (const step of loaded.plan.steps.slice(checkpoint)) {
@@ -1325,24 +1414,36 @@ function executeFromCheckpoint(loaded, checkpoint, { faultAfterStep = 0 } = {}) 
 
 export function executePersistentPromotionTransaction(repository,
   { transactionId, transactionNonce, faultAfterStep = 0 } = {}) {
+  let loaded;
   try {
-    const loaded = loadBundle(repository, { transactionId, transactionNonce }); const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
+    loaded = loadBundle(repository, { transactionId, transactionNonce }); const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
     if (state.state === "final") {
       verifyFinalSemantics(loaded); finalizeRecord(loaded);
-      return Object.freeze({ decision: "persistent-learning-promotion-execution-complete", executable: false,
-        transactionId, planDigest: loaded.plan.plan_digest, updated: false, idempotent: true,
-        writeCount: 0, contentIncluded: false });
+      return promotionCompleteResult(loaded, "persistent-learning-promotion-execution-complete",
+        { updated: false, idempotent: true, writeCount: 0 });
     }
     if (loaded.record.status !== "planned") throw new Error("transaction must be persisted before execution");
-    if (state.state === "prefix") return Object.freeze({ decision: "persistent-learning-promotion-resume-or-rollback-required",
+    if (state.state === "prefix" && state.checkpoint < PROMOTION_CORE_STEP_COUNT) return Object.freeze({ decision: "persistent-learning-promotion-resume-or-rollback-required",
       executable: false, transactionId, checkpoint: state.checkpoint, recoveryEvidencePreserved: true, contentIncluded: false });
     if (state.state === "drift") return Object.freeze({ decision: "persistent-learning-promotion-drift-recovery-required",
       executable: false, transactionId, recoveryEvidencePreserved: true, contentIncluded: false });
-    const writes = executeFromCheckpoint(loaded, 0, { faultAfterStep });
-    return Object.freeze({ decision: "persistent-learning-promotion-execution-complete", executable: false,
-      transactionId, planDigest: loaded.plan.plan_digest, updated: true, idempotent: false,
-      writeCount: writes, contentIncluded: false });
+    const writes = executeFromCheckpoint(loaded, state.state === "prefix" ? state.checkpoint : 0, { faultAfterStep });
+    return promotionCompleteResult(loaded, "persistent-learning-promotion-execution-complete",
+      { updated: true, idempotent: false, writeCount: writes });
   } catch (error) {
+    try {
+      if (loaded) {
+        const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
+        if (state.state === "final") {
+          verifyFinalSemantics(loaded); finalizeRecord(loaded);
+          return promotionCompleteResult(loaded, "persistent-learning-promotion-execution-complete",
+            { updated: true, idempotent: false, writeCount: loaded.plan.steps.length });
+        }
+        if (state.state === "prefix" && state.checkpoint >= PROMOTION_CORE_STEP_COUNT) {
+          return promotionProjectionPendingResult(loaded, state);
+        }
+      }
+    } catch { /* preserve the original failure and recovery evidence */ }
     return Object.freeze({ decision: "persistent-learning-promotion-execution-denied", reason: error.message,
       executable: false, transactionId: transactionId ?? "", recoveryEvidencePreserved: true, contentIncluded: false });
   }
@@ -1350,20 +1451,34 @@ export function executePersistentPromotionTransaction(repository,
 
 export function resumePersistentPromotionTransaction(repository,
   { transactionId, transactionNonce, faultAfterStep = 0 } = {}) {
+  let loaded;
   try {
-    const loaded = loadBundle(repository, { transactionId, transactionNonce }); const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
+    loaded = loadBundle(repository, { transactionId, transactionNonce }); const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
     if (state.state === "final") {
       verifyFinalSemantics(loaded); finalizeRecord(loaded);
-      return Object.freeze({ decision: "persistent-learning-promotion-resume-complete", executable: false,
-        transactionId, updated: false, idempotent: true, writeCount: 0, contentIncluded: false });
+      return promotionCompleteResult(loaded, "persistent-learning-promotion-resume-complete",
+        { updated: false, idempotent: true, writeCount: 0 });
     }
     if (loaded.record.status !== "planned" || !["preimage", "prefix"].includes(state.state)) {
       throw new Error("only an exact preimage or legal prefix can resume");
     }
     const writes = executeFromCheckpoint(loaded, state.checkpoint, { faultAfterStep });
-    return Object.freeze({ decision: "persistent-learning-promotion-resume-complete", executable: false,
-      transactionId, updated: writes > 0, idempotent: writes === 0, writeCount: writes, contentIncluded: false });
+    return promotionCompleteResult(loaded, "persistent-learning-promotion-resume-complete",
+      { updated: writes > 0, idempotent: writes === 0, writeCount: writes });
   } catch (error) {
+    try {
+      if (loaded) {
+        const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
+        if (state.state === "final") {
+          verifyFinalSemantics(loaded); finalizeRecord(loaded);
+          return promotionCompleteResult(loaded, "persistent-learning-promotion-resume-complete",
+            { updated: true, idempotent: false, writeCount: loaded.plan.steps.length });
+        }
+        if (state.state === "prefix" && state.checkpoint >= PROMOTION_CORE_STEP_COUNT) {
+          return promotionProjectionPendingResult(loaded, state, "persistent-learning-promotion-resume-projections-pending");
+        }
+      }
+    } catch { /* preserve the original failure and recovery evidence */ }
     return Object.freeze({ decision: "persistent-learning-promotion-resume-denied", reason: error.message,
       executable: false, transactionId: transactionId ?? "", recoveryEvidencePreserved: true, contentIncluded: false });
   }
@@ -1374,6 +1489,9 @@ export function rollbackPersistentPromotionTransaction(repository, { transaction
     const loaded = loadBundle(repository, { transactionId, transactionNonce }); const state = inspectPlanState(loaded.repositoryReal, loaded.plan);
     if (state.state === "final") throw new Error("a complete promotion cannot be crash-rolled back");
     if (state.state === "drift") throw new Error("non-prefix drift cannot be automatically overwritten");
+    if (state.state === "prefix" && state.checkpoint >= PROMOTION_CORE_STEP_COUNT) {
+      throw new Error("promotion core is already complete; refresh only the pending projections instead of removing the authorized asset");
+    }
     if (loaded.record.status !== "planned" && state.state !== "preimage") throw new Error("transaction is not rollback-eligible");
     const blobs = blobMap(loaded.plan); let restored = 0;
     for (const item of loaded.plan.rollback) {

@@ -110,7 +110,8 @@ function loadInstanceState(root) {
     throw new Error("Skill 小地图不是可安全增量更新的规范文本；原文件保持不变");
   }
   const parsed = parseArrayTableDocument(requirementsRead.text, "skills", "skill requirements");
-  if (parsed.root.schema_version !== 1 || parsed.root.instance_id !== identity.instance_id || parsed.entries.length >= 256) {
+  const lazyTemplateMap = parsed.root.instance_id === "template" && parsed.entries.length === 0;
+  if (parsed.root.schema_version !== 1 || (!lazyTemplateMap && parsed.root.instance_id !== identity.instance_id) || parsed.entries.length >= 256) {
     throw new Error("Skill 小地图身份或容量不一致；原文件保持不变");
   }
   const ids = new Set();
@@ -118,7 +119,19 @@ function loadInstanceState(root) {
     if (!stableAssetId.test(entry.id ?? "") || ids.has(entry.id)) throw new Error("Skill 小地图含重复或无效 ID；原文件保持不变");
     ids.add(entry.id);
   }
-  return Object.freeze({ instanceId: identity.instance_id, requirementsPath, requirementsRead, parsed });
+  if (!lazyTemplateMap) return Object.freeze({ instanceId: identity.instance_id, requirementsPath, requirementsRead, parsed, lazyInitialized: false });
+  const initializedText = replaceRootField(
+    replaceRootField(requirementsRead.text, "instance_id", identity.instance_id),
+    "status",
+    "current",
+  );
+  return Object.freeze({
+    instanceId: identity.instance_id,
+    requirementsPath,
+    requirementsRead: Object.freeze({ ...requirementsRead, text: initializedText }),
+    parsed: Object.freeze({ root: Object.freeze({ ...parsed.root, instance_id: identity.instance_id, status: "current" }), entries: parsed.entries }),
+    lazyInitialized: true,
+  });
 }
 
 function sourceIdentity(inspection) {
@@ -293,7 +306,7 @@ function readRecord(root, challengeId) {
   return Object.freeze({ record, paths });
 }
 
-function userPreview(sourcePath, inspection, assessment, exactDigest) {
+function userPreview(sourcePath, inspection, assessment) {
   const { desired, target } = assessment;
   const operation = assessment.decision === "upgrade" ? "升级" : "安装";
   const versionLine = assessment.decision === "upgrade"
@@ -310,7 +323,6 @@ function userPreview(sourcePath, inspection, assessment, exactDigest) {
     ...changeLines,
     `用途与触发边界：${inspection.description}`,
     `准确来源：${sourcePath}`,
-    `来源摘要：${exactDigest}`,
     `本机位置：${target.target}`,
     `包内脚本：${inspection.scripts.length ? inspection.scripts.join("、") : "没有"}`,
     "本次不会执行脚本、安装依赖、联网、登录或修改权限。",
@@ -393,7 +405,7 @@ export function prepareSkillInstall(rootPath, sourcePath, { platform = "current-
     sourceKind: inspection.sourceKind, sourceDigest: identity.exactDigest, contentDigest: inspection.sourceDigest,
     scripts: inspection.scripts, issues: inspection.issues, target: assessment.desired.entry,
     originalSourcePreserved: true, isolatedInspection: inspection.isolationRoot ?? "",
-    userPreview: userPreview(source, inspection, assessment, identity.exactDigest),
+    userPreview: userPreview(source, inspection, assessment),
     confirmCommand: `node dashboard/scripts/skill-install-cli.mjs confirm --root ${q(root)} --confirmation-ref ${q(confirmationRef)} --user-reply ${q("<用户刚才的原话>")}`,
     nextStep: `把 userPreview 单独展示给用户；用户回复“${operation === "upgrade" ? "升级" : "安装"}”后执行 confirmCommand，把占位内容换成用户原话，不要再让用户填写路径、摘要或目标。`,
   });
@@ -614,9 +626,16 @@ function run() {
   throw new Error("只支持 prepare 或 confirm；使用 --help 查看用法");
 }
 
+function userFacingResult(result) {
+  const { sourceDigest: _sourceDigest, contentDigest: _contentDigest, ...visible } = result;
+  if (!visible.diff || typeof visible.diff !== "object") return visible;
+  const { beforeDigest: _beforeDigest, afterDigest: _afterDigest, ...plainDiff } = visible.diff;
+  return Object.freeze({ ...visible, diff: Object.freeze(plainDiff) });
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   try {
-    const result = withOperationalUserReport(run(), { operation: "skill-install" });
+    const result = userFacingResult(withOperationalUserReport(run(), { operation: "skill-install" }));
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     if (/(denied|isolated|review-required|recovery-required|failed)/u.test(String(result?.decision ?? ""))) process.exitCode = 2;
   } catch (error) {

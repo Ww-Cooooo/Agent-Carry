@@ -9,7 +9,7 @@
 - 正式变更交付前按 `RESULT_VALIDATION.md` 重新比较变更依据与最终文件，并只做相关的来源、解析、稳定 ID、引用、投影和边界检查；裸写“已通过”不是验收。
 - 处理顺序固定为：先从根因修好问题，再证明用户数据与使用可靠性，最后减少无意义的流程和用户负担。内部验证可以充分，不能把终端、回归和内部字段转嫁给普通用户。
 - 实例正式资产变化还要做地图—frontmatter 可达性闭包；升级遇到被实时引用的目录说明时，必须先迁移用户正文和引用，再替换说明。
-- 启动入口变化同时命中 `startup-capsule-runtime` 与 `instance-startup-capsule`：前者拥有严格加载、生成和校验逻辑，后者是实例自己的可重建投影；严格实例清单先在模型外生成有界胶囊，普通启动只读胶囊。版本、身份或清单变化后必须在同一事务中重建并核对摘要，不能让原始展示文字提前进入上下文。
+- 启动入口变化同时命中 `startup-capsule-runtime` 与 `instance-startup-capsule`：前者拥有有界加载、生成和校验逻辑，后者是实例自己的可重建投影。首次创建和普通偏好变化先提交严格实例清单，再尽力重建胶囊；胶囊失败只限制依赖其闭包的持久动作，普通对话继续。升级、迁移和正式发布在宣布完成前仍必须让最终清单与胶囊闭合，不能让原始展示文字提前进入上下文。
 - 成熟度、成功计数或宿主可携带性变化同时命中 `result-validation` 与 `instance-validation-evidence`：代表性 `validation_refs` 必须在按需证据索引中闭合；旧标签缺证据时进入 needs-evidence/review，不能补造记录。
 - `dashboard-ui` 不再拥有 `dashboard/scripts/**` 或两份 `snapshot.js`。修改自然语言检索、候选事务、启动胶囊或快照生成器时分别命中 `asset-retrieval-runtime`、`learning-signal-runtime`、`startup-capsule-runtime` 或 `snapshot-runtime`；两份真实快照由 `dashboard-snapshot-projection` 拥有，再按投影关系检查界面、升级和公开发布。
 - 私密迁移语义变化还要同步私密目录 Schema、迁移套件 Schema、模板、`private_refs`、触发注册表、看板动作、升级保留、README 与私密到公开发布检查；实际目录、绑定和正文都不能进入公开候选。

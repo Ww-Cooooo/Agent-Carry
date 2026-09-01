@@ -50,8 +50,8 @@ function formalActions() {
       request: tomlValue(block, "request_template"),
     };
     if (tomlValue(block, "template_only", false) === true) action.templateOnly = true;
-    for (const anchor of [action.action_id, action.rootCategory, action.routeId, action.target]) {
-      if (!action.request.includes(anchor)) fail(`${action.action_id} request is missing anchor ${anchor}`);
+    if (!action.request.includes(action.action_id) || action.request.length > 3000) {
+      fail(`${action.action_id} request must identify the action and stay bounded`);
     }
     return action;
   });
@@ -121,4 +121,4 @@ let weakenedRejected = false;
 try { assertExactProjection(formal, weakened, "weakened negative fixture"); } catch { weakenedRejected = true; }
 if (!weakenedRejected) fail("removing one safety clause did not invalidate the generated mirror");
 
-console.log(`Dashboard action registry and generated frontend JSON match byte-for-byte (${formal.length} actions); a removed safety clause is rejected; data.ts imports copies and habit actions append only the fixed locator block.`);
+console.log(`Dashboard action registry and generated frontend JSON match byte-for-byte (${formal.length} actions); routing metadata remains single-source and a removed safety clause is rejected.`);

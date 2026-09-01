@@ -60,10 +60,10 @@ function gitBlobSha(bytes) {
 try {
   let localBoundaryRejected = false;
   try {
-    releaseBoundaryFrom(`[release_boundary]\nstatus = "local-unreleased-candidate"\nrelease_ref = "v2.0.1"\npublication_authorized = false\ninstance_replacement_authorized = false\n`);
+    releaseBoundaryFrom(`[release_boundary]\nstatus = "local-unreleased-candidate"\nrelease_ref = "v2.0.2"\npublication_authorized = false\ninstance_replacement_authorized = false\n`);
   } catch { localBoundaryRejected = true; }
   expect(localBoundaryRejected, "a local candidate release boundary could authorize instance replacement");
-  const published = releaseBoundaryFrom(`[release_boundary]\nstatus = "published-release"\nrelease_ref = "v2.0.1"\npublication_authorized = true\ninstance_replacement_authorized = true\n`);
+  const published = releaseBoundaryFrom(`[release_boundary]\nstatus = "published-release"\nrelease_ref = "v2.0.2"\npublication_authorized = true\ninstance_replacement_authorized = true\n`);
   expect(published.status === "published-release", "a published replacement boundary was not recognized");
 
   const archiveInstall = resolve(fixture, "archive-install");
@@ -87,7 +87,7 @@ try {
   const migratedManifest = migrateInstanceManifest(legacyManifest, "1.4.8", { migrateLegacyProfile: true });
   expect(migratedManifest.includes('future_vendor_field = "preserve-me"')
     && migratedManifest.includes('user_preferences_ref = "instance/profile/approved-profile.md"')
-    && migratedManifest.includes('product = "2.0.1"'),
+    && migratedManifest.includes('product = "2.0.2"'),
   "manifest migration did not preserve an unknown field while moving the legacy profile reference");
   const legacyProfileRoot = resolve(fixture, "legacy-profile-source");
   const legacyProfileCandidate = resolve(fixture, "legacy-profile-candidate");
@@ -100,7 +100,7 @@ try {
     validated: { profile: { user_preferences_ref: "instance/profile/approved-profile.md" } },
   }, profilePlan);
 
-  const releasePolicy = releasePathPolicyFrom(readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.1.toml"), "utf8"));
+  const releasePolicy = releasePathPolicyFrom(readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.2.toml"), "utf8"));
   const targetTree = {
     files: [
       { path: ".assistant-local/.gitkeep", bytes: 0 },
@@ -154,24 +154,24 @@ try {
   mkdirSync(releaseTarget);
   const releaseFiles = new Map([
     ["README.md", Buffer.from("AI Carry fixture\n")],
-    ["core/upgrade/release-manifest-2.0.1.toml", Buffer.from("release = \"2.0.1\"\n")],
+    ["core/upgrade/release-manifest-2.0.2.toml", Buffer.from("release = \"2.0.2\"\n")],
   ]);
   for (const [ref, bytes] of releaseFiles) write(releaseTarget, ref, bytes);
   const commitSha = "c".repeat(40);
   const treeSha = "d".repeat(40);
   const releaseObject = {
-    tag_name: "v2.0.1",
+    tag_name: "v2.0.2",
     draft: false,
     prerelease: false,
     id: 200,
-    html_url: "https://github.com/Ww-Cooooo/Agent-Carry/releases/tag/v2.0.1",
+    html_url: "https://github.com/Ww-Cooooo/Agent-Carry/releases/tag/v2.0.2",
   };
   let requestCount = 0;
   const requestJson = async (path) => {
     requestCount += 1;
-    if (path === "/releases/tags/v2.0.1") return releaseObject;
+    if (path === "/releases/tags/v2.0.2") return releaseObject;
     if (path === "/releases/latest") return releaseObject;
-    if (path === "/git/ref/tags/v2.0.1") return { object: { type: "commit", sha: commitSha } };
+    if (path === "/git/ref/tags/v2.0.2") return { object: { type: "commit", sha: commitSha } };
     if (path === "/git/ref/heads/main") return { object: { type: "commit", sha: commitSha } };
     if (path === `/git/commits/${commitSha}`) return { sha: commitSha, tree: { sha: treeSha } };
     if (path === `/git/trees/${treeSha}?recursive=1`) return {
@@ -217,8 +217,8 @@ try {
     sourceVersion: "2.0.0",
   });
   expect(buildUpgradeBinding(bindingInput(official.authority_fingerprint))
-    === buildUpgradeBinding(bindingInput(officialLater.authority_fingerprint)),
-  "the confirmation binding changed when only the live observation time changed");
+    === buildUpgradeBinding(bindingInput("f".repeat(64))),
+  "the local confirmation binding still depends on repeating remote authority evidence after preview");
   const authorityDrifts = [
     { release_id: official.release_id + 1, latest_release_id: official.latest_release_id + 1 },
     { commit_sha: "e".repeat(40), main_commit_sha: "e".repeat(40) },
@@ -247,7 +247,7 @@ try {
   try {
     await verifyOfficialAiCarryRelease({
       target: releaseTarget,
-      requestJson: async (path, label) => path === "/releases/tags/v2.0.1"
+      requestJson: async (path, label) => path === "/releases/tags/v2.0.2"
         ? { ...releaseObject, draft: true }
         : requestJson(path, label),
     });
@@ -257,7 +257,7 @@ try {
   try {
     await verifyOfficialAiCarryRelease({
       target: releaseTarget,
-      requestJson: async (path, label) => path === "/git/ref/tags/v2.0.1"
+      requestJson: async (path, label) => path === "/git/ref/tags/v2.0.2"
         ? { object: { type: "tag", sha: "e".repeat(40) } }
         : requestJson(path, label),
     });
@@ -298,7 +298,7 @@ try {
   expect(vagueReply.decision === "ai-carry-upgrade-confirmation-unverified" && vagueReply.updated === false,
     "a vague or pre-preview reply could authorize writes");
 
-  const releaseManifestSource = readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.1.toml"), "utf8");
+  const releaseManifestSource = readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.2.toml"), "utf8");
   const dashboardActions = JSON.parse(readFileSync(resolve(repository, "dashboard/src/generated/dashboard-actions.json"), "utf8"));
   expect(validateUpgradeRuntimeContract(releaseManifestSource, dashboardActions).action_id === "instance.upgrade-template",
     "the generated dashboard action and release manifest did not close the runtime reentry contract");
@@ -316,24 +316,29 @@ try {
     && !cli.includes("sessionActivated: true") && !cli.includes("behaviorAccepted: true")
     && !cli.includes("sourceVerified: true"),
   "the CLI still scans or copies the whole source, or self-attests an authority fact");
-  expect(cli.includes("workspaces.review.length > 0") && cli.includes("componentNeedsStateChange")
-    && cli.includes("verify-official-ai-carry-release.mjs")
+  expect(cli.includes("verify-official-ai-carry-release.mjs")
     && !cli.includes("--source-evidence")
+    && !cli.includes('overlayTree(resolve(source, "instance")')
+    && !cli.includes("buildProtectedManifest(source)")
+    && cli.includes("preserve-without-enumeration-and-check-on-use")
+    && cli.includes('const reviewRequired = profileMigration.conflict')
     && cli.includes("--user-reply")
     && cli.includes("聊天消息角色由承载对话的宿主负责")
     && cli.includes("target path is not classified by the release manifest")
     && cli.includes("userMessageRoleAuthenticatedByCli: false")
-    && cli.includes('sourceState.instance.state === "instance"\n      && manifestFingerprint(buildProtectedManifest(source))'),
-  "review, live release, manifest classification, or host-confirmation boundaries are missing");
+    && cli.includes('verifyPathStates(source, sourceProductBefore, "source product paths")'),
+  "one-time authority, no-enumeration preservation, path classification, or host-confirmation boundaries are missing");
   expect(prepareBody.indexOf("const targetValidation = validateTarget") < prepareBody.indexOf("if (sourceState.alreadyCurrent)")
     && prepareBody.includes("current AI Carry product path differs from the official Release")
-    && prepareBody.includes("authorityVerified: true, networkUsed: true")
+    && prepareBody.includes("authorityVerified: verifyOfficial, networkUsed: verifyOfficial")
+    && cli.includes("prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial: false })")
     && cli.includes("copiedTargetTree.fingerprint !== prepared.targetTreeFingerprint")
     && cli.includes("target changed while the isolated candidate was being copied")
     && cli.includes('`.ai2-${token.slice(0, 6)}-a${attempt}-${index.toString(36)}.tmp`')
     && cli.indexOf("state.operations.push(operation);\n      copyFileSync(sourceFile, temporary);") > 0
-    && cli.includes("scriptsExecuted: false, dependenciesInstalled: false, networkUsed: true"),
-  "already-current authority, copied-target drift, retry-safe staging, or truthful network reporting is missing");
+    && cli.includes("scriptsExecuted: false, dependenciesInstalled: false, networkUsed: false")
+    && cli.includes("liveOfficialReleaseAndTagTreeVerifiedInPreview: true"),
+  "preview authority, offline confirm binding, copied-target drift, retry-safe staging, or truthful network reporting is missing");
 
   const verifier = readFileSync(resolve(repository, "dashboard/scripts/verify-official-ai-carry-release.mjs"), "utf8");
   expect(verifier.includes("/releases/tags/v${TARGET_VERSION}")
@@ -366,7 +371,7 @@ try {
   }
 
   passed = true;
-  console.log("AI Carry upgrade CLI passed focused cases for stable authority fingerprints across observation times, bounded API requests, recoverable network refusal, real authority drift, published boundary, official already-current closure, manifest-driven template/instance write sets, unlisted/private target rejection, copied-target drift, retry-safe staging, Windows hardlink review, zero inferred removals, numbered retry, host-confirmed reply boundaries, and no self-attested session authority.");
+  console.log("AI Carry upgrade CLI passed focused cases for one-time preview authority, offline confirmation binding, bounded API requests, recoverable network refusal, real authority drift, published boundary, official already-current closure, manifest-driven template/instance write sets, unlisted/private target rejection, copied-target drift, retry-safe staging, Windows hardlink review, zero inferred removals, numbered retry, host-confirmed reply boundaries, and no self-attested session authority.");
 } finally {
   if (passed) rmSync(fixture, { recursive: true, force: false });
 }

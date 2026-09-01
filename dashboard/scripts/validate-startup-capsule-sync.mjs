@@ -8,9 +8,9 @@ import { syncStartupCapsule } from "./sync-startup-capsule.mjs";
 const assert = (condition, message) => { if (!condition) throw new Error(`Startup capsule sync test failed: ${message}`); };
 const root = mkdtempSync(join(tmpdir(), "ai-carry-capsule-sync-"));
 const write = (ref, source) => { const path = resolve(root, ...ref.split("/")); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, source, "utf8"); };
-const manifest = (mode) => `schema_version = 1\ninstance_id = "ac.sync"\nstate = "instance"\ncreated_from = "ai-carry@1.3.0"\ncreated_at = ""\n\n[direction]\ntype = "general"\nlocked = true\ndomain_id = ""\nlabel = ""\nscope_statement = ""\nout_of_scope_policy = "create-new-instance"\n\n[profile]\nstatus = "active"\nguidance_mode = "${mode}"\ndisplay_name = "测试助手"\nmission = "测试胶囊同步"\nlanguage = "zh-CN"\nuser_preferences_ref = "instance/profile/approved-profile.md"\ndomain_map_ref = "instance/maps/domain-map.toml"\nsignal_control_ref = "instance/signals/control.toml"\nsignal_map_ref = "instance/maps/signal-map.toml"\ntime_trigger_map_ref = "instance/maps/time-trigger-map.toml"\nhost_registry_ref = "instance/hosts/registry.toml"\n\n[learning]\npolicy = "risk-tiered"\nlow_risk_promotion = "explicit-confirmation-after-notice"\nmedium_high = "explicit-confirmation"\ndirect_user_instruction = "direct-authorization"\n\n[validation]\nevidence_index_ref = "instance/validations/index.toml"\n\n[versions]\nproduct = "2.0.1"\nevolution_candidate_index_schema = "1.0"\nasset_confirmation_gate_schema = "1.0"\nresult_validation_evidence_schema = "1.0"\n`;
+const manifest = (mode) => `schema_version = 1\ninstance_id = "ac.sync"\nstate = "instance"\ncreated_from = "ai-carry@1.3.0"\ncreated_at = ""\n\n[direction]\ntype = "general"\nlocked = true\ndomain_id = ""\nlabel = ""\nscope_statement = ""\nout_of_scope_policy = "create-new-instance"\n\n[profile]\nstatus = "active"\nguidance_mode = "${mode}"\ndisplay_name = "测试助手"\nmission = "测试胶囊同步"\nlanguage = "zh-CN"\nuser_preferences_ref = "instance/profile/approved-profile.md"\ndomain_map_ref = "instance/maps/domain-map.toml"\nsignal_control_ref = "instance/signals/control.toml"\nsignal_map_ref = "instance/maps/signal-map.toml"\ntime_trigger_map_ref = "instance/maps/time-trigger-map.toml"\nhost_registry_ref = "instance/hosts/registry.toml"\n\n[learning]\npolicy = "risk-tiered"\nlow_risk_promotion = "explicit-confirmation-after-notice"\nmedium_high = "explicit-confirmation"\ndirect_user_instruction = "direct-authorization"\n\n[validation]\nevidence_index_ref = "instance/validations/index.toml"\n\n[versions]\nproduct = "2.0.2"\nevolution_candidate_index_schema = "1.0"\nasset_confirmation_gate_schema = "1.0"\nresult_validation_evidence_schema = "1.0"\n`;
 try {
-  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.1"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
+  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.2"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
   write("instance/manifest.toml", manifest("balanced")); write("instance/startup-capsule.toml", buildStartupCapsule(root).source);
   assert(syncStartupCapsule(root).decision === "startup-capsule-current", "unchanged capsule was not idempotent");
 
@@ -41,18 +41,21 @@ try {
   write("instance/manifest.toml", validManifest.replaceAll("\n", "\r\n"));
   const invalidManifest = buildVerifiedStartupProjection(root, { repairDerived: true });
   assert(invalidManifest.decision === "startup-repair-required" && invalidManifest.reason === "manifest-or-core-contract-invalid"
-    && invalidManifest.repairable === false && !Object.hasOwn(invalidManifest, "repair")
+    && invalidManifest.repairable === false && invalidManifest.ordinary_work_allowed === true
+    && invalidManifest.affected_scope === "identity-dependent-persistent-actions"
+    && invalidManifest.user_summary.includes("普通对话") && !Object.hasOwn(invalidManifest, "repair")
     && readFileSync(resolve(root, "instance/startup-capsule.toml")).equals(validCapsule),
-  "an invalid manifest was treated as a repairable derived capsule or changed capsule bytes");
+  "an invalid manifest was treated as a repairable derived capsule, blocked unrelated work, or changed capsule bytes");
   write("instance/manifest.toml", validManifest);
 
   write("instance/startup-capsule.toml", buildStartupCapsule(root).source.replaceAll("\n", "\r\n"));
   const beforeFault = readFileSync(resolve(root, "instance/startup-capsule.toml"));
   const failedRepair = buildVerifiedStartupProjection(root, { repairDerived: true, testFaultAfterInstall: true });
-  assert(failedRepair.decision === "startup-repair-required" && failedRepair.reason === "capsule-auto-repair-failed"
-    && failedRepair.repair?.state === "repair-failed" && failedRepair.repair?.still_usable.includes("实例数据仍在")
+  assert(failedRepair.decision === "startup-degraded" && failedRepair.reason === "capsule-auto-repair-failed"
+    && failedRepair.persistence_limited === true && failedRepair.repair?.state === "fallback-active"
+    && failedRepair.repair?.still_usable.includes("普通对话")
     && readFileSync(resolve(root, "instance/startup-capsule.toml")).equals(beforeFault),
-  "a failed automatic capsule repair did not roll back and report data safety in natural language");
+  "a failed automatic capsule repair did not roll back, fall back to formal sources, and report the limited state in natural language");
   assert(buildVerifiedStartupProjection(root, { repairDerived: true }).decision === "startup-capsule-valid",
     "a clean startup retry could not recover after one rolled-back automatic repair");
 
@@ -60,5 +63,5 @@ try {
   const repairedMissing = buildVerifiedStartupProjection(root, { repairDerived: true });
   assert(repairedMissing.decision === "startup-capsule-valid" && repairedMissing.repair?.state === "repaired"
     && existsSync(resolve(root, "instance/startup-capsule.toml")), "startup did not repair and retry a missing derived capsule");
-  console.log("Startup capsule sync passed one-attempt CRLF/stale/missing auto-repair, invalid-manifest hard stop, rollback, clean retry, natural-language reporting, and idempotence checks.");
+  console.log("Startup capsule sync passed one-attempt CRLF/stale/missing auto-repair, valid-source degraded fallback, invalid-manifest persistent-action isolation, clean retry, natural-language reporting, and idempotence checks.");
 } finally { rmSync(root, { recursive: true, force: true }); }

@@ -1,8 +1,8 @@
 schema_version = 1
 product_id = "ai-carry"
 product_name = "AI Carry"
-product_version = "2.0.1"
-core_version = "2.0.1"
+product_version = "2.0.2"
+core_version = "2.0.2"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
@@ -62,7 +62,8 @@ source_root = "instance/signals"
 formal_state_root = "instance"
 projection = "instance/maps/signal-map.toml"
 time_projection = "instance/maps/time-trigger-map.toml"
-# `projections` is the complete transaction output set, not a startup read list.
+# `projections` lists rebuildable signal/time views. They are not startup reads
+# and do not turn an ordinary source change into one global all-or-nothing write.
 projections = ["instance/maps/signal-map.toml", "instance/maps/time-trigger-map.toml"]
 startup_reads = ["instance/signals/control.toml", "instance/maps/signal-map.toml"]
 startup_source_root_policy = "never-enumerate; read one source card only after selecting its projected signal"
@@ -141,7 +142,7 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-2.0.1.toml"
+release_manifest = "core/upgrade/release-manifest-2.0.2.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"

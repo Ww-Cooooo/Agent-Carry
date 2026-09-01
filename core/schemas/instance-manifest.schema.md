@@ -1,6 +1,6 @@
 # 实例清单 Schema 1.0
 
-实例清单是普通启动必读的极小控制文件，不是用户档案或资产容器。当前母版固定硬上限为 2560 UTF-8 字节，并由 `assistant.toml` 的 `bootstrap.maximum_instance_manifest_bytes` 声明；超过上限时普通启动失败关闭，只读取有界文件头说明“实例清单需要修复”，不得把超限正文送入模型，也不得通过提高启动总预算掩盖膨胀。
+实例清单是普通启动必读的极小控制文件，不是用户档案或资产容器。当前母版固定硬上限为 2560 UTF-8 字节，并由 `assistant.toml` 的 `bootstrap.maximum_instance_manifest_bytes` 声明；超过上限时身份与持久写入路线失败关闭，只读取有界文件头说明“实例清单需要修复”，不得把超限正文送入模型，也不得通过提高启动总预算掩盖膨胀。普通对话、说明问题和不依赖实例身份的只读协助继续，不能把一个清单故障描述成整个 AI Carry 宕机。
 
 必需字段：
 
@@ -13,7 +13,7 @@
 - `direction.domain_id`、`label`、`scope_statement`
 - `direction.out_of_scope_policy`：固定为 `create-new-instance`
 - `profile.user_preferences_ref`、`domain_map_ref`、`signal_control_ref`、`signal_map_ref`、`time_trigger_map_ref`、`host_registry_ref`。空模板可以暂时让 `user_preferences_ref` 指向目录说明；正式实例必须改为真实用户档案（默认 `instance/profile/approved-profile.md`），不得继续引用升级时会被替换的 `instance/profile/README.md`。
-- `validation.evidence_index_ref`：固定为 `instance/validations/index.toml`。索引是实例拥有的低敏结果证据真源，不进入普通启动；模板和新实例即使记录数为 0，也必须存在并与清单使用同一 `instance_id`。
+- `validation.evidence_index_ref`：固定为 `instance/validations/index.toml`。索引是按需使用的低敏结果证据真源，不进入普通启动。文件随模板存在；新实例尚未产生验证证据时，可以暂时保留可识别的 `template + empty + 0 records` 占位，第一次真实写入证据或执行严格完整维护时再从 manifest 懒初始化实例身份。
 - `versions.product`、`extension_api`、`asset_schema`、`dashboard_snapshot_schema`、`cross_session_signal_schema`、`host_integration_schema`。1.2.0 起还记录 `private_asset_catalog_schema` 与 `migration_kit_schema`；1.2.1 起可记录 `extension_manifest_schema`；支持有界进化候选索引的版本记录 `evolution_candidate_index_schema = "1.0"`；使用正式资产确认门注册表的版本记录 `asset_confirmation_gate_schema = "1.0"`；使用低敏结果证据闭包的版本记录 `result_validation_evidence_schema = "1.0"`；使用严格模型外启动胶囊的版本记录 `startup_capsule_schema = "1.0"`。旧实例缺失这些 1.3 字段时只表示需要一次显式元数据迁移，不得猜测未知更高版本；只在实例化、学习事件或正式升级中初始化并回读，不为补字段扫描正文，也不能把原始 manifest 展示文字直接加入普通启动上下文。
 
 可选的 `learning` 小节保存实例级学习政策：
@@ -45,16 +45,16 @@
 约束：
 
 - 清单只使用单行 TOML 字符串、整数和布尔值，不使用多行字符串、内联表、数组或可执行扩展。每个键在所属小节内唯一；所有字符串必须为 Unicode NFC，拒绝 NUL、C0/C1 控制字符以及 `U+202A`～`U+202E`、`U+2066`～`U+2069` 双向控制字符。单个字符串最多 512 个 Unicode 字符；`instance_id` 最多 160 个、`direction.label` 最多 80 个、`direction.scope_statement` 最多 240 个、任何 `*_ref` 最多 240 个。读取旧实例和未来扩展时，有界、安全的未知标量字段或小节必须原样保留，但不得进入启动胶囊、快照、权限、路径、身份或状态投影；当前版本的写入器仍只生成已登记字段。未知字段不安全、超限或带非标量结构时只暂停相关迁移，不能把它静默解释为授权，也不能因此删除用户数据。
-- 所有 `*_ref` 必须是以 `instance/` 开始的规范仓库相对 POSIX 路径：不得含反斜杠、冒号、URL、查询、片段、空段、`.` 或 `..`。解析后必须仍在当前 AI Carry 根目录，目标必须是普通文件，任一路径段为符号链接、目录联接或其他重解析点时失败关闭。不能从相邻目录、标题或旧绝对路径猜测替代目标。
+- 所有 `*_ref` 必须是以 `instance/` 开始的规范仓库相对 POSIX 路径：不得含反斜杠、冒号、URL、查询、片段、空段、`.` 或 `..`。解析后必须仍在当前 AI Carry 根目录，目标必须是普通文件，任一路径段为符号链接、目录联接或其他重解析点时，只对依赖该引用的加载或持久动作失败关闭。不能从相邻目录、标题或旧绝对路径猜测替代目标，也不能因此停止普通对话和无关能力。
 
 - `state=template` 时 `direction.type=unselected`、`locked=false`，且 `profile.guidance_mode` 为 `unselected` 或缺失。
 - `state=instance` 时方向只能为 `general` 或 `domain`，且 `locked=true`；新实例的 `profile.guidance_mode` 必须为 `step-by-step`、`balanced` 或 `direct`。
 - 已锁定实例不得改变 `direction.type` 或 `domain_id`。
 - 修改 `profile.guidance_mode` 只调整交流方式，不得借此改变已锁定的 `direction.type`、`domain_id`、实例身份或既有资产。
 - 通用实例不是未实例化模板；它是方向为 `general` 的正式实例。
-- `signal_control_ref` 指向实例拥有的跨会话正式状态控制记录；`signal_map_ref` 与 `time_trigger_map_ref` 指向可重建投影。它们的 `instance_id` 必须与本清单一致。
-- `host_registry_ref` 指向实例拥有的极小宿主接入索引。注册表不属于普通启动上下文，只在接入、恢复、变化、刷新或相关能力使用时按需读取；其中 `instance_id` 必须与本清单一致。
-- `validation.evidence_index_ref` 只能指向固定结果验证索引。首次实例化必须把该索引与 manifest、启动胶囊和双快照放入同一可恢复事务：只把索引身份初始化为新实例，保持 `state=empty`、0 修订、空时间、正式预算、0 记录且没有 `[[validations]]`。尚未执行的首项任务不能成为验证记录；任一失败恢复整组前像。
+- `signal_control_ref` 指向跨会话状态控制记录；`signal_map_ref` 与 `time_trigger_map_ref` 指向可重建投影。首次创建不使用信号时，三者可以继续保持可识别的空模板占位；第一次真实信号变化再按 manifest 懒初始化。已含实例数据的记录必须与本清单身份一致。
+- `host_registry_ref` 指向极小宿主接入索引。注册表不属于普通启动上下文，只在接入、恢复、变化、刷新或相关能力使用时按需读取；空模板占位可在首次创建后保留，第一次真实登记宿主时再按 manifest 初始化。已含宿主记录的注册表必须与本清单身份一致。
+- `validation.evidence_index_ref` 只能指向固定结果验证索引。首次实例化的核心事务不写该索引；尚未执行的首项任务也不能成为验证记录。第一次真实验证或严格完整维护会把仍为纯净空态的占位初始化为当前实例 ID，同时保持 `state=empty`、0 修订、空时间、正式预算、0 记录且没有 `[[validations]]`。占位损坏或已经含有内容时只暂停结果验证能力并报告，不能猜改、删除，也不能撤销已经有效的实例身份。
 - 修改 `learning.policy` 本身需要用户明确决定。切换为 `manual-only` 只改变候选验证、复核和提问节奏，不静默授权、撤销或改写正式资产。1.2 旧实例中的 `policy-authorized` 资产必须按 1.3 升级规则定向复核，不能因为当前政策值被自动视为 `explicit`。该小节只保存一个极小策略选择，不复制风险定义、成熟度阈值或生命周期正文；详细规则命中学习事件后才加载。
 - 用户可以把 `privacy.current_execution_model` 改成更严格模式，但任何模式都不能放宽 `credentials` 和 `git_storage`。隐私小节只保存极小选择值；完整接收方、安全、导入导出和提示词攻击规则按事件加载，不扩写启动胶囊。
 - 私密资产目录和当前设备绑定都位于受 Git 排除的 `.assistant-private/`。模板升级保留现有目录、绑定和正文；目标设备不会原样复用旧绝对路径。

@@ -6,13 +6,15 @@
 
 - `schema_version = 1`
 - `index_id = "result-validations"`
-- `instance_id`：必须等于实例清单身份；模板为 `template`
+- `instance_id`：含有验证记录或已经初始化的索引必须等于实例清单身份；首次创建后尚未产生任何证据的纯净空占位可以暂时为 `template`，第一次真实验证或严格完整维护时再从 manifest 懒初始化
 - `state`：`empty | current`；模板只能为 `empty`
 - `source_revision`：非负整数
 - `generated_at`：实例 current 状态使用带时区时间；模板空索引为 `""`
 - `budget_bytes = 262144`
 - `overflow = false`；超限时停止成熟度声明并进入维护，不能截断后假装完整
 - `record_count`：必须等于实际 `[[validations]]` 数量
+
+纯净占位必须同时满足 `instance_id=template`、`state=empty`、`source_revision=0`、`generated_at=""`、`overflow=false`、`record_count=0` 且不存在 `[[validations]]`。缺少任一条件时不能按空占位处理。占位尚未初始化只暂停成熟度证明和相关投影，不阻止普通对话、首次任务或已有不依赖验证证据的资产；不能为了让计数好看而伪造第一条验证记录。
 
 每条 `[[validations]]` 必须且只能包含：
 
@@ -34,4 +36,4 @@ source_revision = 1
 - `(asset_id, task_event_id)` 必须唯一。`task_event_id` 代表一次独立真实任务事件；同一任务内反复修正不能制造多条独立成功。`context_id` 是与任务事件分开的更高层实质使用情境，因此 3 次独立成功可以分布在 2 个不同情境中；同一情境内的另一项真实独立任务可以增加任务次数，但不能伪造新的情境。
 - `portable` 还必须由至少两个有效宿主执行经验引用和对应验证记录共同证明；单个自报宿主计数不能通过。
 - 正式资产的 `validation_refs` 最多保留 5 个代表记录 ID；它不是全部证据清单。成熟度、独立任务、成功、失败、情境和宿主计数必须从索引中该资产的全部当前记录确定性重算。没有列入 `validation_refs` 的失败记录仍必须阻断 `reliable` / `portable`，不能靠省略引用隐藏失败。
-- 达到容量 80% 时，由 `core/maps/trigger-registry.toml` 的 `result-validation-evidence-capacity` 规则在“本来就要写入／重建索引”的检查点投影一条去重的 Level 3 维护路线；普通启动不读取本索引。维护任务只整理已经被更高质量证据替代的旧成功记录，未解决失败不能为了腾空间而被隐藏。整理后，资产计数按保留的当前证据重新计算；历史总使用次数不能冒充当前成熟度证据。
+- 达到容量 80% 时，只在本来就要写入／重建索引的检查点提示一次定向维护；普通启动不读取本索引。维护任务只整理已经被更高质量证据替代的旧成功记录，未解决失败不能为了腾空间而被隐藏。需要复杂权衡时可建议更强模型，但不以模型等级票据决定索引是否可读。整理后，资产计数按保留的当前证据重新计算；历史总使用次数不能冒充当前成熟度证据。

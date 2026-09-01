@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import {
   closeSync,
   fstatSync,
@@ -9,7 +10,7 @@ import {
   readSync,
   realpathSync,
 } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   closePersistentLearningCaptureChallenge,
@@ -18,7 +19,7 @@ import {
   preparePersistentLearningCaptureChallenge,
   rollbackPersistentLearningCaptureTransaction,
 } from "./learning-capture-transaction.mjs";
-import { loadTrustedDomainEnvelope } from "./asset-route-contract.mjs";
+import { loadTrustedDomainEnvelope, queryFormalAssetShortlist } from "./asset-route-contract.mjs";
 import { withOperationalUserReport } from "./operational-user-report.mjs";
 import { containsForbiddenLocationReference } from "./safe-output-boundary.mjs";
 import { locateHighConfidenceSecretCandidates } from "./secret-content-boundary.mjs";
@@ -38,6 +39,7 @@ const kindAliases = new Map([
   ["experience", "experience"], ["经验", "experience"],
 ]);
 const highConsequenceAction = /(?:删除|覆盖|清空|发布|推送|上传|外发|发送给|付款|转账|交易|下单|登录|授权|修改权限|更换权限|密钥|密码|令牌|cookie|医疗|法律|投资|公开仓库|强推|delete|overwrite|publish|push|upload|send\s+to|payment|transfer|trade|login|permission|credential|token|cookie)/iu;
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 
 function sha256(value) {
   const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value, "utf8");
@@ -190,10 +192,6 @@ function buildFormalProposal(request) {
 }
 
 function buildObservation(requestRead) {
-  const observedMs = Date.parse(requestRead.observedAt);
-  if (!Number.isFinite(observedMs) || observedMs > Date.now() + 60_000 || observedMs < Date.now() - 24 * 60 * 60_000) {
-    throw new Error("学习请求文件不是本次任务中新建或更新的；请让 Agent 重新生成同一份简短请求后再预览");
-  }
   return Object.freeze({
     basis: "same-process-host-task-observation", source_kind: "unknown",
     task_ref_digest: sha256(`simple-learning-task\u0000${requestRead.digest}`),
@@ -202,7 +200,7 @@ function buildObservation(requestRead) {
   });
 }
 
-function displayPreview(request, formal) {
+function displayPreview(request) {
   const section = (label, items) => `${label}：\n${items.map((item) => `- ${item}`).join("\n")}`;
   return [
     `我准备把“${request.title}”保存为一套以后可按需使用的${request.kind === "sop" ? "做法" : "内容"}。`,
@@ -214,7 +212,6 @@ function displayPreview(request, formal) {
     section("出错时", request.failureHandling),
     section("怎样算完成", request.completionChecks),
     "初始状态：只表示你同意保存，仍是“尚未验证”；不会伪造成功次数，也不会自动执行里面描述的未来动作。",
-    `本次精确内容摘要：${sha256(formal.formalPreview)}`,
     "你可以回复“留下”“先观察”“以后提醒”或“不保存”。",
   ].join("\n\n");
 }
@@ -267,6 +264,26 @@ function persistentRecord(repositoryReal, challengeId) {
   return value;
 }
 
+function verifyOrdinaryRecall(repositoryReal, request, assetId) {
+  const queryText = request.aliases[0] ?? request.triggers[0] ?? request.title;
+  const result = queryFormalAssetShortlist(repositoryReal, {
+    queryText,
+    workSignals: [request.title, request.summary, ...request.scope].slice(0, 6),
+  });
+  return result.decision === "shortlist-ready" && result.candidates.some((item) => item.id === assetId);
+}
+
+function refreshDashboardSnapshot(repositoryReal) {
+  try {
+    execFileSync(process.execPath, [resolve(scriptDirectory, "sync-snapshot.mjs"), repositoryReal], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
+    });
+    return Object.freeze({ state: "current", reason: "" });
+  } catch {
+    return Object.freeze({ state: "refresh-pending", reason: "看板刷新没有完成；学习资产和召回路线不受影响" });
+  }
+}
+
 function prepare(repositoryReal, requestRead) {
   const request = normalizeRequest(requestRead.value);
   const formal = buildFormalProposal(request);
@@ -294,9 +311,9 @@ function prepare(repositoryReal, requestRead) {
     decision: "learning-save-choice-required", executable: false,
     confirmationRef,
     assetId: formal.asset.id, assetKind: formal.asset.kind, ignoredRequestFields: request.ignoredFields,
-    exactFormalPreviewDigest: result.preview.exactFormalPreviewDigest,
-    userPreview: displayPreview(request, formal),
-    userInstruction: "把 userPreview 单独展示给用户并等待回复；不要替用户选择，也不要让用户填写 ID、时间、哈希、TOML 或成熟度字段。用户回复后，把原话交给 --user-reply，产品会同时识别选择并保存这次确认回执。",
+    userPreview: displayPreview(request),
+    ...(result.userReport ? { userReport: result.userReport } : {}),
+    userInstruction: "先用一句自然语言说明 userReport（如有），再把 userPreview 单独展示给用户并等待回复；不要替用户选择，也不要让用户填写 ID、时间、哈希、TOML 或成熟度字段。用户回复后，把原话交给 --user-reply，产品会同时识别选择并保存这次确认回执。",
     confirmCommand: `node dashboard/scripts/learning-save-cli.mjs confirm --root ${JSON.stringify(repositoryReal)} --request-file ${JSON.stringify(requestRead.absolute)} --confirmation-ref ${JSON.stringify(confirmationRef)} --user-reply ${JSON.stringify("<用户刚才的原话>")}`,
     nextStep: "用户回复后，直接执行 confirmCommand，并把占位内容替换成用户刚才的原话；无需另猜 --choice 或重复填写 --message。",
   });
@@ -359,25 +376,70 @@ function confirm(repositoryReal, requestRead, options) {
   }
   const target = planned.plan?.formalTarget ?? "";
   const planDecision = planned.plan?.decision ?? "";
+  const planChoice = planned.plan?.choice ?? choice;
+  const direct = planDecision === "learning-capture-direct-formal-host-transaction-preview";
+  const assetId = planned.plan?.formalId ?? "";
+  const candidateId = planned.plan?.candidateId ?? "";
+  const candidateSourceRef = planned.plan?.candidateSourceRef ?? "";
+  const projectionPending = Array.isArray(executed.projectionPending) ? executed.projectionPending : [];
+  let recallVerified = !direct;
+  if (direct) {
+    try { recallVerified = verifyOrdinaryRecall(repositoryReal, request, assetId); } catch { recallVerified = false; }
+  }
+  const snapshot = direct ? refreshDashboardSnapshot(repositoryReal) : Object.freeze({ state: "not-applicable", reason: "" });
   const closed = closePersistentLearningCaptureChallenge(repositoryReal, confirmation);
   if (closed.decision !== "persistent-learning-capture-closed") return Object.freeze({
     decision: "learning-save-complete-operational-cleanup-pending", executable: false, updated: !executed.idempotent,
-    assetId: planned.plan?.formalId ?? "", target, planDecision,
+    assetId, target, planDecision, recallVerified, snapshotState: snapshot.state,
     userSummary: "学习内容已经保存并回读，但本机短期操作回执尚未清理；这不影响资产使用。",
     nextStep: "让 Agent 只重试清理这条操作回执，不要重写已经保存的资产。",
   });
-  const direct = planDecision === "learning-capture-direct-formal-host-transaction-preview";
+  if (!direct && projectionPending.length > 0) return Object.freeze({
+    decision: "learning-save-complete-projection-refresh-pending", status: "limited", executable: false,
+    updated: !executed.idempotent, candidateId, candidateSourceRef,
+    projectionPending, ordinaryTasksContinue: true, validationClaimed: false, futureActionsExecuted: false,
+    operationalReceiptRemoved: true,
+    userSummary: planChoice === "remind"
+      ? "学习候选已经安全保存，提醒时间也留在候选真源里；但提醒索引还没刷新，所以暂时不能承诺到时自动提醒。普通任务和已有资产仍可继续。"
+      : planChoice === "keep"
+        ? "定向复核内容已经安全保存；索引或看板还有局部刷新待完成，其他任务和已有资产仍可继续。"
+        : "观察候选已经安全保存；索引或看板还有局部刷新待完成，其他任务和已有资产仍可继续。",
+    nextStep: planChoice === "remind"
+      ? "请让 Agent 只刷新这条学习候选的索引和提醒投影；不需要重写候选，也不用重建整个实例。"
+      : "请让 Agent 只刷新这条候选的索引和看板；不需要重写候选，也不用重建整个实例。",
+  });
+  if (direct && !recallVerified) return Object.freeze({
+    decision: "learning-save-complete-recall-repair-required", status: "limited", executable: false,
+    updated: !executed.idempotent, assetId, target, snapshotState: snapshot.state,
+    userSummary: "学习内容已经安全保存，但普通说法召回还没有验证通过；其他能力仍可继续使用。",
+    nextStep: "让 Agent 只修复这条资产的召回路线并重试召回，不要重写或删除已经保存的内容。",
+  });
+  if (direct && snapshot.state !== "current") return Object.freeze({
+    decision: "learning-save-complete-dashboard-refresh-pending", status: "limited", executable: false,
+    updated: !executed.idempotent, assetId, target, initialMaturity: planned.plan?.initialMaturity ?? "unvalidated",
+    recallVerified: true, snapshotState: snapshot.state, validationClaimed: false, futureActionsExecuted: false,
+    operationalReceiptRemoved: true,
+    userSummary: "这套做法已经保存并能被日常语言召回；只是看板还没刷新，普通任务可以继续。",
+    nextStep: `方便时只重试看板刷新：node dashboard/scripts/sync-snapshot.mjs ${JSON.stringify(repositoryReal)}`,
+  });
   return Object.freeze({
-    decision: direct ? "learning-save-complete" : "learning-save-review-handoff-complete",
-    executable: false, updated: !executed.idempotent, assetId: planned.plan?.formalId ?? "", target,
+    decision: direct ? "learning-save-complete"
+      : planChoice === "keep" ? "learning-save-review-handoff-complete"
+        : planChoice === "remind" ? "learning-save-reminder-complete" : "learning-save-observation-complete",
+    executable: false, updated: !executed.idempotent, assetId, target,
     initialMaturity: direct ? planned.plan?.initialMaturity ?? "unvalidated" : "not-formal-yet",
+    recallVerified, snapshotState: snapshot.state,
     validationClaimed: false, futureActionsExecuted: false, operationalReceiptRemoved: true,
     userSummary: direct
       ? "这套做法已经正式保存、回读并接入日常语言召回；它仍是尚未验证，不会冒充一次成功。"
-      : "这项内容已经作为定向复核交接保存；它还不是可直接使用的正式资产。",
+      : planChoice === "keep" ? "这项内容已经作为定向复核交接保存；它还不是可直接使用的正式资产。"
+        : planChoice === "remind" ? "这项内容已作为观察候选保存，并按你给出的时间安排复核提醒。"
+          : "这项内容已作为可撤销的观察候选保存；它还不会被当成正式规则使用。",
     nextStep: direct
       ? "继续当前任务；下一次真正用到这套做法时，再按实际结果更新验证状态。"
-      : "让合适等级的 Agent 只复核这项内容的风险和范围；内容不变时不需要再次确认是否留下。",
+      : planChoice === "keep" ? "让合适的 Agent 只复核这项内容的风险和范围；内容不变时不需要再次确认是否留下。"
+        : planChoice === "remind" ? "继续当前任务；到期时再决定是否验证、正式保存或停止观察。"
+          : "继续当前任务；以后在新的真实任务中再次命中时，再根据实际结果决定是否正式保存。",
   });
 }
 

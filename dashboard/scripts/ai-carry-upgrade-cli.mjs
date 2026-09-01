@@ -20,11 +20,9 @@ import {
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSectionedToml, validateInstanceManifestStructure } from "./asset-route-contract.mjs";
-import { inspectInstanceComponents, planInstanceComponentUpgrade } from "./instance-component-contract.mjs";
-import { PRODUCT_IDENTITY, LEGACY_PRODUCT_IDENTITY, acceptedProfessionalExtensionRecordTypes } from "./product-identity.mjs";
+import { PRODUCT_IDENTITY, LEGACY_PRODUCT_IDENTITY } from "./product-identity.mjs";
 import { parseCurrentSnapshotEnvelope } from "./snapshot-envelope.mjs";
 import { validateSnapshotSemantics } from "./snapshot-semantics.mjs";
-import { buildSnapshotCandidate } from "./snapshot-source-builder.mjs";
 import { inspectStartupCapsule } from "./startup-capsule-contract.mjs";
 import { syncStartupCapsule } from "./sync-startup-capsule.mjs";
 import {
@@ -32,15 +30,33 @@ import {
   officialAuthorityFingerprint,
 } from "./verify-official-ai-carry-release.mjs";
 
-const TARGET_VERSION = "2.0.1";
-const DIRECT_SOURCE_VERSIONS = new Set(["1.4.8", "1.4.9", "2.0.0"]);
+const moduleDirectory = dirname(fileURLToPath(import.meta.url));
+const runtimeRoot = resolve(moduleDirectory, "..", "..");
+const runtimeAssistant = parseSectionedToml(readFileSync(resolve(runtimeRoot, "assistant.toml"), "utf8"), "runtime assistant manifest");
+const runtimeAssistantRoot = runtimeAssistant[""] ?? {};
+const TARGET_VERSION = runtimeAssistantRoot.product_version;
+const runtimeReleaseRef = runtimeAssistant.maintenance?.release_manifest;
+if (typeof TARGET_VERSION !== "string" || !/^\d+\.\d+\.\d+$/u.test(TARGET_VERSION)
+  || runtimeReleaseRef !== `core/upgrade/release-manifest-${TARGET_VERSION}.toml`) {
+  throw new Error("AI Carry upgrade failed: assistant manifest does not identify one current release manifest");
+}
+const runtimeReleaseSource = readFileSync(resolve(runtimeRoot, ...runtimeReleaseRef.split("/")), "utf8");
+const runtimeReleaseRoot = runtimeReleaseSource.split(/^\[/mu, 1)[0];
+const runtimeReleaseVersion = /^release\s*=\s*"([^"]+)"\s*$/mu.exec(runtimeReleaseRoot)?.[1];
+const directSourceLiteral = /^from_versions\s*=\s*(\[[^\n]+\])\s*$/mu.exec(runtimeReleaseRoot)?.[1];
+let directSourceVersions;
+try { directSourceVersions = JSON.parse(directSourceLiteral ?? "null"); } catch { directSourceVersions = null; }
+if (runtimeReleaseVersion !== TARGET_VERSION || !Array.isArray(directSourceVersions)
+  || directSourceVersions.some((value) => typeof value !== "string" || !/^\d+\.\d+\.\d+$/u.test(value))) {
+  throw new Error("AI Carry upgrade failed: current release manifest does not match the assistant version");
+}
+const DIRECT_SOURCE_VERSIONS = new Set(directSourceVersions);
 const MAX_TARGET_FILES = 8192;
 const MAX_TARGET_BYTES = 1024 * 1024 * 1024;
-const MAX_INSTANCE_FILES = 32768;
-const MAX_INSTANCE_BYTES = 1024 * 1024 * 1024;
 const MAX_OPERATION_ATTEMPTS = 32;
-const releaseVerifierPath = resolve(dirname(fileURLToPath(import.meta.url)), "verify-official-ai-carry-release.mjs");
-const windowsMetadataPreflightPath = resolve(dirname(fileURLToPath(import.meta.url)), "windows-upgrade-metadata-preflight.ps1");
+const releaseVerifierPath = resolve(moduleDirectory, "verify-official-ai-carry-release.mjs");
+const snapshotPaths = new Set(["dashboard/public/snapshot.js", "dashboard/dist/snapshot.js"]);
+const windowsMetadataPreflightPath = resolve(moduleDirectory, "windows-upgrade-metadata-preflight.ps1");
 const confirmationPattern = /^ai-carry-upgrade\.([a-f0-9]{32})~([a-f0-9]{32})~([1-9][0-9]{0,2})$/u;
 const acceptedConfirmationReplies = new Set(["升级", "确认升级"]);
 const exactInstanceGuides = Object.freeze([
@@ -58,7 +74,6 @@ const exactInstanceGuides = Object.freeze([
   "instance/validations/README.md",
   "instance/components/README.md",
 ]);
-const derivedOrGuidePaths = new Set(["instance/manifest.toml", "instance/startup-capsule.toml", ...exactInstanceGuides]);
 const legacyProfileRef = "instance/profile/README.md";
 const approvedProfileRef = "instance/profile/approved-profile.md";
 
@@ -75,9 +90,9 @@ export function validateUpgradeRuntimeContract(releaseManifestSource, actions) {
   if (!upgradeAction || upgradeAction.label !== "检查并升级 AI Carry"
     || upgradeAction.routeId !== "template-upgrade"
     || upgradeAction.target !== "core/guides/upgrade-guide.md"
-    || !upgradeAction.request?.includes("sessionReentryCommand")
-    || !upgradeAction.request?.includes("当前会话已采用")
-    || !upgradeAction.request?.includes("代表行为已通过")) {
+    || !upgradeAction.request?.includes("confirmCommand")
+    || !upgradeAction.request?.includes("会话采用")
+    || !upgradeAction.request?.includes("代表行为")) {
     fail("session reentry representative AI Carry upgrade behavior is unavailable");
   }
   return upgradeAction;
@@ -325,62 +340,6 @@ function validateTarget(target, sourceVersion) {
   return Object.freeze({ assistant, instance, releaseRef, releaseBoundary, releasePathPolicy });
 }
 
-function inspectWorkspaceExtensions(source, instanceId) {
-  const workspace = resolve(source, "workspace");
-  if (!existsSync(workspace)) return Object.freeze({ registered: Object.freeze([]), review: Object.freeze([]) });
-  const info = lstatSync(workspace);
-  if (!info.isDirectory() || info.isSymbolicLink() || info.isReparsePoint?.()) fail("workspace is not a physical directory");
-  const registered = []; const review = [];
-  for (const [index, name] of readdirSync(workspace).sort().entries()) {
-    const safeId = /^[a-z0-9][a-z0-9.-]{2,63}$/u.test(name) ? name : `unrecognized-entry-${index + 1}`;
-    const root = resolve(workspace, name); const entry = lstatSync(root);
-    if (!entry.isDirectory() || entry.isSymbolicLink() || entry.isReparsePoint?.()) {
-      review.push(Object.freeze({ id: safeId, reason: "not-a-physical-extension-directory" }));
-      continue;
-    }
-    const manifestPath = resolve(root, "extension.toml");
-    if (!existsSync(manifestPath)) {
-      review.push(Object.freeze({ id: safeId, reason: "extension-manifest-missing" }));
-      continue;
-    }
-    try {
-      const parsed = parseSectionedToml(readUtf8(manifestPath, `workspace ${safeId} extension manifest`, 32 * 1024), `workspace ${safeId} extension manifest`);
-      const identity = parsed[""] ?? {};
-      if (safeId !== name || !acceptedProfessionalExtensionRecordTypes.has(identity.record_type)
-        || identity.extension_id !== name || identity.instance_id !== instanceId
-        || identity.root !== `workspace/${name}` || identity.status !== "active" || identity.load_policy !== "on-demand-only") {
-        review.push(Object.freeze({ id: safeId, reason: "extension-identity-or-lifecycle-invalid" }));
-        continue;
-      }
-      registered.push(Object.freeze({
-        id: safeId,
-        recordType: identity.record_type,
-        compatibility: identity.record_type === PRODUCT_IDENTITY.professionalExtensionRecordType ? "current" : "legacy-alias-readable",
-      }));
-    } catch {
-      review.push(Object.freeze({ id: safeId, reason: "extension-manifest-invalid" }));
-    }
-  }
-  return Object.freeze({ registered: Object.freeze(registered), review: Object.freeze(review) });
-}
-
-function boundedIds(items) {
-  const ids = items.slice(0, 8).map((item) => item.id);
-  return `${ids.join("、")}${items.length > ids.length ? `，另有 ${items.length - ids.length} 项` : ""}`;
-}
-
-function overlayTree(source, destination) {
-  if (!existsSync(source)) return;
-  mkdirSync(destination, { recursive: true });
-  for (const name of readdirSync(source).sort()) {
-    const from = resolve(source, name); const to = resolve(destination, name); const info = lstatSync(from);
-    if (info.isSymbolicLink() || info.isReparsePoint?.()) fail(`overlay contains a link: ${from}`);
-    if (info.isDirectory()) overlayTree(from, to);
-    else if (info.isFile()) { mkdirSync(dirname(to), { recursive: true }); copyFileSync(from, to); }
-    else fail(`overlay contains a non-file entry: ${from}`);
-  }
-}
-
 export function migrateInstanceManifest(source, fromVersion, { migrateLegacyProfile = false } = {}) {
   const oldLine = `product = ${q(fromVersion)}`;
   const occurrences = source.split(oldLine).length - 1;
@@ -394,72 +353,43 @@ export function migrateInstanceManifest(source, fromVersion, { migrateLegacyProf
   return migrated;
 }
 
-function buildProtectedManifest(sourceRoot) {
-  const entries = [];
-  const rootRef = "instance";
-  const absolute = resolve(sourceRoot, rootRef);
-  if (!existsSync(absolute)) return Object.freeze(entries);
-  const tree = walkTree(absolute, { maxFiles: MAX_INSTANCE_FILES, maxBytes: MAX_INSTANCE_BYTES, label: "instance formal tree" });
-  for (const item of tree.files) {
-    const ref = `${rootRef}/${item.path}`;
-    if (!derivedOrGuidePaths.has(ref)) entries.push(Object.freeze({ ...item, path: ref }));
-  }
-  return Object.freeze(entries.sort((left, right) => left.path.localeCompare(right.path)));
-}
-
-function manifestFingerprint(entries) {
-  return sha256(Buffer.from(entries.map((item) => `${item.path}\0${item.bytes}\0${item.sha256}\n`).join(""), "utf8"));
-}
-
-function verifyProtectedBytes(candidate, protectedEntries) {
-  for (const item of protectedEntries) {
-    const target = resolve(candidate, ...item.path.split("/"));
-    if (!existsSync(target)) fail(`preserved path is missing: ${item.path}`);
-    const info = lstatSync(target);
-    if (!info.isFile() || info.isSymbolicLink() || info.isReparsePoint?.() || info.size !== item.bytes
-      || sha256(readFileSync(target)) !== item.sha256) fail(`preserved bytes changed: ${item.path}`);
-  }
-}
-
 function rebuildDerived(candidate) {
   const capsule = syncStartupCapsule(candidate, { write: true });
   if (inspectStartupCapsule(candidate).decision !== "startup-capsule-valid") fail("candidate startup capsule did not close");
-  const publicPath = resolve(candidate, "dashboard/public/snapshot.js");
-  const distPath = resolve(candidate, "dashboard/dist/snapshot.js");
-  const existingSource = readUtf8(publicPath, "candidate public snapshot", 8 * 1024 * 1024);
-  const snapshot = buildSnapshotCandidate(candidate, { existingSource });
-  validateSnapshotSemantics(parseCurrentSnapshotEnvelope(snapshot.source, "candidate snapshot"), "candidate snapshot");
-  writeFileSync(publicPath, snapshot.source, "utf8");
-  writeFileSync(distPath, snapshot.source, "utf8");
-  if (Buffer.compare(readFileSync(publicPath), readFileSync(distPath)) !== 0) fail("candidate snapshots differ");
   return Object.freeze({
     capsuleDecision: capsule.decision,
     sourceManifestDigest: capsule.sourceManifestDigest,
-    snapshotSourceDigest: snapshot.sourceDigest,
-    snapshotIdentityRef: snapshot.identityRef,
   });
 }
 
-function validateCandidate(candidate, sourceIdentity, protectedEntries, profileMigration = null) {
-  const identity = manifestIdentity(candidate, "candidate");
-  if (identity.version !== TARGET_VERSION || identity.instanceId !== sourceIdentity.instanceId || identity.state !== sourceIdentity.state) {
-    fail("candidate instance identity or product version drifted");
-  }
-  verifyProtectedBytes(candidate, protectedEntries);
-  verifyLegacyProfileMigration(candidate, identity, profileMigration);
-  const components = inspectInstanceComponents(candidate);
-  const componentPlan = planInstanceComponentUpgrade(candidate, {
-    targetInterfaces: [PRODUCT_IDENTITY.componentInterface, ...LEGACY_PRODUCT_IDENTITY.componentInterfaces],
-  });
-  if (!["instance-components-valid", "instance-components-empty"].includes(components.decision)) fail("candidate component registry is invalid");
-  if (!["instance-upgrade-compatible", "instance-upgrade-compatible-with-isolated-components"].includes(componentPlan.decision)) {
-    fail(`candidate component plan is not switchable: ${componentPlan.decision}`);
-  }
+function validateSnapshotPair(candidate) {
   const publicBytes = readFileSync(resolve(candidate, "dashboard/public/snapshot.js"));
   const distBytes = readFileSync(resolve(candidate, "dashboard/dist/snapshot.js"));
   if (Buffer.compare(publicBytes, distBytes) !== 0) fail("candidate snapshot pair is not byte-identical");
   validateSnapshotSemantics(parseCurrentSnapshotEnvelope(publicBytes.toString("utf8"), "candidate public snapshot"), "candidate public snapshot");
-  return Object.freeze({ identity, components, componentPlan, snapshotSha256: sha256(publicBytes) });
+  return Object.freeze({ snapshotSha256: sha256(publicBytes) });
+}
+
+function runSnapshotRefresh(root) {
+  const script = resolve(root, "dashboard/scripts/sync-snapshot.mjs");
+  const output = execFileSync(process.execPath, [script, root], {
+    encoding: "utf8",
+    windowsHide: true,
+    timeout: 120_000,
+    maxBuffer: 2 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return JSON.parse(String(output).trim());
+}
+
+function validateCandidate(candidate, sourceIdentity, profileMigration = null, { requireSnapshot = true } = {}) {
+  const identity = manifestIdentity(candidate, "candidate");
+  if (identity.version !== TARGET_VERSION || identity.instanceId !== sourceIdentity.instanceId || identity.state !== sourceIdentity.state) {
+    fail("candidate instance identity or product version drifted");
+  }
+  verifyLegacyProfileMigration(candidate, identity, profileMigration);
+  const snapshot = requireSnapshot ? validateSnapshotPair(candidate) : Object.freeze({ snapshotSha256: "" });
+  return Object.freeze({ identity, snapshotSha256: snapshot.snapshotSha256 });
 }
 
 function validateCurrentSessionReentry(sourceArgument, transactionRef, expectedInstanceId, expectedManifestDigest, sourceVersion) {
@@ -845,11 +775,7 @@ function buildUpgradeBinding({
   target,
   sourceProductFingerprint,
   targetTreeFingerprint,
-  protectedManifestFingerprint,
-  componentSourceFingerprint,
-  workspaces,
   profileMigration,
-  authorityFingerprint,
   instanceId,
   sourceVersion,
 }) {
@@ -858,26 +784,24 @@ function buildUpgradeBinding({
     target,
     sourceProductFingerprint,
     targetTreeFingerprint,
-    protectedManifestFingerprint,
-    componentSourceFingerprint,
-    JSON.stringify(workspaces),
     profileMigration.required ? profileMigration.sourceSha256 : "",
     profileMigration.conflict ? "profile-conflict" : "",
-    authorityFingerprint,
     instanceId,
     sourceVersion,
     TARGET_VERSION,
   ].join("\0"), "utf8"));
 }
 
-function prepareUpgrade(sourceArgument, targetArgument) {
+function prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial = true } = {}) {
   const source = resolvePhysicalDirectory(sourceArgument, "source");
   const target = resolvePhysicalDirectory(targetArgument, "target");
   if (pathIsInside(source, target) || pathIsInside(target, source)) fail("source and target must be separate trees");
   const sourceState = validateSource(source);
   const targetValidation = validateTarget(target, sourceState.instance.version);
   const targetTree = walkTree(target, { maxFiles: MAX_TARGET_FILES, maxBytes: MAX_TARGET_BYTES, label: "target public tree" });
-  const officialEvidence = validateOfficialReleaseLive(target, targetTree, targetValidation.releaseRef);
+  const officialEvidence = verifyOfficial
+    ? validateOfficialReleaseLive(target, targetTree, targetValidation.releaseRef)
+    : null;
   const profileMigration = planLegacyProfileMigration(source, sourceState.instance);
   const targetPaths = targetWritePaths(targetTree, sourceState.instance.state, targetValidation.releasePathPolicy);
   const writePaths = Object.freeze([...new Set([
@@ -907,34 +831,22 @@ function prepareUpgrade(sourceArgument, targetArgument) {
       productVersion: TARGET_VERSION, instanceId: sourceState.instance.instanceId,
       officialEvidence, targetTreeFingerprint: targetTree.fingerprint,
       verifiedStaticProductFileCount: staticPaths.length,
-      authorityVerified: true, networkUsed: true,
-      userSummary: `这份助手已经通过最新正式 Release、固定轻量标签、公开 main 与目标整树的共同回读，是 AI Carry ${TARGET_VERSION}；本次没有重复改文件、刷新时间或生成候选。`,
+      authorityVerified: verifyOfficial, networkUsed: verifyOfficial,
+      userSummary: verifyOfficial
+        ? `这份助手已经通过正式 Release 与固定目标整树回读，是 AI Carry ${TARGET_VERSION}；本次没有重复改文件、刷新时间或生成候选。`
+        : `这份助手已经是 AI Carry ${TARGET_VERSION}；本次只核对本地目标与已安装产品，没有联网或重复改文件。`,
       nextStep: "可以继续原来的工作；如果只是看板显示旧状态，让 Agent 重新读取本地快照。",
     });
   }
   const platformMetadata = validatePlatformMetadata(source, writePaths);
   const sourceProductState = snapshotPathStates(source, writePaths, "source product paths");
-  const protectedEntries = sourceState.instance.state === "instance" ? buildProtectedManifest(source) : [];
-  const componentPlan = planInstanceComponentUpgrade(source, {
-    targetInterfaces: [PRODUCT_IDENTITY.componentInterface, ...LEGACY_PRODUCT_IDENTITY.componentInterfaces],
-  });
-  const componentNeedsStateChange = componentPlan.actions.some((item) => ["disable-and-preserve", "migrate-and-recheck", "stop-and-preserve"].includes(item.action));
-  const componentSwitchable = ["instance-upgrade-compatible", "instance-upgrade-compatible-with-isolated-components"].includes(componentPlan.decision)
-    && !componentNeedsStateChange;
-  const workspaces = sourceState.instance.state === "instance"
-    ? inspectWorkspaceExtensions(source, sourceState.instance.instanceId)
-    : Object.freeze({ registered: Object.freeze([]), review: Object.freeze([]) });
-  const reviewRequired = !componentSwitchable || workspaces.review.length > 0 || profileMigration.conflict;
+  const reviewRequired = profileMigration.conflict;
   const binding = buildUpgradeBinding({
     source,
     target,
     sourceProductFingerprint: sourceProductState.fingerprint,
     targetTreeFingerprint: targetTree.fingerprint,
-    protectedManifestFingerprint: manifestFingerprint(protectedEntries),
-    componentSourceFingerprint: componentPlan.sourceFingerprint ?? "",
-    workspaces,
     profileMigration,
-    authorityFingerprint: officialEvidence.authorityFingerprint,
     instanceId: sourceState.instance.instanceId,
     sourceVersion: sourceState.instance.version,
   });
@@ -948,36 +860,32 @@ function prepareUpgrade(sourceArgument, targetArgument) {
       "从合并后 manifest 重建 startup capsule", "从合并后正式真源重建 public/dist 双快照"]
       : ["按目标路径更新空模板，继续保持 template 身份和零业务资产"]),
     preserve: Object.freeze(sourceState.instance.state === "instance"
-      ? [`逐字节回读 ${protectedEntries.length} 个构建所需的实例正式文件`, "工作区、本机层、私密层和未知根文件留在原位，不枚举、不复制、不删除", "保留身份、created_from、档案、地图、资产、Skill、组件和未知字段"]
+      ? ["实例资产、工作区、本机层、私密层和未知根文件不在产品写集内，原地不碰", "保留身份、created_from、档案、地图、资产、Skill、组件和未知字段；相关能力首次使用时再检查兼容"]
       : ["源中不属于目标产品路径的未知文件留在原位，不推断删除"]),
     remove: Object.freeze([]),
     conflicts: Object.freeze([
-      ...workspaces.review.map((item) => `${item.id}:${item.reason}`),
-      ...(componentSwitchable ? [] : [`components:${componentPlan.decision}`]),
       ...(profileMigration.conflict ? ["profile:approved-profile-destination-conflict"] : []),
     ]),
     extensionCompatibility: Object.freeze({
-      registeredWorkspaces: workspaces.registered,
-      workspaceReview: workspaces.review,
-      componentDecision: componentPlan.decision,
-      componentStateChangeRequired: componentNeedsStateChange,
+      policy: "preserve-without-enumeration-and-check-on-use",
+      componentStateChangeRequired: false,
     }),
   });
   const conflictText = changePreview.conflicts.length === 0
     ? "【冲突】未发现阻止本次候选组装的冲突。"
-    : `【冲突】${boundedIds(changePreview.conflicts.map((value, index) => ({ id: `#${index + 1} ${value}` })))}。这些内容原样保留；只暂停本次升级，不会猜测、删除或拖住 AI Carry 主体。`;
-  const extensionText = workspaces.registered.length === 0
-    ? `【扩展兼容】没有已登记专业工作区；组件检查结果为 ${componentPlan.decision}。`
-    : `【扩展兼容】已登记工作区 ${boundedIds(workspaces.registered)}，旧记录类型由 ${TARGET_VERSION} 兼容读取且文件保持原字节；组件检查结果为 ${componentPlan.decision}。`;
+    : `【冲突】${changePreview.conflicts.join("、")}。相关内容原样保留；只暂停本次升级。`;
+  const extensionText = "【扩展兼容】升级不枚举或复制工作区、组件正文和本机绑定；它们原地保留，在真正使用对应能力时再做有界兼容检查，单项问题只隔离该能力。";
   const userPreview = [
     `准备把这份 ${sourceState.assistant.productName} ${sourceState.instance.version} ${sourceState.instance.state === "template" ? "空模板" : "实例"}升级为 AI Carry ${TARGET_VERSION}。`,
-    `实例身份保持：${sourceState.instance.instanceId}。CLI 已通过 GitHub HTTPS API 现场核对最新正式 Release ${officialEvidence.latestReleaseId}、固定轻量标签提交 ${officialEvidence.commitSha.slice(0, 12)}、公开 main 和这棵目标树；目标包发布边界允许实例替换。`,
+    verifyOfficial
+      ? `实例身份保持：${sourceState.instance.instanceId}。CLI 已通过 GitHub HTTPS API 现场核对正式 Release、固定标签和这棵目标树；目标包发布边界允许实例替换。`
+      : `实例身份保持：${sourceState.instance.instanceId}。本次确认只复核预览已经绑定的本地来源和目标字节，不重复联网。`,
     `【替换】最多核对并切换 ${writePaths.length} 个发布清单明确拥有的产品路径；实际相同字节不会重复写。`,
     sourceState.instance.state === "instance"
       ? `【迁移】更新 manifest 产品版本${profileMigration.required ? "；旧 profile/README.md 用户正文会逐字节迁到 approved-profile.md 并更新引用" : ""}；随后确定性重建启动胶囊和两份真实快照。`
       : "【迁移】按目标产品路径更新空模板，继续保持 template 身份和零业务资产。",
     sourceState.instance.state === "instance"
-      ? `【保留】逐字节回读 ${protectedEntries.length} 个候选构建需要的实例正式文件；工作区、本机层、私密层和未知根文件保持原地，不扫描正文、不复制、不删除。`
+      ? "【保留】实例资产、工作区、本机层、私密层和未知根文件不在产品写集内，保持原地，不扫描正文、不复制、不删除。"
       : "【保留】不属于目标产品路径的源文件保持原地，不推断删除。",
     "【删除】0 项。当前实例根路径不移动；只为实际变化的产品文件保留有清单的回滚前像，不复制整棵用户目录。",
     conflictText,
@@ -988,12 +896,13 @@ function prepareUpgrade(sourceArgument, targetArgument) {
   const common = Object.freeze({
     source, target, sourceVersion: sourceState.instance.version, targetVersion: TARGET_VERSION,
     instanceId: sourceState.instance.instanceId, inspectedProductFileCount: sourceProductState.fileCount,
-    inspectedProductBytes: sourceProductState.totalBytes, protectedFileCount: protectedEntries.length,
+    inspectedProductBytes: sourceProductState.totalBytes, protectedFileCount: 0,
+    preservationMethod: "not-in-product-write-set",
     targetFileCount: targetTree.fileCount, writePaths, sourceProductFingerprint: sourceProductState.fingerprint,
     profileMigration,
     targetTreeFingerprint: targetTree.fingerprint, officialEvidence, platformMetadata,
     targetReleaseBoundary: targetValidation.releaseBoundary,
-    previewAuthority: "live-github-release-and-exact-tag-tree-verified", changePreview, userPreview,
+    previewAuthority: verifyOfficial ? "live-github-release-and-exact-tag-tree-verified" : "previous-preview-bound-local-target", changePreview, userPreview,
     confirmationClaimLimit: "CLI 只核对本次预览引用和精确确认字符串，不具备聊天角色认证能力。承载对话的宿主必须只在用户看过本次预览、并在下一条独立消息明确确认后调用 confirm；这是一条产品交互边界，不伪装成对恶意 Agent 的权限沙箱。",
   });
   if (reviewRequired) return Object.freeze({
@@ -1006,7 +915,7 @@ function prepareUpgrade(sourceArgument, targetArgument) {
     ...common,
     candidate: paths.candidate, rollbackPackage: paths.rollbackPackage, attempt: paths.attempt, confirmationRef,
     confirmCommand: `node ${q(fileURLToPath(import.meta.url))} confirm --source ${q(source)} --target ${q(target)} --confirmation-ref ${q(confirmationRef)} --user-reply ${q("升级")}`,
-    nextStep: "把 userPreview 单独展示给用户。只有用户在看过本次预览后的下一条独立消息明确回复“升级”或“确认升级”，Agent 才执行这条同次绑定命令；用户不需要操作终端。CLI 会重新核对来源、目标和引用，但聊天消息角色由承载对话的宿主负责。",
+    nextStep: "把 userPreview 单独展示给用户。只有用户在看过本次预览后的下一条独立消息明确回复“升级”或“确认升级”，Agent 才执行这条同次绑定命令；用户不需要操作终端。CLI 会重新核对本地来源、目标和引用，但不会重复联网；聊天消息角色由承载对话的宿主负责。",
   });
 }
 
@@ -1031,15 +940,13 @@ function applyUpgradeWithHostConfirmation(sourceArgument, targetArgument, confir
   if (!acceptedConfirmationReplies.has(String(userReply ?? "").trim())) fail("user reply must be ‘升级’ or ‘确认升级’");
   const match = confirmationPattern.exec(String(confirmationRef ?? ""));
   if (!match) fail("confirmation reference is invalid");
-  const prepared = prepareUpgrade(sourceArgument, targetArgument);
+  const prepared = prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial: false });
   if (prepared.decision === "ai-carry-upgrade-already-current") return prepared;
   if (prepared.confirmationRef !== confirmationRef) fail("source or target changed after the preview; generate a fresh preview");
   const { source, target, candidate, rollbackPackage } = prepared;
   const sourceState = validateSource(source);
   const sourceProductBefore = snapshotPathStates(source, prepared.writePaths, "source product paths");
   if (sourceProductBefore.fingerprint !== prepared.sourceProductFingerprint) fail("source product paths drifted after preview");
-  const protectedEntries = sourceState.instance.state === "instance" ? buildProtectedManifest(source) : [];
-  const protectedFingerprint = manifestFingerprint(protectedEntries);
   let switchState = null;
   try {
     cpSync(target, candidate, { recursive: true, errorOnExist: true, force: false });
@@ -1048,58 +955,71 @@ function applyUpgradeWithHostConfirmation(sourceArgument, targetArgument, confir
       fail("target changed while the isolated candidate was being copied");
     }
     if (sourceState.instance.state === "instance") {
-      overlayTree(resolve(source, "instance"), resolve(candidate, "instance"));
-      for (const guide of exactInstanceGuides) copyFileSync(resolve(target, ...guide.split("/")), resolve(candidate, ...guide.split("/")));
       installLegacyProfileMigration(source, candidate, prepared.profileMigration);
       writeFileSync(resolve(candidate, "instance/manifest.toml"), migrateInstanceManifest(sourceState.instance.source, sourceState.instance.version, {
         migrateLegacyProfile: prepared.profileMigration.required,
       }), "utf8");
     }
     const derived = rebuildDerived(candidate);
-    const verification = validateCandidate(candidate, sourceState.instance, protectedEntries, prepared.profileMigration);
+    validateCandidate(candidate, sourceState.instance, prepared.profileMigration, { requireSnapshot: false });
     verifyPathStates(source, sourceProductBefore, "source product paths");
-    if (sourceState.instance.state === "instance"
-      && manifestFingerprint(buildProtectedManifest(source)) !== protectedFingerprint) {
-      fail("instance formal files changed while the candidate was being built");
-    }
-    const workspaceNow = inspectWorkspaceExtensions(source, sourceState.instance.instanceId);
-    if (workspaceNow.review.length > 0) fail("workspace compatibility changed to review-required before switch");
     if (process.env.AI_CARRY_UPGRADE_FAIL_AT === "before-switch") throw new Error("injected-before-switch");
     const token = match[1] + match[2]; const attempt = Number(match[3]);
     const paths = operationPaths(source, token, attempt);
     if (paths.rollbackPackage !== rollbackPackage) fail("rollback package path drifted after preview");
-    switchState = commitCandidateInPlace(source, candidate, rollbackPackage, token, attempt, confirmationRef, prepared.writePaths, sourceState);
-    const installed = validateCandidate(source, sourceState.instance, protectedEntries, prepared.profileMigration);
+    const coreWritePaths = prepared.writePaths.filter((path) => !snapshotPaths.has(path));
+    switchState = commitCandidateInPlace(source, candidate, rollbackPackage, token, attempt, confirmationRef, coreWritePaths, sourceState);
+    const installed = validateCandidate(source, sourceState.instance, prepared.profileMigration, { requireSnapshot: false });
     const cleanupWarnings = cleanupSuccessfulSwitch(switchState);
+    let snapshotResult;
+    let snapshotState = "current";
+    let snapshotWarning = "";
+    let snapshotSha256 = "";
+    try {
+      snapshotResult = runSnapshotRefresh(source);
+      snapshotSha256 = validateSnapshotPair(source).snapshotSha256;
+    } catch (error) {
+      snapshotState = "pending";
+      snapshotWarning = String(error?.stderr ?? error?.message ?? error).trim().slice(0, 500);
+      snapshotResult = Object.freeze({ decision: "snapshot-refresh-pending", updated: false });
+    }
+    const snapshotRefreshCommand = `node ${q(resolve(source, "dashboard/scripts/sync-snapshot.mjs"))} ${q(source)}`;
     return Object.freeze({
       decision: "ai-carry-upgrade-files-switched", executable: false, updated: true,
+      status: snapshotState === "current" ? "passed" : "limited",
       sourceVersion: prepared.sourceVersion, targetVersion: TARGET_VERSION,
       instanceId: installed.identity.instanceId, rollbackPackage,
-      protectedFileCount: protectedEntries.length, preservedByteDrift: 0,
+      protectedFileCount: 0, preservedByteDrift: 0, preservationMethod: "not-in-product-write-set",
       startupCapsule: inspectStartupCapsule(source).decision,
-      snapshotSha256: installed.snapshotSha256,
-      componentDecision: installed.componentPlan.decision,
-      scriptsExecuted: false, dependenciesInstalled: false, networkUsed: true,
+      snapshotState, snapshotWarning, snapshotResult, snapshotSha256,
+      componentDecision: "preserved-and-checked-on-use",
+      scriptsExecuted: false, dependenciesInstalled: false, networkUsed: false,
       switchMethod: "stable-root-in-place-transaction",
       changedFileCount: switchState.plan.writes.length,
       removedFileCount: switchState.plan.removals.length,
       cleanupWarnings,
-      completionState: "session-activation-required",
+      completionState: snapshotState === "current" ? "session-activation-required" : "snapshot-refresh-required",
       adoptionEvidence: Object.freeze({
-        liveOfficialReleaseAndTagTreeVerified: true,
+        liveOfficialReleaseAndTagTreeVerifiedInPreview: true,
         targetPackageBoundaryValidated: true,
         userReplyStringMatched: true,
         hostUserConfirmationDeclared: true,
         userMessageRoleAuthenticatedByCli: false,
         filesInstalled: true,
         instanceSwitched: true,
+        snapshotCurrent: snapshotState === "current",
         sessionActivated: false,
         behaviorAccepted: false,
       }),
       sessionReentryCommand: `node ${q(resolve(source, "dashboard/scripts/ai-carry-upgrade-cli.mjs"))} reentry --source ${q(source)} --transaction-ref ${q(confirmationRef)} --expected-instance-id ${q(installed.identity.instanceId)} --expected-manifest-digest ${q(derived.sourceManifestDigest)} --source-version ${q(prepared.sourceVersion)}`,
-      claimLimit: "CLI 只证明 GitHub 正式 Release、固定标签整树、发布边界、绑定确认字符串、产品文件切换和实例正式文件保持；CLI 不能认证某个聊天消息角色，也不能证明当前会话已经采用新版。宿主必须只在用户看过本次预览并独立确认后调用。",
-      userSummary: "AI Carry 已在不移动当前工作根的情况下完成产品文件事务切换和回读；实例正式文件保持，工作区、本机层、私密层和未知根文件没有被枚举、复制或删除；变化文件的旧前像留在回滚包。",
-      nextStep: "执行本次返回的 sessionReentryCommand 只核对目标运行入口；会话采用和代表行为必须由宿主真实事实闭合，不能手填 passed。",
+      claimLimit: "prepare 已现场核对正式 Release 并把精确本地目标绑定进预览；confirm 只复核未漂移的本地来源、目标、发布边界和确认引用，不重复联网。CLI 不能认证聊天消息角色，也不能证明当前会话已经采用新版。宿主必须只在用户看过本次预览并独立确认后调用。",
+      snapshotRefreshCommand,
+      userSummary: snapshotState === "current"
+        ? "AI Carry 已在不移动当前工作根的情况下完成核心产品切换与看板刷新；实例正式文件保持，工作区、本机层、私密层和未知根文件没有被枚举、复制或删除。"
+        : "AI Carry 核心产品已经安全切换，实例与用户内容保持；看板刷新暂未完成，但不会撤销有效升级或影响普通对话。",
+      nextStep: snapshotState === "current"
+        ? "执行本次返回的 sessionReentryCommand 只核对目标运行入口；会话采用和代表行为必须由宿主真实事实闭合，不能手填 passed。"
+        : "先执行 snapshotRefreshCommand 只重试看板刷新；成功后再执行 sessionReentryCommand。其他能力可以继续使用。",
       derived,
     });
   } catch (error) {

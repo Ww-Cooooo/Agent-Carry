@@ -69,8 +69,8 @@ direction_type = "general"
 direction_label = ""
 scope_statement = ""
 guidance_mode = "balanced"
-product_version = "2.0.1"
-core_version = "2.0.1"
+product_version = "2.0.2"
+core_version = "2.0.2"
 asset_schema = "1.3"
 learning_policy = "risk-tiered"
 privacy_mode = "allow-task-needed-private-context"
@@ -216,6 +216,8 @@ verified_at = ""
 ## 6. 宿主注册表 `host-registry`
 
 `instance/hosts/registry.toml` 是极小索引，不是会话交换记录，因此不要求第 1 节的 `record_id`、`created_at` 与 `source`；它使用自己的 `registry_id`、`revision` 和 `updated_at`。每个宿主条目只包含：
+
+首次创建不初始化宿主注册表。随模板携带的纯净 `template + empty + 0 hosts` 占位可以保留到第一次真实接入／登记宿主；届时从 manifest 初始化实例身份。占位损坏只暂停宿主登记或恢复，不能阻止当前 Agent 的普通对话和不依赖宿主档案的任务。
 
 ```toml
 [[hosts]]

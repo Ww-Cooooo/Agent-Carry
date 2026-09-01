@@ -1,12 +1,12 @@
 # 统一触发与跨会话信号 Schema 1.1
 
-本 Schema 定义事务控制记录、动态状态卡、极小唤醒胶囊、非启动时间索引，以及正式资产上的可选触发字段。全部使用 TOML 或 Markdown TOML frontmatter；不要求数据库、后台服务或特定宿主 API。
+本 Schema 定义兼容恢复记录、动态状态卡、极小唤醒胶囊、非启动时间索引，以及正式资产上的可选触发字段。全部使用 TOML 或 Markdown TOML frontmatter；不要求数据库、后台服务或特定宿主 API。
 
 ## 1. 控制记录
 
 当前入口由 `assistant.toml` 的 `[signals]` 声明：
 
-`startup_reads` 只能列出控制记录与 `instance/maps/signal-map.toml` 唤醒胶囊；`projections` 是事务完成前必须共同更新的派生输出集合，不是启动读取清单。`time_projection_load_policy` 必须明确：只有唤醒胶囊的 `next_wakeup_at` 已到、用户明确查看日程或正在重建投影时，才读取非启动时间索引。宿主不得枚举 `source_root` 来判断是否有信号。
+`startup_reads` 只能列出兼容恢复记录与 `instance/maps/signal-map.toml` 唤醒胶囊；`projections` 只声明可由真源重建的信号／时间视图，不是启动读取清单，也不是普通变化必须同时写完的全局事务集合。`time_projection_load_policy` 必须明确：只有唤醒胶囊的 `next_wakeup_at` 已到、用户明确查看日程或正在重建投影时，才读取非启动时间索引。宿主不得枚举 `source_root` 来判断是否有信号。
 
 ```toml
 schema_version = 1
@@ -24,15 +24,15 @@ base_revision = 0
 updated_at = ""
 ```
 
-- `source_revision`：任何受统一事务管理的正式动态状态变化都单调增加。
-- `projection_revision`：所有配置中声明的派生投影已经共同覆盖到的源修订。
-- `update_state`：`clean`、`pending` 或 `recovery-required`。
-- `pending_*`：只在更新尚未完整结束时保留；`clean` 时必须为空。
+- `source_revision`：兼容记录所观察到的正式动态状态修订。
+- `projection_revision`：已共同刷新并回读的信号／时间投影修订；投影滞后时由后续定向刷新追上，不撤销已经成功写入的正式状态。
+- `update_state`：`clean`、`pending` 或 `recovery-required`。新普通写入不先制造 `pending`；`pending` 与 `recovery-required` 主要用于继续恢复旧版已经留下的操作。
+- `pending_*`：只在兼容恢复现场保留；`clean` 时必须为空。
 - `pending_signal_id`：兼容第一版单状态卡更新；新规则优先同时填写更通用的 `pending_trigger_id` 和 `pending_source_ref`。
 - `base_revision`：操作开始前观察到的源修订，用于发现并发覆盖。
 - `updated_at`：已知时使用带时区的 ISO 8601 时间；未知不伪造。
 
-`clean` 时两个修订必须相等，并且所有声明投影可解析、引用有效。只要其中一个投影未完成，就不能提前清除 `pending`。
+`clean` 时两个修订必须相等，并且当前已有的信号／时间投影可解析、引用有效。普通写入采用“真源先成功，投影尽力刷新”：投影失败只报告对应视图待刷新，不把控制记录变成全局锁，也不阻止对话和无关能力继续。旧版已经存在的 `pending` 仍须由兼容恢复入口定向闭合，不能假装为 `clean`。
 
 ## 2. 动态状态卡
 
@@ -261,15 +261,15 @@ trigger_revision = 1
 - 可分发模板只能携带空控制记录、空唤醒胶囊、空时间索引和空白模板，不能包含任何用户的实际日期、个人信号或事件证据。
 - 从任何工作副本生成可分发模板前，必须清除实例动态状态、把治理卡时间字段重置为 `uninitialized`，再从空态重建两个投影。
 
-## 7. 本机事务恢复 envelope
+## 7. 旧版本机事务恢复 envelope
 
-`.assistant-local/runtime/cross-session-signals/` 保存实现层的临时恢复 envelope，不是新的正式真源格式，也不提高 `schema_version`。它必须被 Git、公开候选、安装包枚举、启动胶囊和迁移套件排除。每个操作至多对应一个物理目录，目录原子出现后至少闭合以下内容：
+`.assistant-local/runtime/cross-session-signals/` 保存旧版本已经创建的临时恢复 envelope，不是新的正式真源格式，也不提高 `schema_version`。新普通信号、学习保存或资产晋升不再创建这类全局 envelope；它们只保护当前真源写入，并把索引、信号摘要、胶囊和看板当作可重建投影。旧 envelope 必须继续可检查、恢复或回滚，并且必须被 Git、公开候选、安装包枚举、启动胶囊和迁移套件排除。每个旧操作至多对应一个物理目录，目录原子出现后至少闭合以下内容：
 
 - 一个结构严格、大小有界的记录：`operationId`、实例与本机仓库绑定摘要、`createdAt`、`expiresAt`、`planDigest` 和完整 sealed plan；
 - 按 sealed plan 顺序排列的 exact preimage descriptors 与 exact proposed-step descriptors；descriptor 只保存相对目标、私有 payload 文件名、SHA-256 和字节数；
 - 每个 descriptor 对应一个物理、非链接、有大小上限的 payload 文件。payload 必须以其实际字节数和 SHA-256 同时闭合；缺失、额外文件、重复目标、未知步骤、绝对路径、链接或越界一律按 drift 失败关闭。
 
-sealed plan 自身不得内联这些字节，必须包含八个唯一写目标（控制记录、候选正文、候选索引、学习信号、时间投影、启动信号投影、public 快照、dist 快照）、九个固定步骤、每步前后摘要、完整回滚摘要、每个步骤检查点的合并真源摘要，以及固定 TTL。public 与 dist 的 final digest 必须相同。控制记录既是第一步也是最后一步，final 只有在两份快照都已安装并回读后才能恢复 `clean`。
+旧 sealed plan 自身不得内联这些字节；为兼容既有恢复包，它仍按原格式校验八个唯一写目标、九个固定步骤、每步前后摘要、完整回滚摘要、检查点摘要和旧 TTL。这里描述的是“如何安全读完旧现场”，不是新写入必须继续采用的架构，也不得把某份派生快照失败放大为整个 Agent 不可用。
 
 为重建快照而在仓库父目录创建的 sibling hardlink 投影不是恢复 envelope，也不是可读取的实例副本。目录名必须包含 signal runtime 自有前缀与当前仓库绑定摘要，并在复制任何真源前写入物理 owner marker（仓库绑定、目录名、PID、创建时间）。正常完成时按文件／目录预算自底向上删除，不使用会跟随链接的递归清理；进程强杀后的遗留只在后续 signal 事务构建或显式 signal cleanup 入口中有界扫描。只有 marker、父目录、仓库绑定和已死亡 PID 全部闭合，且整棵目录均为物理目录／文件、没有 symlink 或 reparse point 时才可删除。普通启动不扫描仓库父目录；伪造链接、未知 marker、其他仓库或非自有前缀一律保留且不得跟随。
 
@@ -280,4 +280,4 @@ sealed plan 自身不得内联这些字节，必须包含八个唯一写目标�
 - 合法 `prefix`：现场恰好等于某一个中间步骤检查点；
 - `drift`：任何非前缀组合、未知摘要、实例身份变化、合并真源变化、bundle 损坏或无法闭合的原子替换现场。
 
-TTL 只决定何时可以清除安全终态，不把合法前缀或 drift 解释成过期垃圾。`resume`、`rollback` 和第二次调用都必须跨进程幂等；恢复输出不得包含 payload、正文、base64 或绝对位置。
+旧 TTL 只决定何时可以清除旧包的安全终态，不是正常业务期限，也不把合法前缀或 drift 解释成过期垃圾。`resume`、`rollback` 和第二次调用都必须跨进程幂等；恢复输出不得包含 payload、正文、base64 或绝对位置。

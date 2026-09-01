@@ -12,12 +12,12 @@ confirmation = "none"
 
 [[routes]]
 id = "instantiation"
-summary = "在首次引导取得用户选择后，先阻止模板态提前执行首项任务，再由已确认的 Level 3 完成渐进访谈、实例结构设计、完整预览，并在写入前后执行首次使用检查点；实例化本身不预先制造资产。"
+summary = "在首次引导取得用户选择后，先阻止模板态提前执行首项任务，再完成渐进访谈、执行器完整预览和三文件核心创建；模型等级只在出现真实复杂架构权衡时提供建议，不能阻断普通首次创建。"
 triggers = ["已完成交流方式与助手方向两项首次选择", "先帮我判断后确认正式方向", "模板态准备开始首项任务", "开始渐进访谈", "实例结构设计", "生成完整预览", "确认完整预览后创建", "写入实例", "锁定助手方向", "实例化写入检查"]
 target = "core/guides/first-use-execution-gates.md"
 state = "active"
-minimum_level = 3
-confirmation = "manual-model-switch-if-needed"
+minimum_level = 1
+confirmation = "explicit-complete-preview-before-write"
 
 [[routes]]
 id = "guidance-mode"

@@ -57,7 +57,7 @@ export const ENGLISH_TEXT: Record<string, string> = {
   "可编辑 Skill 后来发生了变化，或原来的分享载体已缺失。旧载体会保留，但不再冒充最新版本。": "The editable Skill changed later, or the earlier delivery package is missing. The old package is preserved but no longer presented as the latest version.",
   "当前载体不是最新内容": "Current package is not the latest content",
   "Agent 会从现在的可编辑真源生成一个新的、不覆盖旧文件的载体。": "The Agent creates a new package from the current editable source without overwriting the old files.",
-  "让 Agent 重新生成分享文件；完成后它会报告新位置和摘要核对结果。": "Ask the Agent to regenerate the sharing package. It reports the new location and digest check when finished.",
+  "让 Agent 重新生成分享文件；完成后它会报告新位置和检查结果，内部校验不需要你填写。": "Ask the Agent to regenerate the sharing package. It reports the new location and check result; you do not need to enter internal verification data.",
   "分享信息需复核": "Sharing details need review",
   "Skill 内容仍可保留，但分享方式、载体记录或链接信息有一项不闭合。问题只影响这一份交付信息。": "The Skill content remains available, but its sharing method, package record, or link information is incomplete. The issue affects only this delivery record.",
   "先核对这一份分享记录": "Review this sharing record first",

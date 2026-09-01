@@ -338,7 +338,11 @@ function argument(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : "";
 }
-function printResult(result) { process.stdout.write(`${JSON.stringify(result, null, 2)}\n`); }
+function userFacingResult(result) {
+  const { sourceDigest: _sourceDigest, artifactDigest: _artifactDigest, archiveDigest: _archiveDigest, ...visible } = result;
+  return Object.freeze({ ...visible, packageCheck: result.decision === "ready" ? "passed" : result.decision });
+}
+function printResult(result) { process.stdout.write(`${JSON.stringify(userFacingResult(result), null, 2)}\n`); }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   try {

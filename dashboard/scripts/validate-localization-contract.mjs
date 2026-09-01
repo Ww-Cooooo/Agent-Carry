@@ -38,12 +38,14 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
 
 requireFragments(readmeZh, 'Chinese README', [
   '[English](README.en.md)',
-  '当前版本：`2.0.1`',
+  '当前版本：`2.0.2`',
+  '点击展开：2.0.2 修复了什么',
   '点击展开：2.0.1 修复了什么',
   '点击展开：2.0.0 主要改了什么',
   '稳定身份和三段版本',
   '最早觉得不对',
-  '固定到 `v2.0.1` 标签',
+  '固定到 `v2.0.2` 标签',
+  '只暂停当前组件',
   '🧠 这次用上了',
   '🌱 这一步我学到了',
   '👉 接下来',
@@ -54,12 +56,14 @@ requireFragments(readmeZh, 'Chinese README', [
 ])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `2.0.1`',
+  'Current version: `2.0.2`',
+  'What 2.0.2 fixes',
   'What 2.0.1 fixes',
   'What changed in 2.0.0',
   'stable identity and semantic version',
   'which first message or action felt wrong',
-  'pinned to the `v2.0.1` tag',
+  'pinned to the `v2.0.2` tag',
+  'limits only that component',
   '🧠 Used this time',
   '🌱 Learned this step',
   "👉 What's next",
@@ -76,12 +80,11 @@ requireFragments(readmeEn, 'English README', [
 ])
 requireFragments(installEn, 'English installer', [
   'dashboard.en.html',
-  'ac_lang=en',
   'first-use-execution-gates.md',
-  'New to Agents',
-  'Some experience',
-  'Frequent Agent user',
-  'create, commit, push, publish, or change a GitHub repository',
+  'one easy question',
+  'the core transaction writes only',
+  'an auxiliary failure is reported for targeted retry',
+  'create or write a GitHub repository',
 ])
 requireFragments(startEn, 'English ZIP entry', ['INSTALL.en.md', 'dashboard.en.html', 'first-use-execution-gates.md'])
 requireFragments(entryZh, 'Chinese dashboard entry', ['dashboard/dist/index.html', 'ac_kind', 'ac_ref', 'ac_version'])
