@@ -60,10 +60,10 @@ function gitBlobSha(bytes) {
 try {
   let localBoundaryRejected = false;
   try {
-    releaseBoundaryFrom(`[release_boundary]\nstatus = "local-unreleased-candidate"\nrelease_ref = "v2.0.4"\npublication_authorized = false\ninstance_replacement_authorized = false\n`);
+    releaseBoundaryFrom(`[release_boundary]\nstatus = "local-unreleased-candidate"\nrelease_ref = "v2.0.5"\npublication_authorized = false\ninstance_replacement_authorized = false\n`);
   } catch { localBoundaryRejected = true; }
   expect(localBoundaryRejected, "a local candidate release boundary could authorize instance replacement");
-  const published = releaseBoundaryFrom(`[release_boundary]\nstatus = "published-release"\nrelease_ref = "v2.0.4"\npublication_authorized = true\ninstance_replacement_authorized = true\n`);
+  const published = releaseBoundaryFrom(`[release_boundary]\nstatus = "published-release"\nrelease_ref = "v2.0.5"\npublication_authorized = true\ninstance_replacement_authorized = true\n`);
   expect(published.status === "published-release", "a published replacement boundary was not recognized");
 
   const archiveInstall = resolve(fixture, "archive-install");
@@ -87,7 +87,7 @@ try {
   const migratedManifest = migrateInstanceManifest(legacyManifest, "1.4.8", { migrateLegacyProfile: true });
   expect(migratedManifest.includes('future_vendor_field = "preserve-me"')
     && migratedManifest.includes('user_preferences_ref = "instance/profile/approved-profile.md"')
-    && migratedManifest.includes('product = "2.0.4"'),
+    && migratedManifest.includes('product = "2.0.5"'),
   "manifest migration did not preserve an unknown field while moving the legacy profile reference");
   const legacyProfileRoot = resolve(fixture, "legacy-profile-source");
   const legacyProfileCandidate = resolve(fixture, "legacy-profile-candidate");
@@ -100,7 +100,7 @@ try {
     validated: { profile: { user_preferences_ref: "instance/profile/approved-profile.md" } },
   }, profilePlan);
 
-  const releasePolicy = releasePathPolicyFrom(readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.4.toml"), "utf8"));
+  const releasePolicy = releasePathPolicyFrom(readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.5.toml"), "utf8"));
   const targetTree = {
     files: [
       { path: ".assistant-local/.gitkeep", bytes: 0 },
@@ -154,24 +154,24 @@ try {
   mkdirSync(releaseTarget);
   const releaseFiles = new Map([
     ["README.md", Buffer.from("AI Carry fixture\n")],
-    ["core/upgrade/release-manifest-2.0.4.toml", Buffer.from("release = \"2.0.4\"\n")],
+    ["core/upgrade/release-manifest-2.0.5.toml", Buffer.from("release = \"2.0.5\"\n")],
   ]);
   for (const [ref, bytes] of releaseFiles) write(releaseTarget, ref, bytes);
   const commitSha = "c".repeat(40);
   const treeSha = "d".repeat(40);
   const releaseObject = {
-    tag_name: "v2.0.4",
+    tag_name: "v2.0.5",
     draft: false,
     prerelease: false,
     id: 200,
-    html_url: "https://github.com/Ww-Cooooo/Agent-Carry/releases/tag/v2.0.4",
+    html_url: "https://github.com/Ww-Cooooo/Agent-Carry/releases/tag/v2.0.5",
   };
   let requestCount = 0;
   const requestJson = async (path) => {
     requestCount += 1;
-    if (path === "/releases/tags/v2.0.4") return releaseObject;
+    if (path === "/releases/tags/v2.0.5") return releaseObject;
     if (path === "/releases/latest") return releaseObject;
-    if (path === "/git/ref/tags/v2.0.4") return { object: { type: "commit", sha: commitSha } };
+    if (path === "/git/ref/tags/v2.0.5") return { object: { type: "commit", sha: commitSha } };
     if (path === "/git/ref/heads/main") return { object: { type: "commit", sha: commitSha } };
     if (path === `/git/commits/${commitSha}`) return { sha: commitSha, tree: { sha: treeSha } };
     if (path === `/git/trees/${treeSha}?recursive=1`) return {
@@ -247,7 +247,7 @@ try {
   try {
     await verifyOfficialAiCarryRelease({
       target: releaseTarget,
-      requestJson: async (path, label) => path === "/releases/tags/v2.0.4"
+      requestJson: async (path, label) => path === "/releases/tags/v2.0.5"
         ? { ...releaseObject, draft: true }
         : requestJson(path, label),
     });
@@ -257,7 +257,7 @@ try {
   try {
     await verifyOfficialAiCarryRelease({
       target: releaseTarget,
-      requestJson: async (path, label) => path === "/git/ref/tags/v2.0.4"
+      requestJson: async (path, label) => path === "/git/ref/tags/v2.0.5"
         ? { object: { type: "tag", sha: "e".repeat(40) } }
         : requestJson(path, label),
     });
@@ -298,9 +298,9 @@ try {
   expect(vagueReply.decision === "ai-carry-upgrade-confirmation-unverified" && vagueReply.updated === false,
     "a vague or pre-preview reply could authorize writes");
 
-  const releaseManifestSource = readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.4.toml"), "utf8");
-  expect(releaseManifestSource.includes('from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1", "2.0.2", "2.0.3"]'),
-    "2.0.3 is not retained as a direct 2.0.4 upgrade source");
+  const releaseManifestSource = readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.5.toml"), "utf8");
+  expect(releaseManifestSource.includes('from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1", "2.0.2", "2.0.3", "2.0.4"]'),
+    "2.0.4 is not retained as a direct 2.0.5 upgrade source");
   const dashboardActions = JSON.parse(readFileSync(resolve(repository, "dashboard/src/generated/dashboard-actions.json"), "utf8"));
   expect(validateUpgradeRuntimeContract(releaseManifestSource, dashboardActions).action_id === "instance.upgrade-template",
     "the generated dashboard action and release manifest did not close the runtime reentry contract");

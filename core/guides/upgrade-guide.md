@@ -80,6 +80,8 @@ AI Carry 2.0.2 是已经发布的局部容错历史。它把首次创建、启�
 
 AI Carry 2.0.3 是已经发布的实例兼容协定历史。它让持久安装、更新、删除、学习、进化与母版升级共用 `core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md`，由实例 Agent 根据真实所有权和内容选择保留、适配、重连、重建或局部停用。详细规则见 `core/upgrade/upgrade-2.0.2-to-2.0.3.md` 与 `core/upgrade/release-manifest-2.0.3.toml`，该历史发布保持不变。
 
-当前目标是 AI Carry 2.0.4。1.4.8、保留的本地 1.4.9、2.0.0、2.0.1、2.0.2 与 2.0.3 都可直接升级。2.0.4 让启动预算只读取 `assistant.toml` 的结构化配置，并明确实例升级只运行本次事务返回的 `sessionReentryCommand` 与一项相关的无破坏代表行为；不得把开发仓库 `check:*` 全集、构建依赖或维护者许可证工具变成实例门禁。2.0.3 的兼容协定、局部容错、用户内容、私密边界和回退全部保留。详细规则见 `core/upgrade/upgrade-2.0.3-to-2.0.4.md` 与 `core/upgrade/release-manifest-2.0.4.toml`。该清单不授权未来版本、仓库改名或其他真实实例数据处置。
+AI Carry 2.0.4 是已经发布的母版自检修复历史。它让启动预算只读取 `assistant.toml` 的结构化配置，并把实例升级验收限制为事务返回的 `sessionReentryCommand` 与一项相关无破坏行为，不运行开发仓库检查全集。详细规则见 `core/upgrade/upgrade-2.0.3-to-2.0.4.md` 与 `core/upgrade/release-manifest-2.0.4.toml`，该历史发布保持不变。
+
+当前目标是 AI Carry 2.0.5。1.4.8、保留的本地 1.4.9、2.0.0、2.0.1、2.0.2、2.0.3 与 2.0.4 都可直接升级。2.0.5 压缩重复启动规则，把固定变更流程收敛为所有者、最小真源、受影响旅程和真实结果四项，并明确“全面思考不能变成全面管控”。渐进上下文、记忆与 SOP 主动召回、积极学习、自然语言引导、Skill 工坊、迁移、实例升级和私密到公开边界继续按需工作。详细规则见 `core/upgrade/upgrade-2.0.4-to-2.0.5.md` 与 `core/upgrade/release-manifest-2.0.5.toml`。该清单不授权未来版本、仓库改名或其他真实实例数据处置。
 
 完整机器规则见 `core/upgrade/UPGRADE-CONTRACT.md` 和对应发布清单。GitHub 自动生成 ZIP 的外层目录名和压缩容器字节可能变化，因此升级验证以正式标签、发布清单、解压后的文件集合与逐文件内容为准，不把 ZIP 文件本身的一次 SHA-256 当作永久身份。升级包仍按不可信输入检查路径安全；这些来源与完整性检查会降低风险，但不向普通用户承诺“官方绝对安全”。

@@ -34,15 +34,21 @@ if (JSON.stringify(firstInstantiationWriteSet) !== JSON.stringify(expectedFirstC
 }
 
 includesAll("core/protocols/COMPONENT_CHANGE.md", [
-  "充分且针对性的检查",
+  "小故障不能拖死整个 Agent",
+  "全面思考和设计",
+  "主动精简、轻量落地",
+  "不要把“全面思考”实现成“全面管控”",
+  "没有新的真实职责",
   "语义耦合",
   "一个失败不回滚",
   "可重建投影",
   "不能因为格式、空值或普通漂移单独阻断",
+  "没有被本次变化影响的能力不做全量回归",
 ]);
 excludesAll("core/protocols/COMPONENT_CHANGE.md", [
   "只要一次正式动作会同时改变两个或更多耐久文件",
   "必须由 Level 3 负责判断与验收",
+  "每次正式修改的完成流程",
 ]);
 
 includesAll("core/guides/first-use-execution-gates.md", [
@@ -100,7 +106,16 @@ excludesAll("core/protocols/TASK_ORCHESTRATION_SOP.md", [
 includesAll("BOOTSTRAP.md", [
   "普通对话、自然语言召回、学习和不依赖提醒的任务继续",
   "单项保存失败只影响这一项",
-  "`👉`",
+  "每个新的实质用户目标开始前",
+  "同一目标的连续回复不重复",
+  "👉 接下来",
+]);
+
+includesAll("core/maps/component-map.toml", [
+  "find-owner-and-affected-boundary",
+  "update-smallest-true-source-while-preserving-user-private-and-unknown-content",
+  "verify-only-the-affected-user-journey-and-local-failure-scope",
+  "report-result-and-next-step",
 ]);
 
 const lifecycle = source("core/maps/domain-lifecycle.toml");

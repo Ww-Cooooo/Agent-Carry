@@ -110,16 +110,16 @@ expect(machineContract.includes("sessionReentryCommand") && machineContract.incl
 expect(upgradeCli.includes('decision: "ai-carry-upgrade-target-runtime-validated"')
   && upgradeCli.includes("sessionActivated: false") && upgradeCli.includes("behaviorAccepted: false")
   && !upgradeCli.includes("sessionActivated: true") && !upgradeCli.includes("behaviorAccepted: true"),
-  "2.0.4 upgrade CLI self-attests current-session activation or behavior acceptance");
+  "2.0.5 upgrade CLI self-attests current-session activation or behavior acceptance");
 expect(hostResume.includes("升级后的新运行接续") && hostResume.includes("不是每次升级都必须执行"),
   "new-run resume still presents itself as a mandatory upgrade path");
 expect(protocol.includes("宿主产品版本属于宿主观察，不参与 AI Carry 版本比较")
   && triggerRegistry.includes('id = "upgrade-session-activation"'),
   "AI Carry version adoption can still be confused with the host product version");
-for (const source of [agentsEntry, bootstrap]) {
-  expect(source.includes("每个新的实质用户目标开始前")
-    && source.includes("同一目标的连续回复不重复"),
-  "the stable entry describes a mismatch route but never performs the bounded version comparison");
-}
+expect(agentsEntry.includes("长期对话的版本接续") && agentsEntry.includes("按 `BOOTSTRAP.md`"),
+  "the root entry does not delegate version continuity to the startup owner");
+expect(bootstrap.includes("每个新的实质用户目标开始前")
+  && bootstrap.includes("同一目标的连续回复不重复"),
+  "the startup owner does not perform the bounded version comparison");
 
-console.log("Upgrade session activation passed high-information invalid, rollback, continuity, and generic-JSON no-self-attestation cases plus the 2.0.4 local-CLI boundary.");
+console.log("Upgrade session activation passed high-information invalid, rollback, continuity, and generic-JSON no-self-attestation cases plus the 2.0.5 local-CLI boundary.");

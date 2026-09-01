@@ -282,6 +282,6 @@ projects_to = []
 [change_rule]
 operations = ["add", "modify", "delete", "rename", "move", "migrate", "upgrade", "optimize", "publish"]
 formal_scopes = ["template-component", "instance-identity", "instance-formal-asset", "instance-formal-state", "instance-component", "derived-projection-contract", "release-candidate"]
-required_steps = ["load-relevant-owner-and-boundary", "state-user-visible-change-and-local-failure-scope", "update-smallest-true-source", "preserve-instance-private-and-unknown-content", "verify-affected-user-journey", "add-migration-or-release-work-only-when-existing-users-differ", "report-result-learning-and-next-step"]
+required_steps = ["find-owner-and-affected-boundary", "update-smallest-true-source-while-preserving-user-private-and-unknown-content", "verify-only-the-affected-user-journey-and-local-failure-scope", "report-result-and-next-step"]
 ordinary_context = "metadata-only"
 full_protocol = "core/protocols/COMPONENT_CHANGE.md"
