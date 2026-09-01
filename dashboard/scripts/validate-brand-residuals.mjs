@@ -45,7 +45,7 @@ function overlaps(line, match, fragment) {
 }
 function archivedRelease(ref) {
   return /^core\/upgrade\/(?:release-manifest-|upgrade-).+\.(?:toml|md)$/u.test(ref)
-    && !ref.endsWith("release-manifest-2.0.3.toml");
+    && !ref.endsWith("release-manifest-2.0.4.toml");
 }
 function classify(ref, line, match) {
   if (repositoryLocations.some((fragment) => overlaps(line, match, fragment))) return "repository-location";

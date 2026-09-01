@@ -447,9 +447,9 @@ function validateCurrentSessionReentry(sourceArgument, transactionRef, expectedI
     scriptsExecuted: false,
     dependenciesInstalled: false,
     networkUsed: false,
-    claimLimit: "这只证明已切换根中的目标启动闭包、双快照、升级入口和同次回滚包可读；本地文件工具不能证明宿主已经把新版规则加载进当前会话，也不能把静态字符串当成真实代表行为。",
+    claimLimit: "这只证明已切换根中的目标启动闭包、双快照、升级入口和同次回滚包可读；本地文件工具不能证明宿主已经把新版规则加载进当前会话，也不能把静态字符串当成真实代表行为。dashboard/package.json 中的开发、构建和发布 check:* 不属于已安装实例的升级验收。",
     userSummary: `AI Carry ${TARGET_VERSION} 的文件事务与目标运行入口已经回读通过；当前会话采用和代表行为仍由宿主实际运行事实决定，工具没有自报通过。`,
-    nextStep: "当前对话可继续原工作；宿主能提供真实重载与行为回执时再闭合后两项，否则下一次自然打开会读取新版入口。无需让用户专门创建测试任务。",
+    nextStep: "当前对话继续原工作，或由宿主完成一项与用户当前目标相关的无破坏代表行为；不要新建专门测试任务，也不要在实例中运行开发仓库 check:* 全集。宿主不能原地重载时，下一次自然打开会读取新版入口。",
   });
 }
 
@@ -1018,7 +1018,7 @@ function applyUpgradeWithHostConfirmation(sourceArgument, targetArgument, confir
         ? "AI Carry 已在不移动当前工作根的情况下完成核心产品切换与看板刷新；实例正式文件保持，工作区、本机层、私密层和未知根文件没有被枚举、复制或删除。"
         : "AI Carry 核心产品已经安全切换，实例与用户内容保持；看板刷新暂未完成，但不会撤销有效升级或影响普通对话。",
       nextStep: snapshotState === "current"
-        ? "执行本次返回的 sessionReentryCommand 只核对目标运行入口；会话采用和代表行为必须由宿主真实事实闭合，不能手填 passed。"
+        ? "执行本次返回的 sessionReentryCommand 核对目标运行入口；随后继续当前工作或完成一项相关的无破坏代表行为。不要在实例中运行开发仓库 check:* 全集；会话采用和行为结果必须来自宿主真实事实，不能手填 passed。"
         : "先执行 snapshotRefreshCommand 只重试看板刷新；成功后再执行 sessionReentryCommand。其他能力可以继续使用。",
       derived,
     });

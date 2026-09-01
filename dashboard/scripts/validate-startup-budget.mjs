@@ -41,6 +41,16 @@ function enforceEnvelope(total, maximum, label) {
   if (!Number.isSafeInteger(total) || total < 0 || total > maximum) throw new Error(`${label} is ${total} characters, over the ${maximum} limit`);
 }
 
+function positiveBudget(value, label) {
+  if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${label} must be a positive safe integer`);
+  return value;
+}
+
+function validateSignalProjectionBudget(source, expectedBudget) {
+  const root = parseSectionedToml(source, "signal map")[""] ?? {};
+  if (root.budget_bytes !== expectedBudget) throw new Error("signal-map budget does not match assistant.toml");
+}
+
 function replaceSectionStringValue(source, expectedSection, expectedKey, replacement) {
   let section = "";
   let replacementCount = 0;
@@ -128,20 +138,14 @@ function validateStartupManifest(source) {
   return values;
 }
 
-const assistant = read("assistant.toml");
-const limitMatch = assistant.match(/maximum_characters\s*=\s*(\d+)/);
-if (!limitMatch) throw new Error("assistant.toml does not declare bootstrap.maximum_characters");
-const limit = Number(limitMatch[1]);
-const manifestLimitMatch = assistant.match(/maximum_instance_manifest_bytes\s*=\s*(\d+)/);
-const signalLimitMatch = assistant.match(/maximum_projection_bytes\s*=\s*(\d+)/);
-const capsuleLimitMatch = assistant.match(/maximum_startup_capsule_bytes\s*=\s*(\d+)/);
-const signalSummaryLimitMatch = assistant.match(/maximum_startup_signal_summary_characters\s*=\s*(\d+)/);
-if (!manifestLimitMatch || !signalLimitMatch || !capsuleLimitMatch || !signalSummaryLimitMatch) throw new Error("assistant.toml does not declare closed manifest, capsule, signal, and signal-summary budgets");
-const manifestLimit = Number(manifestLimitMatch[1]);
-const signalLimit = Number(signalLimitMatch[1]);
-const capsuleLimit = Number(capsuleLimitMatch[1]);
-const signalSummaryLimit = Number(signalSummaryLimitMatch[1]);
-if (manifestLimit !== 2560 || signalLimit !== 1536 || capsuleLimit !== 4096 || signalSummaryLimit !== 1024) throw new Error("startup sub-budgets drifted from the reviewed allocation");
+const assistant = parseSectionedToml(read("assistant.toml"), "assistant manifest");
+const bootstrap = assistant.bootstrap ?? {};
+const signals = assistant.signals ?? {};
+const limit = positiveBudget(bootstrap.maximum_characters, "bootstrap.maximum_characters");
+const manifestLimit = positiveBudget(bootstrap.maximum_instance_manifest_bytes, "bootstrap.maximum_instance_manifest_bytes");
+const signalLimit = positiveBudget(signals.maximum_projection_bytes, "signals.maximum_projection_bytes");
+const capsuleLimit = positiveBudget(bootstrap.maximum_startup_capsule_bytes, "bootstrap.maximum_startup_capsule_bytes");
+const signalSummaryLimit = positiveBudget(bootstrap.maximum_startup_signal_summary_characters, "bootstrap.maximum_startup_signal_summary_characters");
 const softLimit = Math.floor(limit * 0.8);
 
 for (const forbidden of forbiddenStartupFiles) {
@@ -163,11 +167,8 @@ if (bytes("instance/startup-capsule.toml") > capsuleLimit) throw new Error(`star
 enforcePortableLf("instance/manifest.toml");
 enforcePortableLf("instance/startup-capsule.toml");
 if (bytes("instance/maps/signal-map.toml") > signalLimit) throw new Error(`signal map exceeds ${signalLimit} UTF-8 bytes`);
-const signalDeclaredBudget = Number(read("instance/maps/signal-map.toml").match(/budget_bytes\s*=\s*(\d+)/)?.[1] ?? NaN);
-if (signalDeclaredBudget !== signalLimit) throw new Error("signal-map budget does not match assistant.toml");
-const signalSchemaBudget = Number(read("core/schemas/cross-session-signal.schema.md").match(/budget_bytes\s*=\s*(\d+)/)?.[1] ?? NaN);
-const signalProtocolBudget = Number(read("core/protocols/CROSS_SESSION_SIGNALS.md").match(/唤醒胶囊预算来自 `assistant\.toml`，当前为 (\d+) 字节/u)?.[1] ?? NaN);
-if (signalSchemaBudget !== signalLimit || signalProtocolBudget !== signalLimit) throw new Error("signal projection budget drifted across assistant config, schema, protocol, and template");
+const signalMapSource = read("instance/maps/signal-map.toml");
+validateSignalProjectionBudget(signalMapSource, signalLimit);
 validateInstanceManifestStructure(parseSectionedToml(read("instance/manifest.toml"), "instance manifest"));
 if (inspectStartupCapsule(repository).decision !== "startup-capsule-valid") throw new Error("startup capsule does not close over the strict manifest");
 
@@ -190,5 +191,8 @@ if (Object.hasOwn(futureValidated.root, "future_vendor_note")) throw new Error("
 expectFailure(() => validateInstanceManifestStructure(futureManifest, { allowUnknownFields: false }), "strict manifest writer accepted an unknown field");
 expectFailure(() => validateReference("instance/../AGENTS.md"), "manifest traversal reference was accepted");
 expectFailure(() => enforceEnvelope(limit + 1, limit, "synthetic startup envelope"), "over-limit startup envelope was accepted");
+expectFailure(() => validateSignalProjectionBudget(signalMapSource.replace(
+  /^budget_bytes\s*=\s*\d+$/mu,
+  `budget_bytes = ${signalLimit + 1}`), signalLimit), "signal-map budget drift was accepted");
 
 console.log(JSON.stringify({ limit, softLimit, manifestLimit, capsuleLimit, signalLimit, signalSummaryLimit, publicTotal, publicWorstCase, warnings, publicBreakdown }, null, 2));

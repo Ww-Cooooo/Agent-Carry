@@ -46,6 +46,8 @@ Agent 读取当前 `instance/manifest.toml`、`core/upgrade/official-source.toml
 
 核心切换后按 `core/protocols/UPGRADE_SESSION_ACTIVATION.md` 分开报告文件升级、看板刷新和当前会话采用。看板待刷新时先执行返回的定向命令；成功后再执行同次 `sessionReentryCommand` 核对回滚包、胶囊、manifest、双快照和代表路线。CLI 不能自行生成 `sessionActivated=true` 或 `behaviorAccepted=true`；宿主能观察真实重载与代表行为时再闭合，不能时说明下一次自然打开会采用新版。看板、会话或单项行为待接续都不回滚有效实例；只有核心文件或启动真源无效才回滚。
 
+实例升级验收只使用这次升级返回的 `sessionReentryCommand`，再继续当前工作或完成一项与用户目标相关的无破坏代表行为。`dashboard/package.json` 中的 `check:*` 是母版开发、构建和发布工具，不属于已安装实例的升级门禁；不得在实例中枚举或运行整套开发检查，也不得因为缺少 `node_modules`、构建依赖或维护者环境把已经可用的实例判成升级失败。
+
 从 1.2.1 升到 1.3.1 时还要完成四项定向迁移：为 frontmatter 与直接路线成对补齐保守确认门；把没有真实旧批准证据的 policy 授权资产留在复核；用现有真实结果建立 `instance/validations/index.toml`，旧成熟度无法闭合时进入“需要证据／复核”而不是补造记录；严格回读 manifest 后，在同一可恢复事务中重建 `instance/startup-capsule.toml` 并核对源摘要。风险分级只影响候选验证和复核顺序，不会在升级过程中自动采用正式资产。详细规则见 `core/upgrade/upgrade-1.2.1-to-1.3.1.md` 与 `core/upgrade/release-manifest-1.3.1.toml`。
 
 从 1.3.0 升到 1.3.1 不重新执行上述旧资产迁移，只更新模板拥有的产品文件和实例产品版本，再重建启动胶囊与两份真实快照。1.3.1 修复发布 authority，并在继续禁止整个 `.assistant-local`／`.assistant-private` 的前提下，只允许发布清单逐字列出的九个普通零字节 `.gitkeep`。详细规则见 `core/upgrade/upgrade-1.3.0-to-1.3.1.md`；任何新的公开提交、标签、Release 或 Pages 仍需独立授权。
@@ -76,6 +78,8 @@ AI Carry 2.0.1 是已经发布的升级确认修复历史。1.4.8、保留的本
 
 AI Carry 2.0.2 是已经发布的局部容错历史。它把首次创建、启动、学习、Skill、升级核心结果与可重建投影分开；升级预览只现场核验官方来源一次，复制候选启动本机工具前只检查当前组件明确使用的绑定。详细规则见 `core/upgrade/upgrade-2.0.1-to-2.0.2.md` 与 `core/upgrade/release-manifest-2.0.2.toml`，历史发布边界保持不变。
 
-当前目标是 AI Carry 2.0.3。1.4.8、保留的本地 1.4.9、2.0.0、2.0.1 与 2.0.2 都可直接升级。2.0.3 保留上述容错，并让实例的持久安装、更新、删除、学习和进化与母版升级共用 `core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md`：当前实例 Agent 根据真实所有权和内容自主选择保留、适配、重连、重建或局部停用，不要求固定字段、目录、时间戳或穷尽迁移表。旧格式、可推导缺项和未知字段优先兼容处理；一个可选项的问题不拖停主体。身份、用户数据、私密、所有权或必需能力确实无法判断时，只暂停受影响写入或正式切换。详细规则见 `core/upgrade/upgrade-2.0.2-to-2.0.3.md` 与 `core/upgrade/release-manifest-2.0.3.toml`。该清单不授权任何未来提交、推送、标签、Release、Pages、仓库改名、真实实例数据处置或其他实例替换。
+AI Carry 2.0.3 是已经发布的实例兼容协定历史。它让持久安装、更新、删除、学习、进化与母版升级共用 `core/protocols/INSTANCE_EVOLUTION_COMPATIBILITY.md`，由实例 Agent 根据真实所有权和内容选择保留、适配、重连、重建或局部停用。详细规则见 `core/upgrade/upgrade-2.0.2-to-2.0.3.md` 与 `core/upgrade/release-manifest-2.0.3.toml`，该历史发布保持不变。
+
+当前目标是 AI Carry 2.0.4。1.4.8、保留的本地 1.4.9、2.0.0、2.0.1、2.0.2 与 2.0.3 都可直接升级。2.0.4 让启动预算只读取 `assistant.toml` 的结构化配置，并明确实例升级只运行本次事务返回的 `sessionReentryCommand` 与一项相关的无破坏代表行为；不得把开发仓库 `check:*` 全集、构建依赖或维护者许可证工具变成实例门禁。2.0.3 的兼容协定、局部容错、用户内容、私密边界和回退全部保留。详细规则见 `core/upgrade/upgrade-2.0.3-to-2.0.4.md` 与 `core/upgrade/release-manifest-2.0.4.toml`。该清单不授权未来版本、仓库改名或其他真实实例数据处置。
 
 完整机器规则见 `core/upgrade/UPGRADE-CONTRACT.md` 和对应发布清单。GitHub 自动生成 ZIP 的外层目录名和压缩容器字节可能变化，因此升级验证以正式标签、发布清单、解压后的文件集合与逐文件内容为准，不把 ZIP 文件本身的一次 SHA-256 当作永久身份。升级包仍按不可信输入检查路径安全；这些来源与完整性检查会降低风险，但不向普通用户承诺“官方绝对安全”。

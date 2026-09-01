@@ -14,10 +14,10 @@ for (const fragment of ["# 启动胶囊 Schema 1.0", "source_manifest_digest", "
 assert(coreManifest.includes('startup_capsule_schema = "core/schemas/startup-capsule.schema.md"'), "core manifest does not register the startup capsule schema");
 const root = mkdtempSync(join(tmpdir(), "ai-carry-startup-capsule-"));
 const write = (ref, source) => { const path = resolve(root, ...ref.split("/")); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, source, "utf8"); };
-const manifest = (extra = "", learning = `[learning]\npolicy = "risk-tiered"\nlow_risk_promotion = "explicit-confirmation-after-notice"\nmedium_high = "explicit-confirmation"\ndirect_user_instruction = "direct-authorization"\n`, productVersion = "2.0.3") => `schema_version = 1\ninstance_id = "ac.fixture"\nstate = "instance"\ncreated_from = "ai-carry@fixture"\ncreated_at = ""\n${extra}\n[direction]\ntype = "domain"\nlocked = true\ndomain_id = "education"\nlabel = "教育助手"\nscope_statement = "测试启动胶囊"\nout_of_scope_policy = "create-new-instance"\n\n[profile]\nstatus = "active"\nguidance_mode = "balanced"\ndisplay_name = "教育助手"\nmission = "帮助用户整理资料"\nlanguage = "zh-CN"\nuser_preferences_ref = "instance/profile/approved-profile.md"\ndomain_map_ref = "instance/maps/domain-map.toml"\nsignal_control_ref = "instance/signals/control.toml"\nsignal_map_ref = "instance/maps/signal-map.toml"\ntime_trigger_map_ref = "instance/maps/time-trigger-map.toml"\nhost_registry_ref = "instance/hosts/registry.toml"\n\n${learning}\n[validation]\nevidence_index_ref = "instance/validations/index.toml"\n\n[versions]\nproduct = "${productVersion}"\nevolution_candidate_index_schema = "1.0"\nasset_confirmation_gate_schema = "1.0"\nresult_validation_evidence_schema = "1.0"\n`;
+const manifest = (extra = "", learning = `[learning]\npolicy = "risk-tiered"\nlow_risk_promotion = "explicit-confirmation-after-notice"\nmedium_high = "explicit-confirmation"\ndirect_user_instruction = "direct-authorization"\n`, productVersion = "2.0.4") => `schema_version = 1\ninstance_id = "ac.fixture"\nstate = "instance"\ncreated_from = "ai-carry@fixture"\ncreated_at = ""\n${extra}\n[direction]\ntype = "domain"\nlocked = true\ndomain_id = "education"\nlabel = "教育助手"\nscope_statement = "测试启动胶囊"\nout_of_scope_policy = "create-new-instance"\n\n[profile]\nstatus = "active"\nguidance_mode = "balanced"\ndisplay_name = "教育助手"\nmission = "帮助用户整理资料"\nlanguage = "zh-CN"\nuser_preferences_ref = "instance/profile/approved-profile.md"\ndomain_map_ref = "instance/maps/domain-map.toml"\nsignal_control_ref = "instance/signals/control.toml"\nsignal_map_ref = "instance/maps/signal-map.toml"\ntime_trigger_map_ref = "instance/maps/time-trigger-map.toml"\nhost_registry_ref = "instance/hosts/registry.toml"\n\n${learning}\n[validation]\nevidence_index_ref = "instance/validations/index.toml"\n\n[versions]\nproduct = "${productVersion}"\nevolution_candidate_index_schema = "1.0"\nasset_confirmation_gate_schema = "1.0"\nresult_validation_evidence_schema = "1.0"\n`;
 
 try {
-  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.3"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
+  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.4"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
   write("instance/manifest.toml", manifest());
   const capsule = buildStartupCapsule(root); write("instance/startup-capsule.toml", capsule.source);
   const valid = inspectStartupCapsule(root);
@@ -34,14 +34,14 @@ try {
   const forwardCompatible = buildStartupCapsule(root);
   assert(!forwardCompatible.source.includes("future_vendor_field") && forwardCompatible.values.instance_id === "ac.fixture",
     "an opaque future manifest field changed the bounded startup projection");
-  write("core/manifest.toml", `schema_version = 1\ncore_id = "agent-carry-core"\nversion = "2.0.3"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
+  write("core/manifest.toml", `schema_version = 1\ncore_id = "agent-carry-core"\nversion = "2.0.4"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
   assert(inspectStartupCapsule(root).decision === "startup-repair-required", "a legacy core identity was projected as current AI Carry");
-  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.3"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
+  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.4"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
   write("instance/manifest.toml", manifest("", undefined, "1.4.8"));
   assert(inspectStartupCapsule(root).decision === "startup-repair-required", "a mismatched instance product version was projected as current");
   write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "1.4.8"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
   assert(inspectStartupCapsule(root).decision === "startup-repair-required", "matching stale core and instance versions were projected as the current product");
-  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.3"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
+  write("core/manifest.toml", `schema_version = 1\ncore_id = "ai-carry-core"\nversion = "2.0.4"\n\n[entry]\nroot_map = "core/maps/root-map.toml"\n`);
   write("instance/manifest.toml", manifest("", ""));
   const legacy = buildStartupCapsule(root);
   assert(legacy.values.learning_policy === "manual-only" && legacy.values.migration_required === true, "missing legacy learning policy did not fail closed to manual-only");
