@@ -124,6 +124,7 @@ const STATUS_LABELS: Record<string, string> = {
   "asset-history": "仅作历史",
   "asset-pending": "尚未可用",
   "asset-unknown": "状态待核对",
+  "asset-legacy-unclassified": "旧版信息待补齐",
   confirmed: "已确认",
   unconfirmed: "未确认",
   unvalidated: "待验证",
@@ -198,10 +199,14 @@ interface StatusTooltipPosition {
   placement: "top" | "bottom";
 }
 
-function StatusHelp({ id, label, help }: { id: string; label: string; help: string }) {
-  const triggerRef = useRef<HTMLSpanElement>(null);
-  const [open, setOpen] = useState(false);
+type InfoHintMode = "closed" | "hover" | "focus" | "pinned";
+
+export function InfoHint({ label, help }: { label: string; help: string }) {
+  const id = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [mode, setMode] = useState<InfoHintMode>("closed");
   const [position, setPosition] = useState<StatusTooltipPosition | null>(null);
+  const open = mode !== "closed";
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger) return;
@@ -214,11 +219,6 @@ function StatusHelp({ id, label, help }: { id: string; label: string; help: stri
       placement,
     });
   }, []);
-
-  const show = () => {
-    updatePosition();
-    setOpen(true);
-  };
 
   useEffect(() => {
     if (!open) return;
@@ -233,20 +233,32 @@ function StatusHelp({ id, label, help }: { id: string; label: string; help: stri
 
   return (
     <>
-      <span
+      <button
+        type="button"
         ref={triggerRef}
         className="status-help"
-        tabIndex={0}
         aria-label={`了解“${label}”`}
         aria-describedby={open ? id : undefined}
-        onMouseEnter={show}
-        onMouseLeave={(event) => { if (!event.currentTarget.matches(":focus")) setOpen(false); }}
-        onFocus={show}
-        onBlur={() => setOpen(false)}
-        onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}
+        aria-expanded={open}
+        onMouseEnter={() => {
+          updatePosition();
+          setMode((current) => current === "closed" ? "hover" : current);
+        }}
+        onMouseLeave={() => setMode((current) => current === "hover" ? "closed" : current)}
+        onFocus={(event) => {
+          if (!event.currentTarget.matches(":focus-visible")) return;
+          updatePosition();
+          setMode((current) => current === "closed" ? "focus" : current);
+        }}
+        onBlur={() => setMode("closed")}
+        onClick={() => {
+          updatePosition();
+          setMode((current) => current === "pinned" ? "closed" : "pinned");
+        }}
+        onKeyDown={(event) => { if (event.key === "Escape") setMode("closed"); }}
       >
         <CircleHelp aria-hidden="true" />
-      </span>
+      </button>
       {open && position && typeof document !== "undefined" ? createPortal(
         <span
           id={id}
@@ -264,7 +276,6 @@ function StatusHelp({ id, label, help }: { id: string; label: string; help: stri
 }
 
 export function StatusBadge({ value, showHelp = true, helpText }: { value?: string; showHelp?: boolean; helpText?: string }) {
-  const tooltipId = useId();
   if (!value) return null;
   const label = normalizeStatus(value);
   const help = helpText ?? STATUS_HELP[label] ?? `这条内容当前处于“${label}”状态。`;
@@ -280,7 +291,7 @@ export function StatusBadge({ value, showHelp = true, helpText }: { value?: stri
   return (
     <span className="status-with-help">
       <Badge className={`status-badge status-badge--${tone}`}>{label}</Badge>
-      {showHelp ? <StatusHelp id={tooltipId} label={label} help={help} /> : null}
+      {showHelp ? <InfoHint label={label} help={help} /> : null}
     </span>
   );
 }
@@ -307,6 +318,8 @@ export function EmptyState({
 }
 
 export function CopyDialog({ state, onClose }: { state: CopyState; onClose: () => void }) {
+  const isAssistantCreation = state.label === "创建我的助手";
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
   async function copyAgain() {
     try {
       await navigator.clipboard.writeText(state.text);
@@ -317,18 +330,49 @@ export function CopyDialog({ state, onClose }: { state: CopyState; onClose: () =
 
   return (
     <Dialog open={state.open} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="copy-dialog sm:max-w-[640px]">
+      <DialogContent
+        className="copy-dialog sm:max-w-[640px]"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus({ preventScroll: true });
+        }}
+      >
         <DialogHeader>
           <div className={`copy-dialog__mark ${state.copied ? "is-success" : ""}`}>
             {state.copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           </div>
-          <DialogTitle>{state.copied ? "完整指令已复制" : "请手动复制完整指令"}</DialogTitle>
+          <DialogTitle ref={titleRef} tabIndex={-1}>{state.copied ? "完整指令已复制" : "请手动复制完整指令"}</DialogTitle>
           <DialogDescription>
-            把它发给当前 Agent 即可。看板只负责生成指令，不会直接修改文件或执行操作。
+            {state.copied
+              ? isAssistantCreation
+                ? "下一步：回到当前 Agent，它会继续完成创建。"
+                : "下一步：回到当前 Agent，让它继续处理这项请求。"
+              : "自动复制没有成功，下面已经显示完整内容；请手动复制后发给当前 Agent。"}
           </DialogDescription>
         </DialogHeader>
         <label className="sr-only" htmlFor="ai-carry-copy-text">要发送给 Agent 的完整指令</label>
-        <textarea id="ai-carry-copy-text" className="copy-dialog__text" readOnly value={state.text} />
+        {state.copied ? (
+          <>
+            <p className="copy-dialog__boundary">看板不会直接执行。<InfoHint label="为什么还要发给 Agent" help="看板只生成并复制请求；当前 Agent 会读取相应路线、说明影响，并在需要你决定时继续询问。" /></p>
+            <details className="detail-disclosure copy-dialog__disclosure">
+              <summary>
+                <span className="copy-dialog__preview-head">
+                  <span><strong>完整指令预览</strong><small>已经复制，可以展开检查全部内容。</small></span>
+                  <span className="copy-dialog__preview-toggle copy-dialog__preview-toggle--closed">展开完整指令</span>
+                  <span className="copy-dialog__preview-toggle copy-dialog__preview-toggle--open">收起完整指令</span>
+                </span>
+                <span className="copy-dialog__preview" aria-hidden="true">
+                  <span className="copy-dialog__preview-text">{state.text}</span>
+                </span>
+              </summary>
+              <div className="detail-disclosure__body">
+                <textarea id="ai-carry-copy-text" className="copy-dialog__text" readOnly value={state.text} />
+              </div>
+            </details>
+          </>
+        ) : (
+          <textarea id="ai-carry-copy-text" className="copy-dialog__text" readOnly value={state.text} />
+        )}
         <DialogFooter className="copy-dialog__footer">
           <Button variant="outline" className="control-button" onClick={onClose}>关闭</Button>
           <Button className="control-button" onClick={() => void copyAgain()}>
@@ -366,6 +410,16 @@ export function ItemDialog({
   const status = libraryKind ? null : detail?.item.reliability ?? detail?.item.status;
   const habitCorrection = isHabit ? buildHabitCorrectionAction(detail.item) : null;
   const habitForget = isHabit ? buildHabitForgetAction(detail.item) : null;
+  const hasSupplementalDetails = Boolean(
+    detail && (
+      detail.item.id
+      || detail.item.frequency
+      || detail.item.triggers?.length
+      || detail.item.steps?.length
+      || (isHabit && detail.item.sourceSummary)
+      || detail.kind === "evolution"
+    )
+  );
 
   return (
     <Dialog open={Boolean(detail)} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -399,36 +453,38 @@ export function ItemDialog({
             {detail.kind === "memories" ? (
               <section className="memory-dialog__usage" aria-label="这条记忆怎样使用">
                 <div>
-                  <span>默认方式</span>
-                  <strong>{habit ? habit.behaviorTitle : usage?.behaviorTitle ?? "先核对正式状态"}</strong>
+                  <span className="detail-label-with-help">
+                    使用方式：默认自动，按需手动
+                    <InfoHint
+                      label={isHabit ? "怎样管理这项习惯" : "补充使用方式"}
+                      help={isHabit
+                        ? `${habit?.key === "history" ? "这条记录已经停止；以后仍可单独要求恢复或删除。" : "可以纠正、缩小范围或停止沿用。"} 看板只生成请求，当前 Agent 会先说明影响并让你核对。`
+                        : usage?.usable
+                          ? "想确保当前任务明确参考这一条时，可以使用下方按钮；它只会按需读取这一项。"
+                          : "当前状态核对完成前，下方按钮只会生成核对请求，不会执行正文。"}
+                    />
+                  </span>
+                  <strong>{habit?.automatic || usage?.usable ? "任务相关时自动使用；手动按钮只是备用" : habit ? habit.behaviorTitle : usage?.behaviorTitle ?? "先核对正式状态"}</strong>
                   <p>{habit ? habit.behaviorSummary : usage?.behaviorSummary ?? "看板无法确认这条记忆当前是否允许使用。"}</p>
-                </div>
-                <div>
-                  <span>{isHabit ? "始终由你决定" : "补充方式"}</span>
-                  <strong>{isHabit ? "可以纠正、缩小范围或停止沿用" : usage?.usable ? "需要时可以手动指定" : "核对前不能直接使用"}</strong>
-                  <p>{isHabit ? "看板不会直接改文件。你选择管理操作后，当前 Agent 会先说明影响并让你核对。" : usage?.usable ? "如果你想确保当前任务明确参考这一条，可以使用下方按钮；它不会把全部记忆一起载入。" : "下方按钮只会生成状态核对请求，不会执行这条记忆正文。"}</p>
                 </div>
               </section>
             ) : null}
 
-            <div className={`item-dialog__facts ${maturityStatus ? "item-dialog__facts--three" : ""}`}>
-              <div><span>记录编号</span><strong>{detail.item.id ?? "未登记"}</strong></div>
+            <div className={`item-dialog__facts item-dialog__facts--primary ${maturityStatus ? "item-dialog__facts--three" : ""}`}>
               {libraryKind && lifecycleStatus ? <div><span>记录状态</span><StatusBadge value={lifecycleStatus} /></div> : null}
               {libraryKind && authorizationStatus ? <div><span>使用授权</span><StatusBadge value={authorizationStatus} /></div> : null}
               {maturityStatus ? <div><span>成熟度</span><StatusBadge value={maturityStatus} /></div> : null}
               {status ? <div><span>当前状态</span><StatusBadge value={status} /></div> : null}
-              {detail.item.frequency ? <div><span>建议周期</span><strong>{detail.item.frequency}</strong></div> : null}
             </div>
 
             {isHabit ? (
               <section className="habit-dialog__context" aria-label="这项习惯的适用范围和来源">
                 <article>
-                  <span>什么时候会用</span>
+                  <span className="detail-label-with-help">
+                    什么时候会用
+                    <InfoHint label="这项习惯怎样留下" help={detail.item.sourceSummary ?? "来源说明未投影到看板；需要时可让 Agent 核对正式记录。"} />
+                  </span>
                   {detail.item.scopeSummary ? <SourceText as="p">{detail.item.scopeSummary}</SourceText> : <p>适用范围还没有单独说明；使用时会先结合当前任务判断。</p>}
-                </article>
-                <article>
-                  <span>它是怎样留下的</span>
-                  {detail.item.sourceSummary ? <SourceText as="p">{detail.item.sourceSummary}</SourceText> : <p>来源说明未投影到看板；需要时可让 Agent 核对正式记录。</p>}
                 </article>
               </section>
             ) : null}
@@ -436,20 +492,12 @@ export function ItemDialog({
             {detail.kind === "evolution" ? (
               <section className="evolution-dialog__trail" aria-label="这条学习建议的来源、建议去向和下一步">
                 <article>
-                  <span>01 · 从哪里发现</span>
-                  <strong>{detail.item.sourceSummary ? <SourceText>{detail.item.sourceSummary}</SourceText> : "来源说明待补充"}</strong>
-                </article>
-                <article>
-                  <span>02 · 是否允许继续观察</span>
-                  <strong>{detail.item.observationState === "explicit" && ["explicit-user", "existing-approved-migration"].includes(detail.item.observationBasis ?? "") ? "已允许观察；不等于已经允许正式使用" : "授权待核对；不会自动累计或晋升"}</strong>
-                </article>
-                <article>
-                  <span>03 · 可能保存成</span>
+                  <span>可能保存成</span>
                   <strong>{detail.item.targetLabel || "去向待判断"}</strong>
-                  <small>这是当前建议，不代表已经生成正式资产。</small>
+                  <InfoHint label="建议去向" help="这是当前建议，不代表已经生成正式资产。" />
                 </article>
                 <article>
-                  <span>04 · 下一步</span>
+                  <span>下一步</span>
                   <strong>{detail.item.nextStep ? <SourceText>{detail.item.nextStep}</SourceText> : "先核对来源、范围、风险和证据，再决定怎样处理。"}</strong>
                 </article>
               </section>
@@ -462,29 +510,53 @@ export function ItemDialog({
               </section>
             ) : null}
 
-            {detail.item.triggers?.length ? (
-              <section className="item-dialog__section">
-                <h3>你可以这样说</h3>
-                <ul className="prompt-examples">
-                  {detail.item.triggers.slice(0, 3).map((trigger) => <SourceText as="li" key={trigger}>“{trigger}”</SourceText>)}
-                </ul>
-              </section>
-            ) : null}
-
-            {detail.item.steps?.length ? (
-              <section className="item-dialog__section">
-                <h3>启动后会做</h3>
-                <ol className="detail-steps">
-                  {detail.item.steps.map((step) => <SourceText as="li" key={step}>{step}</SourceText>)}
-                </ol>
-              </section>
+            {hasSupplementalDetails ? (
+              <details className="detail-disclosure">
+                <summary>查看使用方式与记录信息</summary>
+                <div className="detail-disclosure__body">
+                  {detail.item.id || detail.item.frequency ? (
+                    <dl className="detail-record-list">
+                      {detail.item.id ? <div><dt>记录编号</dt><dd>{detail.item.id}</dd></div> : null}
+                      {detail.item.frequency ? <div><dt>建议周期</dt><dd><SourceText>{detail.item.frequency}</SourceText></dd></div> : null}
+                    </dl>
+                  ) : null}
+                  {detail.kind === "evolution" ? (
+                    <section className="item-dialog__section">
+                      <h3>来源与观察状态</h3>
+                      <p>{detail.item.sourceSummary ? <SourceText>{detail.item.sourceSummary}</SourceText> : "来源说明待补充"}</p>
+                      <p>{detail.item.observationState === "explicit" && ["explicit-user", "existing-approved-migration"].includes(detail.item.observationBasis ?? "") ? "已允许观察；不等于已经允许正式使用。" : "授权待核对；不会自动累计或晋升。"}</p>
+                    </section>
+                  ) : null}
+                  {detail.item.triggers?.length ? (
+                    <section className="item-dialog__section">
+                      <h3>你可以这样说</h3>
+                      <ul className="prompt-examples">
+                        {detail.item.triggers.slice(0, 3).map((trigger) => <SourceText as="li" key={trigger}>“{trigger}”</SourceText>)}
+                      </ul>
+                    </section>
+                  ) : null}
+                  {detail.item.steps?.length ? (
+                    <section className="item-dialog__section">
+                      <h3>启动后会做</h3>
+                      <ol className="detail-steps">
+                        {detail.item.steps.map((step) => <SourceText as="li" key={step}>{step}</SourceText>)}
+                      </ol>
+                    </section>
+                  ) : null}
+                </div>
+              </details>
             ) : null}
 
             {isHabit && habitCorrection && habitForget ? (
               <section className="habit-dialog__manage" aria-label="管理这项习惯">
                 <div>
-                  <strong>{habit?.key === "history" ? "这条记录已经停止；以后仍可单独要求恢复或删除" : "你始终可以改正或停止它"}</strong>
-                  <p>{habit?.key === "active" || habit?.key === "trial" ? "下面的按钮只生成完整请求。纠正内容时，Agent 会先给你看修改预览；发送“停止沿用”请求后，Agent 核对身份并安全转为可恢复历史，不会永久删除资料。" : "下面的按钮只生成完整请求。当前 Agent 会回读正式记忆并说明真实状态；恢复或永久删除仍要由你另行明确提出。"}</p>
+                  <span className="detail-label-with-help">
+                    <strong>{habit?.key === "history" ? "这条记录已经停止" : "你始终可以改正或停止它"}</strong>
+                    <InfoHint
+                      label="管理操作说明"
+                      help={habit?.key === "active" || habit?.key === "trial" ? "按钮只生成请求。纠正时会先给你看预览；停止沿用只会转为可恢复历史，不会永久删除资料。" : "按钮只生成请求。当前 Agent 会先回读真实状态；恢复或永久删除仍要由你明确提出。"}
+                    />
+                  </span>
                 </div>
                 <div className="habit-dialog__actions">
                   <Button variant="outline" className="control-button" onClick={() => { onClose(); onCopy(habitCorrection.text, habitCorrection.buttonLabel); }}>

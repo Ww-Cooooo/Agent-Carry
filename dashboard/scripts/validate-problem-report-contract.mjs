@@ -30,8 +30,9 @@ assert(guide.includes("最早从哪一句话、哪次操作或哪个结果开始
   && guide.includes("只证明它说过这句话") && guide.includes("是否实际发生未知")
   && guide.includes("不展示根地图") && guide.includes("部分报告") && guide.includes("还没有发送给开发者"), "the guide omits novice guidance, concrete secret/injection redaction, internal-route hiding, or graceful partial output");
 assert(action.request.length <= 1500, "the copied problem-report request is too long for a lightweight novice and low-cost-model route");
-assert(ui.includes('findAction("support.create-problem-report")') && ui.includes("复制问题报告请求")
-  && ui.includes("按钮只复制请求；不会读取后台日志，也不会自动上传或发送报告。"), "the System page does not expose the bounded copy-only support action");
+assert(ui.includes('findAction("support.create-problem-report")') && ui.includes('className="problem-report-compact"')
+  && ui.includes("自动遮盖敏感信息，报告不会自动发送。") && ui.includes("开始整理问题报告"),
+"the migration and safety page does not expose the bounded copy-only support action");
 assert(catalog.includes('"复制问题报告请求"') && catalog.includes('"你指出最早异常"')
   && componentMap.includes('"core/guides/problem-report-guide.md"'), "localization or component ownership is incomplete");
 

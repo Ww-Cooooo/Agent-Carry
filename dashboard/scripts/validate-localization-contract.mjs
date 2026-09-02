@@ -38,7 +38,8 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
 
 requireFragments(readmeZh, 'Chinese README', [
   '[English](README.en.md)',
-  '当前版本：`2.0.6`',
+  '当前版本：`2.0.7`',
+  '点击展开：2.0.7 改变了什么',
   '点击展开：2.0.6 修复了什么',
   '点击展开：2.0.5 改变了什么',
   '点击展开：2.0.4 修复了什么',
@@ -48,7 +49,7 @@ requireFragments(readmeZh, 'Chinese README', [
   '点击展开：2.0.0 主要改了什么',
   '稳定身份和三段版本',
   '最早觉得不对',
-  '固定到 `v2.0.6` 标签',
+  '固定到 `v2.0.7` 标签',
   '只暂停当前组件',
   '🧠 这次用上了',
   '🌱 这一步我学到了',
@@ -60,7 +61,8 @@ requireFragments(readmeZh, 'Chinese README', [
 ])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `2.0.6`',
+  'Current version: `2.0.7`',
+  'What changed in 2.0.7',
   'What 2.0.6 fixes',
   'What changed in 2.0.5',
   'What 2.0.4 fixes',
@@ -70,7 +72,7 @@ requireFragments(readmeEn, 'English README', [
   'What changed in 2.0.0',
   'stable identity and semantic version',
   'which first message or action felt wrong',
-  'pinned to the `v2.0.6` tag',
+  'pinned to the `v2.0.7` tag',
   'limits only that component',
   '🧠 Used this time',
   '🌱 Learned this step',
@@ -142,7 +144,8 @@ requireFragments(tsconfig, 'Localized JSX compiler source', [
 ])
 requireFragments(views, 'Source-text projections', [
   '<SourceText>{profile.displayName}</SourceText>',
-  '<SourceText as="h2">{pending[0].title}</SourceText>',
+  '<SourceText>{headline}</SourceText>',
+  '<SourceText as="p">{intro}</SourceText>',
   '<SourceText className="content-card__title">{item.title}</SourceText>',
   '<SourceText className="growth-row__title">{item.title}</SourceText>',
 ])
@@ -160,9 +163,11 @@ requireFragments(workshop, 'Skill workshop localization and source boundary', [
   '查看详情',
   '这个 Skill 是做什么的',
   'buildSkillExportAction',
-  '点击下方按钮只会复制一段请求',
+  '按钮只复制请求',
   'skill.install-shared',
-  '点击下方“复制检查请求”按钮，再把复制的内容发给 Agent',
+  '点击按钮复制请求并发给 Agent',
+  '先在本机检查用途、脚本、依赖、权限和冲突',
+  '问题只隔离这一份 Skill',
   '复制检查请求',
 ])
 requireFragments(catalog, 'Skill workshop source guidance localization', [
@@ -170,7 +175,7 @@ requireFragments(catalog, 'Skill workshop source guidance localization', [
   '"Agent 推荐整理的 Skill": "Skills the Agent recommends creating"',
   '"我的 Skill": "My Skills"',
   '"接入 Skill": "Add a Skill"',
-  '"点击下方“复制检查请求”按钮，再把复制的内容发给 Agent"',
+  '"点击“复制检查请求”，再把内容发给 Agent"',
   '"Agent 自动处理本地副本"',
   '"Agent 自动检查并生成载体"',
   '"尚未检查完成": "Review not complete"',
@@ -180,7 +185,7 @@ requireFragments(catalog, 'Skill workshop source guidance localization', [
   '"让 Agent 继续检查": "Ask the Agent to continue the review"',
   '"让 Agent 准备分享": "Ask the Agent to prepare sharing"',
   '"让 Agent 说明并处理问题": "Ask the Agent to explain and address the issue"',
-  '"点击下方按钮只会复制一段请求。把它发给 Agent 后才会继续；网页不会直接检查、修改或分享这份 Skill。"',
+  '"按钮只复制请求": "The button only copies a request"',
   '"你可以给 Agent 下面任意一种来源": "Give the Agent any one of these sources"',
   '"ZIP 文件": "ZIP file"',
   '"Skill 链接": "Skill link"',

@@ -1,4 +1,4 @@
-import { useCallback, useContext, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft,
@@ -9,7 +9,6 @@ import {
   Circle,
   CircleHelp,
   ClipboardCopy,
-  Clock3,
   Cpu,
   Database,
   Download,
@@ -19,7 +18,6 @@ import {
   GitBranch,
   HardDrive,
   History,
-  KeyRound,
   Library,
   Lightbulb,
   LockKeyhole,
@@ -30,12 +28,9 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
-  Workflow,
   X,
 } from "lucide-react";
 import Core from "@/components/three/Core";
-import { AssetValidationGuide, ExperienceExplainer, HabitLearningGuide, MemoryAccessGuide } from "@/components/dashboard/AssetGuides";
-import GrowthGuide from "@/components/dashboard/GrowthGuide";
 import { GuidanceModeDialog, OnboardingDialog } from "@/components/dashboard/OnboardingDialog";
 import { Button } from "@/components/ui/button";
 import { localizeText } from "@/lib/i18n";
@@ -63,7 +58,6 @@ import {
   assets,
   buildDashboardAction,
   capabilities,
-  changes,
   evolution,
   experiences,
   getGlobalActions,
@@ -83,6 +77,7 @@ import {
 } from "@/lib/data";
 import {
   EmptyState,
+  InfoHint,
   SectionEyebrow,
   SourceText,
   StatusBadge,
@@ -142,23 +137,6 @@ function useRevealViewport() {
   return root ? { ...REVEAL_VIEWPORT, root } : REVEAL_VIEWPORT;
 }
 
-function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const reduced = useReducedMotion();
-  const viewport = useRevealViewport();
-  return (
-    <motion.div
-      className={className}
-      data-reveal-surface
-      initial={reduced ? false : REVEAL_INITIAL}
-      whileInView={reduced ? undefined : REVEAL_VISIBLE}
-      viewport={viewport}
-      transition={reduced ? undefined : revealTransition(delay)}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 function StartActionButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <div className="start-cta-wrap">
@@ -177,8 +155,6 @@ export function HomeView({
   onNavigate: Navigate;
   onCopy: CopyRequest;
 }) {
-  const reduced = useReducedMotion();
-  const revealViewport = useRevealViewport();
   const isTemplate = profile.state === "template";
   const pending = todo.filter((item) => item.visible && item.status !== "done");
   const instantiate = findAction("instance.instantiate");
@@ -189,199 +165,65 @@ export function HomeView({
 
   const headline = isTemplate
     ? "先创建一个真正属于你的助手"
-    : `待办事项 ${pending.length} 个`;
+    : pending.length
+      ? pending[0].title
+      : "今天没有需要继续的待办";
   const intro = isTemplate
-    ? "先选择你舒服的交流方式。无论是否熟悉 Agent，都可以创建通用助手或专业领域助手。"
-    : "今天，从这里开始。";
-
-  const statCards = [
-    { key: "memories", label: "记住了什么", value: memories.length, note: "事实、偏好和要求", icon: Database },
-    { key: "sops", label: "已有流程", value: sops.length, note: "重复任务可以直接使用", icon: Workflow },
-    { key: "capabilities", label: "已有能力", value: capabilities.length, note: "需要时再调用", icon: Sparkles },
-    { key: "experiences", label: "任务经验", value: experiences.length, note: "成功做法和失败教训", icon: History },
-  ];
+    ? "选择交流方式和助手方向，核对预览后再创建。"
+    : pending.length
+      ? pending[0].summary || "从这项待办继续。"
+      : "直接告诉 Agent 今天想做什么，需要的内容会按任务读取。";
 
   return (
-    <div className="page-stack home-view">
-      <section className="welcome-row" aria-labelledby="home-title">
-        <div>
-          <p className="welcome-kicker">{isTemplate ? "你的 AI 随身助手" : <>当前助手 · <SourceText>{profile.displayName}</SourceText></>}</p>
-          <h1 id="home-title">{headline}</h1>
-          <p>{intro}</p>
-        </div>
-        <div className="carry-count" aria-label={`当前可携带资产 ${carryCount} 项`}>
-          <span>已经保存</span>
-          <strong>{carryCount}</strong>
-          <small>项内容</small>
-        </div>
-      </section>
-
-      <section className="home-hero" aria-label="助手核心与下一步">
-        <div className="orbit-card">
-          <div className="orbit-card__head">
-            <SectionEyebrow icon={Sparkles}>助手内容</SectionEyebrow>
+    <div className="page-stack home-view home-view--essential">
+      <section className="home-command" aria-labelledby="home-title">
+        <div className="home-command__copy">
+          <div className="home-command__topline">
+            <SectionEyebrow icon={isTemplate ? Lightbulb : Sparkles}>{isTemplate ? "第一次使用" : <>当前助手 · <SourceText>{profile.displayName}</SourceText></>}</SectionEyebrow>
             <span className="local-indicator"><i /> 保存在本机</span>
           </div>
-          <div className="orbit-card__copy">
-            <h2>你的记忆、流程和能力，都保存在 AI Carry 里</h2>
-            <p>当前任务需要什么，Agent 才会读取什么。点击周围的卫星，可以查看每一类内容。</p>
-          </div>
-          <Core
-            planets={ORBIT_PLANETS}
-            onSelect={selectOrbit}
-            className="orbit-card__stage"
-          />
-          <div className="orbit-card__dock" aria-label="助手内容分类">
-            {CATEGORIES.map((category) => (
-              <button
-                key={category.key}
-                type="button"
-                onClick={() => onNavigate(routeForOrbit(category.key))}
-                style={{ "--category-color": category.color } as React.CSSProperties}
-              >
-                <span />
-                {category.shortLabel}
-                <strong>{categoryCount(category.key)}</strong>
-              </button>
-            ))}
-          </div>
+          <h1 id="home-title">{isTemplate ? headline : <SourceText>{headline}</SourceText>}</h1>
+          {isTemplate ? <p>{intro}</p> : <SourceText as="p">{intro}</SourceText>}
+
+          {isTemplate ? (
+            <div className="home-command__action">
+              <span className="compact-fact"><strong>创建前先看完整预览</strong><InfoHint label="第一次创建说明" help="Agent 会引导你选择交流方式和助手方向；正式保存前会展示完整预览，网页本身不会直接修改或锁定内容。" /></span>
+              {instantiate ? <StartActionButton onClick={() => setOnboardingOpen(true)}>创建我的助手</StartActionButton> : null}
+            </div>
+          ) : pending.length ? (
+            <div className="home-command__action">
+              {pending.length > 1 ? <span className="home-command__remaining">另外还有 {pending.length - 1} 项待办</span> : null}
+              {firstTodoAction ? <StartActionButton onClick={() => onCopy(firstTodoAction.text, firstTodoAction.buttonLabel)}>继续这项待办</StartActionButton> : null}
+            </div>
+          ) : (
+            <div className="home-command__action">
+              <span className="compact-fact"><strong>当前任务需要什么，就读取什么</strong><InfoHint label="按需读取" help="记忆、流程、能力和经验保存在本地；开始任务后只读取相关内容，不会每次启动都全部加载。" /></span>
+              <Button variant="outline" className="secondary-cta" onClick={() => onNavigate({ page: "library", kind: "memories" })}>查看随身资产<ArrowRight aria-hidden="true" /></Button>
+            </div>
+          )}
         </div>
 
-        <aside className="next-card">
-          <div className="next-card__number">{isTemplate ? "01" : pending.length ? String(pending.length).padStart(2, "0") : "OK"}</div>
-          <SectionEyebrow icon={Lightbulb}>{isTemplate ? "第一次使用" : pending.length ? "今天先做这个" : "今天没有待办"}</SectionEyebrow>
-          {isTemplate ? (
-            <>
-              <h2>先选交流方式，再决定把它培养成什么助手</h2>
-              <p>第一次接触 Agent，可以一步步来；已经很熟悉，也可以直接讨论专业标准。正式保存前，你会先看到完整预览。</p>
-              <ol className="onboarding-steps">
-                <li><span>1</span><div><strong>选择交流方式</strong><small>一步步引导、适度引导或直接协作</small></div></li>
-                <li><span>2</span><div><strong>选择助手方向</strong><small>通用、专业，或先让 Agent 帮你判断</small></div></li>
-                <li><span>3</span><div><strong>核对后交给 Agent 创建</strong><small>网页不会直接修改或锁定任何内容</small></div></li>
-              </ol>
-              {instantiate ? (
-                <StartActionButton onClick={() => setOnboardingOpen(true)}>
-                  创建我的助手
-                </StartActionButton>
-              ) : null}
-            </>
-          ) : pending.length ? (
-            <>
-              <SourceText as="h2">{pending[0].title}</SourceText>
-              <SourceText as="p">{pending[0].summary}</SourceText>
-              <div className="next-card__queue">
-                {pending.slice(0, 3).map((item, index) => (
-                  <button key={item.id} type="button" onClick={() => onNavigate({ page: "growth", kind: "todos" })}>
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    <SourceText as="strong">{item.title}</SourceText>
-                    <ChevronRight aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
-              {firstTodoAction ? (
-                <StartActionButton onClick={() => onCopy(firstTodoAction.text, firstTodoAction.buttonLabel)}>
-                  继续这项待办
-                </StartActionButton>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <h2>现在没有需要继续的待办</h2>
-              <p>直接告诉 Agent 今天想做什么即可。需要用到的记忆、流程或能力，会在任务开始后再读取。</p>
-              <div className="quiet-state">
-                <CheckCircle2 aria-hidden="true" />
-                <div><strong>不会一次读完所有内容</strong><small>当前任务需要什么，就读取什么</small></div>
-              </div>
-              <Button variant="outline" className="secondary-cta" onClick={() => onNavigate({ page: "library", kind: "memories" })}>
-                查看随身资产
-                <ArrowRight aria-hidden="true" />
-              </Button>
-            </>
-          )}
-        </aside>
+        <div className="home-command__visual" aria-label={`当前保存 ${carryCount} 项内容`}>
+          <Core planets={ORBIT_PLANETS} onSelect={selectOrbit} className="home-command__core" />
+          <div className="home-command__count"><strong>{carryCount}</strong><span>项随身内容</span></div>
+        </div>
       </section>
 
-      <Reveal>
-        <section className="asset-overview render-deferred" aria-labelledby="asset-overview-title">
-          <div className="section-heading">
-            <div>
-              <SectionEyebrow icon={Library}>随身资产</SectionEyebrow>
-              <h2 id="asset-overview-title">你的长期积累都保存在这里</h2>
-            </div>
-            <Button variant="ghost" className="text-link" onClick={() => onNavigate({ page: "library", kind: "memories" })}>
-              查看全部 <ArrowRight aria-hidden="true" />
-            </Button>
-          </div>
-          <div className="asset-stat-grid">
-            {statCards.map((card, index) => (
-              <motion.button
-                key={card.key}
-                type="button"
-                className="asset-stat"
-                data-reveal-card
-                initial={reduced ? false : REVEAL_INITIAL}
-                whileInView={reduced ? undefined : REVEAL_VISIBLE}
-                viewport={revealViewport}
-                transition={reduced ? undefined : revealTransition(index * 0.055)}
-                onClick={() => onNavigate(routeForOrbit(card.key))}
-              >
-                <span className="asset-stat__icon"><card.icon aria-hidden="true" /></span>
-                <span className="asset-stat__copy"><strong>{card.label}</strong><small>{card.note}</small></span>
-                <span className="asset-stat__value">{card.value}</span>
-              </motion.button>
-            ))}
-          </div>
-        </section>
-      </Reveal>
-
-      <div className="home-lower-grid">
-        <motion.section
-          className="changes-card render-deferred"
-          data-reveal-card
-          initial={reduced ? false : REVEAL_INITIAL}
-          whileInView={reduced ? undefined : REVEAL_VISIBLE}
-          viewport={revealViewport}
-          transition={reduced ? undefined : revealTransition()}
-        >
-          <SectionEyebrow icon={Clock3}>最近变化</SectionEyebrow>
-          <h2>最近更新了什么</h2>
-          {changes.length ? (
-            <ol className="change-list">
-              {changes.slice(0, 5).map((change, index) => (
-                <li key={`${change.date}-${index}`}>
-                  <SourceText as="time">{change.date}</SourceText>
-                  <SourceText>{change.summary}</SourceText>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <div className="small-empty">
-              <span />
-              <p>{isTemplate ? "创建助手后，重要变化会从这里开始记录。" : "最近没有需要你关注的资产变化。"}</p>
-            </div>
-          )}
-        </motion.section>
-
-        <motion.section
-          className="trust-card render-deferred"
-          data-reveal-card
-          initial={reduced ? false : REVEAL_INITIAL}
-          whileInView={reduced ? undefined : REVEAL_VISIBLE}
-          viewport={revealViewport}
-          transition={reduced ? undefined : revealTransition(0.085)}
-        >
-          <SectionEyebrow icon={ShieldCheck}>换设备时不用重来</SectionEyebrow>
-          <h2>换电脑或换 Agent 后，原来的内容仍然属于你</h2>
-          <ul>
-            <li><HardDrive aria-hidden="true" /><div><strong>内容保存在本地文件里</strong><span>你可以查看、复制和备份，不会被锁在某个平台中。</span></div></li>
-            <li><LockKeyhole aria-hidden="true" /><div><strong>密钥不会写进助手文件</strong><span>API 密钥、密码和登录状态只通过当前 Agent 的安全方式使用。</span></div></li>
-            <li><GitBranch aria-hidden="true" /><div><strong>远程备份和隐私迁移分开</strong><span>普通内容可以备份到 GitHub，隐私正文只放进本地迁移包。</span></div></li>
-          </ul>
-          <Button variant="outline" className="secondary-cta" onClick={() => onNavigate({ page: "transfer" })}>
-            查看备份和迁移方法 <ArrowRight aria-hidden="true" />
-          </Button>
-        </motion.section>
-      </div>
+      <nav className="carry-index" aria-label="查看随身内容">
+        <div className="carry-index__lead"><Library aria-hidden="true" /><span><strong>随身内容</strong><small>按任务读取</small></span></div>
+        {CATEGORIES.map((category) => (
+          <button
+            key={category.key}
+            type="button"
+            onClick={() => onNavigate(routeForOrbit(category.key))}
+            style={{ "--category-color": category.color } as React.CSSProperties}
+          >
+            <span className="carry-index__dot" />
+            <span>{category.shortLabel}</span>
+            <strong>{categoryCount(category.key)}</strong>
+          </button>
+        ))}
+      </nav>
       {instantiate ? (
         <OnboardingDialog
           open={onboardingOpen}
@@ -406,6 +248,13 @@ const LIBRARY_EMPTY: Record<LibraryKind, { title: string; description: string }>
   sops: { title: "还没有固定流程", description: "当一种任务重复出现，并且做法已经在真实任务中验证过，才会整理成固定流程。" },
   capabilities: { title: "还没有记录能力", description: "助手会在真实任务中记录自己会做什么，并逐步验证这些能力是否可靠。" },
   experiences: { title: "还没有任务经验", description: "完成真实任务后，值得保留的成功做法和失败教训会记录在这里。" },
+};
+
+const LIBRARY_GUIDANCE: Record<LibraryKind, string> = {
+  memories: "保存稳定事实、长期要求和你的习惯；只在当前任务相关时读取。",
+  sops: "保存已经在真实任务中验证过的固定流程；点开可以查看用途和适用范围。",
+  capabilities: "记录助手已经证明会做的事情；可靠程度和使用状态会随实际证据更新。",
+  experiences: "保存值得复用的成功做法和失败教训；只在相似任务出现时参考。",
 };
 
 export function LibraryView({
@@ -442,14 +291,12 @@ export function LibraryView({
   const habitItems = kind === "memories" ? filtered.filter((item) => item.subtype === "habit") : [];
   const regularItems = kind === "memories" ? filtered.filter((item) => item.subtype !== "habit") : filtered;
   const instantiate = findAction("instance.instantiate");
-  const showValidationGuide = kind === "sops" || kind === "capabilities";
 
   const renderAssetCards = (cardItems: DetailItem[], section?: { title: string; description: string; tone: "habit" | "regular" }) => (
     <div className={`library-asset-section ${section ? `library-asset-section--${section.tone}` : ""}`}>
       {section ? (
         <header className="library-asset-section__head">
-          <div><span>{section.tone === "habit" ? "正常说任务就会命中 · 由你管理" : "长期保留 · 任务命中后读取"}</span><h2>{section.title}</h2></div>
-          <p>{section.description}</p>
+          <div><span>{section.tone === "habit" ? "默认自动按需 · 手动管理备用" : kind === "memories" ? "默认自动按需 · 手动指定备用" : "长期保留 · 任务命中后读取"}</span><div className="heading-with-hint"><h2>{section.title}</h2><InfoHint label={`${section.title}说明`} help={section.description} /></div></div>
         </header>
       ) : null}
       <section className="asset-card-grid" aria-live="polite">
@@ -475,29 +322,26 @@ export function LibraryView({
                 <SourceText className="content-card__title">{item.title}</SourceText>
                 <ChevronRight aria-hidden="true" />
               </button>
-              {item.summary ? <SourceText as="p">{item.summary}</SourceText> : <p>这条内容还没有用途说明，请让 Agent 补充后重新生成看板数据。</p>}
+              {item.summary ? <SourceText as="p" className="content-card__summary">{item.summary}</SourceText> : <p className="content-card__summary">这条内容还没有用途说明，请让 Agent 补充后重新生成看板数据。</p>}
               <div className="content-card__meta">
                 {kind === "memories" ? (
                   isHabit ? (
                     <>
                       <span className="habit-memory-badge"><Sparkles aria-hidden="true" />我的习惯 · {habit?.label}</span>
-                      <span className="content-card__trigger">{item.scopeSummary ? <SourceText>{item.scopeSummary}</SourceText> : habit?.groupLine}</span>
                     </>
                   ) : (
                     <>
                       <span className="content-card__states">
-                        <span><small>使用</small><StatusBadge value={usage?.statusToken} showHelp={false} /></span>
+                        <span><small>使用</small><StatusBadge value={usage?.statusToken} showHelp={usage?.key === "unknown"} helpText={usage?.behaviorSummary} /></span>
                       </span>
-                      <span className="content-card__trigger">{usage?.behaviorTitle}</span>
                     </>
                   )
                 ) : (
                   <>
                     <span className="content-card__states">
-                      <span><small>使用</small><StatusBadge value={usage?.statusToken} showHelp={false} /></span>
+                      <span><small>使用</small><StatusBadge value={usage?.statusToken} showHelp={usage?.key === "unknown"} helpText={usage?.behaviorSummary} /></span>
                       {maturityStatus ? <span><small>成熟度</small><StatusBadge value={maturityStatus} showHelp={false} /></span> : null}
                     </span>
-                    {item.triggers?.[0] ? <span className="content-card__trigger">可以这样告诉 Agent：“<SourceText>{item.triggers[0]}</SourceText>”</span> : null}
                   </>
                 )}
               </div>
@@ -521,11 +365,10 @@ export function LibraryView({
 
   return (
     <div className="page-stack">
-      <section className="page-intro">
+      <section className="page-intro page-intro--compact">
         <div>
           <SectionEyebrow icon={Library}>随身资产</SectionEyebrow>
-          <h1>这里保存了助手长期积累的内容</h1>
-          <p>记忆、流程、能力和经验都保存在本地文件中。换 Agent 或模型后仍能继续使用，任务需要时才会读取详情。</p>
+          <div className="heading-with-hint"><h1>{category.label}</h1><InfoHint label={`${category.label}说明`} help={LIBRARY_GUIDANCE[kind]} /></div>
         </div>
         <div className="page-intro__number"><strong>{libraryAssetCount()}</strong><span>项内容</span></div>
       </section>
@@ -557,9 +400,6 @@ export function LibraryView({
         </label>
       </div>
 
-      {showValidationGuide ? <Reveal><div className="render-deferred library-guide-deferred"><AssetValidationGuide /></div></Reveal> : null}
-      {kind === "experiences" ? <Reveal><div className="render-deferred library-guide-deferred"><ExperienceExplainer /></div></Reveal> : null}
-
       {filtered.length ? (
         kind === "memories" ? (
           <>
@@ -578,21 +418,6 @@ export function LibraryView({
         />
       )}
 
-      {kind === "memories" && !query ? (
-        <Reveal>
-          <details className="library-help-disclosure render-deferred">
-            <summary>
-              <span><Sparkles aria-hidden="true" /><strong>点击展开：习惯怎样形成，记忆怎样参与任务</strong></span>
-              <small>了解主动学习、自然语言召回和手动备用入口</small>
-              <ChevronRight aria-hidden="true" />
-            </summary>
-            <div className="library-help-disclosure__body">
-              <HabitLearningGuide count={memories.filter((item) => item.subtype === "habit").length} />
-              <MemoryAccessGuide />
-            </div>
-          </details>
-        </Reveal>
-      ) : null}
     </div>
   );
 }
@@ -642,11 +467,11 @@ export function GrowthView({
 
   return (
     <div className="page-stack">
-      <section className="page-intro">
+      <section className="page-intro page-intro--compact">
         <div>
           <SectionEyebrow icon={Sparkles}>待办与成长</SectionEyebrow>
           <h1>{copy.title}</h1>
-          <p>{copy.intro}</p>
+          <p className="intro-with-help">只显示现在需要关注的内容。<InfoHint label={`${copy.title}说明`} help={copy.intro} /></p>
         </div>
         <div className="page-intro__number"><strong>{items.length}</strong><span>{category.shortLabel}</span></div>
       </section>
@@ -670,12 +495,6 @@ export function GrowthView({
         })}
       </div>
 
-      <Reveal>
-        <div className="render-deferred growth-guide-deferred">
-          <GrowthGuide kind={kind} count={items.length} />
-        </div>
-      </Reveal>
-
       {items.length ? (
         <section className="growth-list">
           {items.map((item, index) => {
@@ -697,12 +516,6 @@ export function GrowthView({
                 <button type="button" className="growth-row__main" onClick={() => onInspect({ kind, item })}>
                   <SourceText className="growth-row__title">{item.title}</SourceText>
                   {item.summary ? <SourceText className="growth-row__summary">{item.summary}</SourceText> : <span className="growth-row__summary">这条内容还没有用途说明，请让 Agent 补充后重新生成看板数据。</span>}
-                  {kind === "evolution" ? (
-                    <span className="growth-row__context">
-                      <span><small>来源</small>{item.sourceSummary ? <SourceText>{item.sourceSummary}</SourceText> : "待补充"}</span>
-                      <span><small>建议去向</small>{item.targetLabel || "待判断"}</span>
-                    </span>
-                  ) : null}
                 </button>
                 <div className="growth-row__status">
                   <StatusBadge value={item.reliability ?? item.status} />
@@ -724,46 +537,18 @@ export function GrowthView({
   );
 }
 
-const GITHUB_BACKUP_STEP = {
-  id: "instance.prepare-git-safe-copy",
-  title: "备份到 GitHub 私有仓库",
-  description: "Agent 会先在本地排除隐私、密钥和临时文件，再把账号、仓库名和准备上传的内容给你确认。只有你确认后才会上传，仓库默认不公开，也不会自动添加协作者。",
-  buttonLabel: "复制 GitHub 脱敏备份指令",
-};
-
-const PRIVATE_PACKAGE_STEPS = [
-  {
-    id: "instance.export-private-package",
-    number: "01",
-    title: "从这台电脑导出隐私资料",
-    description: "Agent 会先核对已登记和已引用的资料，再生成一个或多个本地分卷。资料多也只需保存同一个输出文件夹，不经过 GitHub。",
-    buttonLabel: "开始导出本地隐私资料",
-    icon: Download,
-    tone: "mint",
-  },
-  {
-    id: "instance.import-private-package",
-    number: "02",
-    title: "在另一台电脑恢复隐私资料",
-    description: "把完整输出文件夹交给新电脑上的 Agent。它会校验全部分卷并恢复资料，不沿用旧电脑的绝对路径，也不会从 GitHub 下载。",
-    buttonLabel: "开始在新电脑导入隐私资料",
-    icon: Upload,
-    tone: "amber",
-  },
-];
-
 const SECONDARY_ACTION_META = {
   "dashboard.refresh-snapshot": {
     icon: RefreshCw,
-    description: "当看板内容和实际文件不一致，或更新时间明显过旧时，让 Agent 从正式内容重新生成看板数据。",
+    description: "从正式内容重新生成看板数据",
   },
   "preference.reuse-from-instance": {
     icon: Sparkles,
-    description: "创建另一个 AI Carry 实例时，只复用沟通方式、输出习惯和工作节奏，不复制领域身份与具体资料。",
+    description: "只复用沟通方式和工作习惯",
   },
   "instance.upgrade-template": {
     icon: Upload,
-    description: "需要时让 Agent 从登记的官方发布源检查版本，先说明更新内容和个人资料如何保留，确认后再升级。",
+    description: "检查新版并保留个人内容",
   },
 } as const;
 
@@ -828,6 +613,7 @@ function MigrationGuideDialog({
   onCopy: CopyRequest;
 }) {
   const reduced = useReducedMotion();
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [choice, setChoice] = useState<MigrationGuideChoice | null>(null);
   const action = mode === "complete"
@@ -856,7 +642,11 @@ function MigrationGuideDialog({
         : isPrivateExport
           ? "Agent 先列出已经登记和正式引用的资料，你确认后直接在本地导出。"
           : "先让 Agent 列出已知、已登记和需要复核的内容，不新增资料，也不开始打包。",
-      note: isComplete || isPrivateExport ? "最快开始" : "不会修改",
+      summary: isComplete
+        ? "Agent 先列清单，确认后开始。"
+        : isPrivateExport
+          ? "先列出范围，确认后在本地导出。"
+          : "只查看现有范围，不开始打包。",
     },
     {
       id: "supplement" as const,
@@ -867,14 +657,14 @@ function MigrationGuideDialog({
           ? "先补充以前的资料，再导出"
           : "补充以前的资料",
       description: "适合接入 AI Carry 前已有、由其他软件生成，或后来被你手动移动的资料。",
-      note: "一步一步引导",
+      summary: "补充旧资料后，在同一对话继续。",
     },
     {
       id: "unsure" as const,
       icon: CircleHelp,
       title: "我不确定，请帮我检查",
       description: "Agent 会根据你的职业和真实任务提示可能遗漏的类别，一次只问一个问题，不扫描整台电脑。",
-      note: "适合不熟悉文件的人",
+      summary: "Agent 一次只问一个必要问题。",
     },
   ];
   const importOptions = [
@@ -883,44 +673,92 @@ function MigrationGuideDialog({
       icon: FileArchive,
       title: "我有完整的输出文件夹",
       description: "文件夹里有恢复说明、总清单和全部隐私分卷。Agent 会先完整校验，再展示恢复预览。",
-      note: "可以开始核对",
+      summary: "先校验整个文件夹，再展示预览。",
     },
     {
       id: "supplement" as const,
       icon: Search,
       title: "我不确定手里的文件是否完整",
       description: "把你知道的位置告诉 Agent，它会帮你识别缺少的入口、分卷或清单，不会勉强恢复。",
-      note: "先检查再决定",
+      summary: "Agent 先帮你判断材料是否齐全。",
     },
     {
       id: "unsure" as const,
       icon: CircleHelp,
       title: "我还没有从旧电脑导出",
       description: "Agent 会先告诉你回到旧电脑怎样导出；旧电脑无法使用时，再说明其他恢复办法和限制。",
-      note: "先完成导出",
+      summary: "先回旧电脑导出，再开始恢复。",
     },
   ];
   const options = isPrivateImport ? importOptions : scopeOptions;
+  const explainerItems = isPrivateImport
+    ? [
+      {
+        title: "完整输出文件夹",
+        summary: "恢复说明、总清单和全部分卷。",
+        help: "不要只挑一个 ZIP。请保留旧电脑导出时生成的恢复说明、总清单和全部分卷。",
+      },
+      {
+        title: "先校验，再恢复",
+        summary: "缺少材料时会明确告诉你。",
+        help: "新电脑上的 Agent 会先核对全部分卷、文件清单和摘要；材料不完整就停止恢复并说明缺什么。",
+      },
+      {
+        title: "不会直接覆盖",
+        summary: "冲突时先给你恢复预览。",
+        help: "发现目标位置冲突、危险路径或摘要不一致时会先停止；密钥和登录状态仍需重新配置。",
+      },
+    ]
+    : [
+      {
+        title: isPrivateExport ? "本地隐私资料" : "助手里的积累",
+        summary: isPrivateExport
+          ? "只处理已登记或正式引用的范围。"
+          : profile.state === "instance"
+            ? `当前可携带资产 ${visibleAssetCount} 项`
+            : "创建后的记忆、能力和工作状态。",
+        help: isPrivateExport
+          ? "只导出本地隐私资料，不重复打包 AI Carry 主体；真正导出前还会重新核对范围。"
+          : profile.state === "instance"
+            ? "看板只显示低敏摘要；迁移时 Agent 仍会按正式文件重新核对实际范围。"
+            : "当前还是空白模板；创建助手后，记忆、能力、固定流程和成长内容会随主体包迁移。",
+      },
+      {
+        title: "Agent 已知的本地资料",
+        summary: "先列清单，不让你重新找路径。",
+        help: "Agent 创建、移动、整理或已经登记的资料会复用实际位置；只有它不知道的部分才请你帮助定位。",
+      },
+      {
+        title: "不会自动带走",
+        summary: "密钥、登录状态和未登记目录。",
+        help: "密钥、密码和登录状态不进迁移包；电脑其他位置也不会被偷偷扫描。",
+      },
+    ];
 
   const selected = options.find((option) => option.id === choice);
   const title = step === 1
     ? (isComplete
-      ? "先看清哪些内容会跟着助手走"
+      ? "哪些内容会跟着助手走？"
       : isPrivateExport
-        ? "先看清这次会导出哪些本地资料"
+        ? "这次会导出哪些本地资料？"
         : isPrivateImport
-          ? "先确认你准备的是完整输出文件夹"
-          : "先看清 Agent 已经掌握了什么")
+          ? "你需要准备什么？"
+          : "Agent 已经掌握了什么？")
     : step === 2
-      ? (isPrivateImport ? "你现在手里的资料是哪种情况？" : "还有没有需要补充的旧资料？")
-      : "请核对你刚刚选择的信息";
+      ? (isPrivateImport ? "你现在手里的资料是哪种情况？" : "还要补充以前的资料吗？")
+      : "最后核对";
   const description = step === 1
-    ? (isPrivateImport
-      ? "导入时需要的是旧电脑生成的整个输出文件夹，不是其中一个 ZIP，也不是 GitHub 下载包。看板先把区别说清楚。"
-      : "你不需要自己维护文件路径。看板先把范围说清楚，真正的本地清单由当前 Agent 在执行时读取并用你当前交流语言列给你。")
+    ? "先看三件事，下一步再选择。"
     : step === 2
-      ? "请选择最符合当前情况的一项。拿不准也没关系，第三项会让 Agent 帮你判断。"
-      : "下面只是只读核对，不需要再点卡片。信息正确就点击窗口底部醒目的按钮；需要修改则返回上一步。";
+      ? "选择最接近现在的一项。"
+      : "确认处理方式，正确就复制。";
+  const stepHelp = step === 1
+    ? (isPrivateImport
+      ? "导入需要旧电脑生成的整个输出文件夹，不是其中一个 ZIP，也不是 GitHub 下载包。"
+      : "你不需要自己维护文件路径。当前 Agent 执行时会读取正式记录，并用你现在的交流语言列出真实清单。")
+    : step === 2
+      ? "拿不准也没关系，可以选择让 Agent 帮你判断；它只问会改变迁移范围的必要问题。"
+      : "这一步不会增加新选择。需要修改就返回上一步；确认后只会复制完整请求，网页不会直接迁移。";
   const modeLabel = isComplete
     ? "完整换机迁移"
     : isPrivateExport
@@ -928,10 +766,7 @@ function MigrationGuideDialog({
       : isPrivateImport
         ? "导入本地隐私资料"
         : "本地资料范围";
-  const stepPhase = step === 1 ? "先了解" : step === 2 ? "做选择" : "只核对";
-  const firstStepPrompt = isPrivateImport
-    ? "先了解完整输出文件夹需要包含什么；这一页不用选择，下一步再说明你手里的资料情况。"
-    : "先了解会处理什么、不会处理什么；这一页不用选择，下一步再决定怎样继续。";
+  const stepPhase = step === 1 ? "先了解" : step === 2 ? "做选择" : "最后核对";
   const finalButtonLabel = isComplete
     ? "核对无误，复制完整换机指令"
     : isPrivateExport
@@ -966,7 +801,13 @@ function MigrationGuideDialog({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="migration-guide-dialog sm:max-w-[860px]">
+      <DialogContent
+        className="migration-guide-dialog sm:max-w-[860px]"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus({ preventScroll: true });
+        }}
+      >
         <DialogHeader className="migration-guide-dialog__header">
           <div className="migration-guide-dialog__meta">
             <span>{modeLabel}</span>
@@ -975,7 +816,10 @@ function MigrationGuideDialog({
           <div className="migration-guide-dialog__progress" aria-label={`当前第 ${step} 步，共 3 步`}>
             {[1, 2, 3].map((item) => <i key={item} className={item <= step ? "is-active" : ""} />)}
           </div>
-          <DialogTitle>{title}</DialogTitle>
+          <div className="migration-guide-dialog__title-row">
+            <DialogTitle ref={titleRef} tabIndex={-1}>{title}</DialogTitle>
+            <InfoHint label="这一步怎么做" help={stepHelp} />
+          </div>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
@@ -990,55 +834,25 @@ function MigrationGuideDialog({
             >
               {step === 1 ? (
                 <section className="migration-guide-explainer" aria-label="本页只用于了解流程，不需要选择">
-                  <header className="migration-guide-explainer__hero">
-                    <span><FileText aria-hidden="true" /></span>
-                    <div><small>第 1 步 · 流程说明</small><strong>这一页没有需要选择的内容</strong><p>{firstStepPrompt}</p></div>
-                    <em>无需选择</em>
-                  </header>
+                  <p className="migration-guide-explainer__lead"><FileText aria-hidden="true" />这一页没有需要选择的内容，只看三件事。</p>
                   <ol className="migration-guide-explainer__flow">
-                    <li>
-                      <span className="migration-guide-explainer__number">01</span>
-                      <span className="migration-guide-explainer__icon">{isPrivateImport ? <FileArchive aria-hidden="true" /> : isPrivateExport ? <Database aria-hidden="true" /> : <PackageOpen aria-hidden="true" />}</span>
-                      <div>
-                        <strong>{isPrivateImport ? "需要整个输出文件夹" : isPrivateExport ? "已经登记或正式引用的资料" : "AI Carry 里的积累"}</strong>
-                        <p>{isPrivateImport
-                          ? "不要只挑一个 ZIP。请保留旧电脑导出时生成的恢复说明、总清单和全部分卷。"
-                          : isPrivateExport
-                            ? "只导出本地隐私资料，不重复打包 AI Carry 主体；真正导出前还会重新核对范围。"
-                            : profile.state === "instance"
-                              ? `看板目前可确认 ${visibleAssetCount} 项随身资产，迁移时还会按正式文件重新核对。`
-                              : "当前还是空白模板；创建助手后，记忆、能力、SOP 和成长内容会随主体包迁移。"}</p>
-                      </div>
-                    </li>
-                    <li>
-                      <span className="migration-guide-explainer__number">02</span>
-                      <span className="migration-guide-explainer__icon">{isPrivateImport ? <FileCheck2 aria-hidden="true" /> : <Database aria-hidden="true" />}</span>
-                      <div>
-                        <strong>{isPrivateImport ? "先校验，再恢复" : "当前 Agent 知道的本地资料"}</strong>
-                        <p>{isPrivateImport
-                          ? "新电脑上的 Agent 会先核对全部分卷、文件清单和摘要；材料不完整就停止并说明缺什么。"
-                          : "它创建、移动、整理或已经登记的资料会复用实际位置，不需要你重新寻找路径。"}</p>
-                      </div>
-                    </li>
-                    <li>
-                      <span className="migration-guide-explainer__number">03</span>
-                      <span className="migration-guide-explainer__icon"><ShieldCheck aria-hidden="true" /></span>
-                      <div>
-                        <strong>{isPrivateImport ? "不会直接覆盖现有资料" : "明确不会自动带走的内容"}</strong>
-                        <p>{isPrivateImport
-                          ? "发现目标位置冲突、危险路径或摘要不一致时会先停止；密钥和登录状态仍需重新配置。"
-                          : "密钥、密码和登录状态不进迁移包；电脑其他位置也不会被偷偷扫描。"}</p>
-                      </div>
-                    </li>
+                    {explainerItems.map((item, index) => (
+                      <li key={item.title}>
+                        <span className="migration-guide-explainer__number">{String(index + 1).padStart(2, "0")}</span>
+                        <div><strong>{item.title}</strong><p>{item.summary}</p></div>
+                        <InfoHint label={item.title} help={item.help} />
+                      </li>
+                    ))}
                   </ol>
-                  <footer className="migration-guide-explainer__footnote">
+                  <footer className="migration-guide-explainer__boundary">
                     <ShieldCheck aria-hidden="true" />
-                    <p>
-                      <strong>{isPrivateImport ? "这里说的不是 GitHub 下载包" : "为什么看板不直接显示具体文件名和路径？"}</strong>
-                      <span>{isPrivateImport
+                    <span>{isPrivateImport ? "这不是 GitHub 下载包。" : "看板不会显示具体文件路径。"}</span>
+                    <InfoHint
+                      label={isPrivateImport ? "为什么不是 GitHub 下载包" : "为什么不显示具体路径"}
+                      help={isPrivateImport
                         ? "本地隐私输出文件夹由旧电脑单独生成，不经过 GitHub。把完整文件夹交给新电脑上的 Agent，它才有条件校验和恢复。"
-                        : "这是为了避免把隐私目录投影到页面。完整指令交给当前 Agent 后，它会从本地正式记录读取，并先用你当前交流语言说明清单。"}</span>
-                    </p>
+                        : "这是为了避免把隐私目录投影到页面。请求交给当前 Agent 后，它会从本地正式记录读取，并先用你现在的交流语言说明清单。"}
+                    />
                   </footer>
                 </section>
               ) : null}
@@ -1050,17 +864,19 @@ function MigrationGuideDialog({
                     const Icon = option.icon;
                     const active = choice === option.id;
                     return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={active ? "is-selected" : ""}
-                        aria-pressed={active}
-                        onClick={() => setChoice(option.id)}
-                      >
-                        <span className="migration-guide-choices__icon"><Icon aria-hidden="true" /></span>
-                        <span className="migration-guide-choices__copy"><small>{option.note}</small><strong>{option.title}</strong><p>{option.description}</p></span>
-                        <span className="migration-guide-choices__state" aria-hidden="true">{active ? <Check /> : <ChevronRight />}</span>
-                      </button>
+                      <div className="migration-guide-choice-shell" key={option.id}>
+                        <button
+                          type="button"
+                          className={active ? "is-selected" : ""}
+                          aria-pressed={active}
+                          onClick={() => setChoice(option.id)}
+                        >
+                          <span className="migration-guide-choices__icon"><Icon aria-hidden="true" /></span>
+                          <span className="migration-guide-choices__copy"><strong>{option.title}</strong><p>{option.summary}</p></span>
+                          <span className="migration-guide-choices__state" aria-hidden="true">{active ? <Check /> : <ChevronRight />}</span>
+                        </button>
+                        <InfoHint label="这个选项适合谁" help={option.description} />
+                      </div>
                     );
                   })}
                 </fieldset>
@@ -1068,31 +884,27 @@ function MigrationGuideDialog({
 
               {step === 3 && selected ? (
                 <section className="wizard-review-sheet wizard-review-sheet--migration" aria-label="迁移处理方式核对单">
-                  <header className="wizard-review-sheet__hero">
-                    <span className="wizard-review-sheet__mark"><CheckCircle2 aria-hidden="true" /></span>
-                    <div>
-                      <small>第 3 步 · 核对单</small>
-                      <strong>这一步没有任何选项</strong>
-                      <p>只需检查处理方式和接下来的步骤。内容正确就点击窗口底部的“核对无误”；需要调整就返回修改。</p>
-                    </div>
-                    <span className="wizard-review-sheet__badge">无需选择 · 只需核对</span>
-                  </header>
+                  <p className="migration-guide-review__lead"><CheckCircle2 aria-hidden="true" />这一步没有任何选项，只核对一种处理方式。</p>
                   <div className="migration-guide-review__summary">
                     <span><selected.icon aria-hidden="true" /></span>
-                    <div><small>本次处理方式</small><strong>{selected.title}</strong><p>{selected.description}</p></div>
+                    <div><small>本次处理方式</small><strong>{selected.title}</strong><p>{selected.summary}</p></div>
                     <em><Check aria-hidden="true" />已选择</em>
                   </div>
                   <div className="migration-guide-review__route">
-                    <span>确认后，Agent 会按这个顺序继续</span>
+                    <span>Agent 接下来会做三件事</span>
                     <ol>
                       {reviewSteps.map(([heading, detail], index) => (
-                        <li key={heading}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{heading}</strong><p>{detail}</p></div></li>
+                        <li key={heading}>
+                          <span>{String(index + 1).padStart(2, "0")}</span>
+                          <strong>{heading}</strong>
+                          <InfoHint label={heading} help={detail} />
+                        </li>
                       ))}
                     </ol>
                   </div>
                   <footer className="wizard-review-sheet__footnote">
                     <ShieldCheck aria-hidden="true" />
-                    <p>看板不会读取隐私正文、扫描整台电脑或执行迁移；真正操作前，当前 Agent 仍会按你的选择展示必要预览。</p>
+                    <p>看板只复制请求，不执行迁移。<InfoHint label="执行前还会发生什么" help="当前 Agent 会承接你已经选择的处理方式；遇到范围、目标位置或冲突等真正需要你决定的问题时，再展示必要预览。" /></p>
                   </footer>
                 </section>
               ) : null}
@@ -1123,17 +935,19 @@ function MigrationGuideDialog({
   );
 }
 
-export function TransferView({ onCopy }: { onCopy: CopyRequest }) {
+export function TransferView({ onCopy, startComputerGuideRequest = 0 }: { onCopy: CopyRequest; startComputerGuideRequest?: number }) {
   const [guideMode, setGuideMode] = useState<MigrationGuideMode | null>(null);
   const guideOpenerRef = useRef<HTMLButtonElement | null>(null);
-  const secondaryIds = ["dashboard.refresh-snapshot", "preference.reuse-from-instance", "instance.upgrade-template"];
+  const secondaryIds = ["dashboard.refresh-snapshot", "preference.reuse-from-instance"];
   const secondary = secondaryIds.map(findAction).filter((action): action is GlobalActionDef => Boolean(action));
-  const githubAction = findAction(GITHUB_BACKUP_STEP.id);
+  const githubAction = findAction("instance.prepare-git-safe-copy");
   const localAgentAction = findAction("host.prepare-agent-switch");
   const completeMigrationAction = findAction("instance.prepare-complete-migration");
   const privateCoverageAction = findAction("instance.review-private-coverage");
   const privateExportAction = findAction("instance.export-private-package");
   const privateImportAction = findAction("instance.import-private-package");
+  const upgradeAction = findAction("instance.upgrade-template");
+  const problemReportAction = findAction("support.create-problem-report");
 
   const openGuide = (mode: MigrationGuideMode, opener: HTMLButtonElement) => {
     guideOpenerRef.current = opener;
@@ -1148,212 +962,86 @@ export function TransferView({ onCopy }: { onCopy: CopyRequest }) {
     });
   };
 
+  useEffect(() => {
+    if (startComputerGuideRequest <= 0) return;
+    guideOpenerRef.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+    setGuideMode("complete");
+  }, [startComputerGuideRequest]);
+
   return (
-    <div className="page-stack">
-      <section className="page-intro transfer-intro">
+    <div className="page-stack transfer-essential">
+      <section className="transfer-essential__head" aria-labelledby="assistant-relocation-title">
         <div>
           <SectionEyebrow icon={PackageOpen}>迁移与安全</SectionEyebrow>
-          <h1>换电脑或换 Agent 后，也能继续使用原来的内容</h1>
-          <p>先看你是只想在这台电脑上换一个 Agent，还是要把整个助手带到另一台电脑。下面还保留 GitHub 私有仓库脱敏备份和隐私包导入导出，方便你按需单独操作。</p>
+          <div className="heading-with-hint"><h1 id="assistant-relocation-title">这次你要换 Agent，还是换电脑？</h1><InfoHint label="两种方式有什么区别" help="同一台电脑换 Agent 时直接接入现有 AI Carry；换电脑时生成包含助手主体、本地隐私分卷和恢复说明的迁移套件。" /></div>
         </div>
-        <div className="transfer-intro__mark"><FileArchive aria-hidden="true" /><span>先选去向<br />再准备内容</span></div>
+        <p>选一种去向，Agent 会继续引导。</p>
       </section>
 
-      <Reveal>
-        <section className="assistant-relocation" aria-labelledby="assistant-relocation-title">
-          <div className="assistant-relocation__head">
-            <div>
-              <SectionEyebrow icon={PackageOpen}>把整个助手继续带在身边</SectionEyebrow>
-              <h2 id="assistant-relocation-title">你要去的是另一个本地 Agent，还是另一台电脑？</h2>
-              <p>实例身份、方向、交流方式、记忆、能力、固定流程、经验、成长内容、待办和长期状态都属于你的可携带积累。选对去向后，Agent 会采用相应方式准备。</p>
-            </div>
-            <span className="assistant-relocation__badge">两种去向 · 两种做法</span>
+      <section className="transfer-choice-grid" aria-label="选择迁移去向">
+        <article className="transfer-choice transfer-choice--agent">
+          <div className="transfer-choice__icon"><Cpu aria-hidden="true" /></div>
+          <span className="transfer-choice__tag">同一台电脑</span>
+          <h2>换 Agent</h2>
+          <p>直接接入这一份 AI Carry，不重复复制整套内容。</p>
+          <span className="transfer-choice__fact"><ShieldCheck aria-hidden="true" />只读取当前任务需要的内容</span>
+          {localAgentAction ? <Button className="action-button action-button--blue" onClick={() => onCopy(localAgentAction.request, localAgentAction.label)}><ClipboardCopy aria-hidden="true" />复制接入指令<ArrowRight aria-hidden="true" /></Button> : null}
+        </article>
+
+        <article className="transfer-choice transfer-choice--computer">
+          <div className="transfer-choice__icon"><PackageOpen aria-hidden="true" /></div>
+          <span className="transfer-choice__tag">另一台电脑</span>
+          <h2>换电脑</h2>
+          <p>核对现有资料后，生成完整迁移套件。</p>
+          <span className="transfer-choice__fact"><ShieldCheck aria-hidden="true" />密钥与登录状态不会打包</span>
+          {completeMigrationAction ? <Button className="action-button action-button--teal" onClick={(event) => openGuide("complete", event.currentTarget)}><PackageOpen aria-hidden="true" />开始准备换电脑<ArrowRight aria-hidden="true" /></Button> : null}
+        </article>
+      </section>
+
+      <section className="transfer-operation-groups" aria-label="迁移与维护操作">
+        <article className="transfer-operation-group transfer-operation-group--private">
+          <header><span><HardDrive aria-hidden="true" /></span><div><h2>本地隐私资料</h2><p>导出和恢复单独处理，只在本机进行。</p></div><InfoHint label="本地隐私资料怎样处理" help="Agent 会先回读已登记范围；导出不会自动上传，恢复也不会整体覆盖现有实例。真正存在冲突时才请你决定。" /></header>
+          <div className="transfer-operation-list">
+            {privateExportAction ? <button type="button" onClick={(event) => openGuide("private-export", event.currentTarget)}><Download aria-hidden="true" /><span><strong>导出本地隐私资料</strong><small>生成本机输出文件夹</small></span><ChevronRight aria-hidden="true" /></button> : null}
+            {privateImportAction ? <button type="button" onClick={(event) => openGuide("private-import", event.currentTarget)}><Upload aria-hidden="true" /><span><strong>恢复本地隐私资料</strong><small>从完整输出文件夹恢复</small></span><ChevronRight aria-hidden="true" /></button> : null}
+            {privateCoverageAction ? <button type="button" onClick={(event) => openGuide("coverage", event.currentTarget)}><Database aria-hidden="true" /><span><strong>核对会带走哪些资料</strong><small>查看或补充当前范围</small></span><ChevronRight aria-hidden="true" /></button> : null}
           </div>
+        </article>
 
-          <div className="assistant-relocation__grid">
-            <article className="relocation-scenario relocation-scenario--local">
-              <div className="relocation-scenario__top">
-                <span className="relocation-scenario__icon"><Cpu aria-hidden="true" /></span>
-                <span className="relocation-scenario__place">同一台电脑</span>
-              </div>
-              <h3>换到另一个本地 Agent 继续使用</h3>
-              <p>例如从 Codex 换到 Claude Code、Trae 或其他本地 Agent。它们直接接入当前这份 AI Carry，不需要把整套内容再复制一遍。</p>
-              <div className="relocation-local-route" aria-label="同一台电脑换 Agent 的接入路线">
-                <span><HardDrive aria-hidden="true" /><strong>同一份 AI Carry</strong><small>可携带资产主本</small></span>
-                <ArrowRight aria-hidden="true" />
-                <span><Cpu aria-hidden="true" /><strong>另一个本地 Agent</strong><small>按需读取，不一次全载入</small></span>
-              </div>
-              <p className="relocation-scenario__note"><ShieldCheck aria-hidden="true" />如果目标 Agent 只能接收文字，才生成当前任务所需的极小文字胶囊，不导出全部长期资产。</p>
-              {localAgentAction ? (
-                <Button className="relocation-scenario__action" onClick={() => onCopy(localAgentAction.request, localAgentAction.label)}>
-                  <ClipboardCopy aria-hidden="true" />
-                  复制本机 Agent 接入指令
-                </Button>
-              ) : null}
-            </article>
+        <article className="transfer-operation-group transfer-operation-group--upgrade">
+          <header><span><Upload aria-hidden="true" /></span><div><h2>检查并升级 AI Carry</h2><p>先看新版变化，再保留个人内容完成升级。</p></div><InfoHint label="升级怎样进行" help="Agent 先只读检查正式新版并展示预览；你确认后才升级。实例身份、个人资产、本地与私密内容默认保留。" /></header>
+          {upgradeAction ? <Button className="action-button action-button--violet" onClick={() => onCopy(upgradeAction.request, upgradeAction.label)}>开始检查新版<ArrowRight aria-hidden="true" /></Button> : null}
+        </article>
 
-            <article className="relocation-scenario relocation-scenario--computer">
-              <div className="relocation-scenario__top">
-                <span className="relocation-scenario__icon"><PackageOpen aria-hidden="true" /></span>
-                <span className="relocation-scenario__place">另一台电脑</span>
-              </div>
-              <h3>把完整的 AI Carry 迁移过去</h3>
-              <p>Agent 会先列出已经知道的助手资产和本地资料，只请你补充它不知道的部分；确认后在同一次对话中生成迁移套件，不要求你先学会管理文件。</p>
-              <div className="relocation-kit" aria-label="完整换机迁移套件包含三部分">
-                <span><FileArchive aria-hidden="true" /><strong>助手主体包</strong><small>记忆、能力、SOP、经验和成长内容</small></span>
-                <span><KeyRound aria-hidden="true" /><strong>本地隐私分卷</strong><small>资料多时自动拆分，仍放在同一文件夹</small></span>
-                <span><FileText aria-hidden="true" /><strong>START-RESTORE.md</strong><small>新电脑上的 Agent 从这里开始恢复</small></span>
-              </div>
-              <div className="relocation-handoff" aria-label="迁移套件完成后的交接话术">
-                <FileText aria-hidden="true" />
-                <div>
-                  <strong>打包完成后，当前 Agent 会给你一句可以直接发给新 Agent 的话</strong>
-                  <p>请先读取迁移套件里的 START-RESTORE.md，按照里面的步骤帮我恢复 AI Carry，完成后告诉我检查结果。</p>
-                </div>
-              </div>
-              <p className="relocation-scenario__note"><ShieldCheck aria-hidden="true" />API 密钥、密码和登录状态不会进入迁移包，需要在新电脑上重新配置；GitHub 私有仓库脱敏备份是可选项，不是迁移前提。</p>
-              {completeMigrationAction ? (
-                <Button className="relocation-scenario__action relocation-scenario__action--primary" onClick={(event) => openGuide("complete", event.currentTarget)}>
-                  <PackageOpen aria-hidden="true" />
-                  开始准备换电脑
-                </Button>
-              ) : null}
-            </article>
-          </div>
-
-          <p className="assistant-relocation__footnote"><ShieldCheck aria-hidden="true" />这里会先用三步引导帮你确认资料范围，最后才生成完整操作指令。看板不会自行打包、上传或删除任何内容；实际执行仍由当前 Agent 按指令检查并向你报告。</p>
-        </section>
-      </Reveal>
-
-      <Reveal>
-        <section className="transfer-channel transfer-channel--github" aria-labelledby="github-backup-title">
-          <div className="transfer-channel__head">
-            <div>
-              <SectionEyebrow icon={GitBranch}>远程备份</SectionEyebrow>
-              <h2 id="github-backup-title">把不含隐私正文的内容备份到 GitHub 私有仓库</h2>
-              <p>这个仓库保存在 GitHub，默认只有你自己的账号可以访问。隐私内容和密钥不会上传。</p>
-            </div>
-            <span className="transfer-channel__badge">远程 · GitHub</span>
-          </div>
-
-          <div className="github-backup-layout">
-            <div className="github-backup-route" aria-label="GitHub 私有仓库脱敏备份过程">
-              <div><HardDrive aria-hidden="true" /><strong>当前 AI Carry</strong><span>选择可以备份的内容</span></div>
-              <span className="transfer-route-arrow" aria-hidden="true"><ArrowRight /></span>
-              <div><ShieldCheck aria-hidden="true" /><strong>先在本地检查</strong><span>排除隐私和密钥，再请你确认</span></div>
-              <span className="transfer-route-arrow" aria-hidden="true"><ArrowRight /></span>
-              <div><GitBranch aria-hidden="true" /><strong>GitHub 私有仓库</strong><span>远程保存，默认只有本人可以访问</span></div>
-            </div>
-            <article className="transfer-action-card transfer-action-card--github">
-              <span className="transfer-action-card__number">单独操作</span>
-              <h3>{GITHUB_BACKUP_STEP.title}</h3>
-              <p>{GITHUB_BACKUP_STEP.description}</p>
-              {githubAction ? (
-                <Button className="transfer-step__action transfer-step__action--primary" onClick={() => onCopy(githubAction.request, githubAction.label)}>
-                  <ClipboardCopy aria-hidden="true" />
-                  {GITHUB_BACKUP_STEP.buttonLabel}
-                </Button>
-              ) : null}
-            </article>
-          </div>
-        </section>
-      </Reveal>
-
-      <Reveal>
-        <section className="transfer-channel transfer-channel--private" aria-labelledby="private-package-title">
-          <div className="transfer-channel__head">
-            <div>
-              <SectionEyebrow icon={KeyRound}>迁移本地隐私</SectionEyebrow>
-              <h2 id="private-package-title">导出或恢复本地隐私资料</h2>
-              <p>不需要先去页面别处管理资料。点击“开始导出”后，弹窗会先让你查看当前范围、补充以前的资料，或请 Agent 帮你判断，然后在同一次对话中继续导出。</p>
-            </div>
-            <span className="transfer-channel__badge transfer-channel__badge--private">本地 · 不上传</span>
-          </div>
-
-          <div className="private-package-flow">
-            {PRIVATE_PACKAGE_STEPS.map((step, index) => {
-              const action = findAction(step.id);
-              return (
-                <div className="private-package-flow__unit" key={step.id}>
-                  <article className={`transfer-action-card transfer-action-card--${step.tone}`}>
-                    <div className="transfer-step__top"><span>{step.number}</span><step.icon aria-hidden="true" /></div>
-                    <h3>{step.title}</h3>
-                    <p>{step.description}</p>
-                    {action ? (
-                      index === 0 ? (
-                        <div className="private-package-actions">
-                          <Button className="transfer-step__action transfer-step__action--primary" onClick={(event) => openGuide("private-export", event.currentTarget)}>
-                            <Download aria-hidden="true" />
-                            {step.buttonLabel}
-                          </Button>
-                          {privateCoverageAction ? (
-                            <Button variant="outline" className="private-package-actions__secondary" onClick={(event) => openGuide("coverage", event.currentTarget)}>
-                              <Database aria-hidden="true" />
-                              暂时不导出，只查看或补充范围
-                            </Button>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <Button className="transfer-step__action transfer-step__action--primary" onClick={(event) => openGuide("private-import", event.currentTarget)}>
-                          <Upload aria-hidden="true" />
-                          {step.buttonLabel}
-                        </Button>
-                      )
-                    ) : null}
-                  </article>
-                  {index === 0 ? (
-                    <div className="private-package-connector" aria-hidden="true">
-                      <FileArchive />
-                      <span>把整个输出文件夹带到另一台电脑</span>
-                      <ArrowRight />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </Reveal>
-
-      <Reveal>
-        <section className="safety-panel safety-panel--user-note">
-          <div className="safety-panel__lead">
-            <span><ShieldCheck aria-hidden="true" /></span>
-            <div><SectionEyebrow icon={LockKeyhole}>安全提醒</SectionEyebrow><h2>下面是给你看的提醒，不需要复制给 Agent</h2></div>
-          </div>
-          <p className="safety-panel__plain-note">只有写着“复制……指令”的按钮才会生成给 Agent 的请求。下面三条只是帮助你判断哪些内容可以提供、哪些内容不能发送。</p>
-          <ol className="safety-grid">
-            <li><span>01</span><div><strong>只提供任务真正需要的隐私内容</strong><p>姓名、地址、工作或健康资料可以在任务需要时交给当前模型，但不用一次提供整个隐私目录。</p></div></li>
-            <li><span>02</span><div><strong>不要把密钥粘贴进对话或迁移文件</strong><p>API 密钥、密码、令牌、Cookie、私钥、恢复码和登录状态，应通过当前 Agent 的登录或密钥管理功能使用。</p></div></li>
-            <li><span>03</span><div><strong>发到其他地方前，先确认接收方</strong><p>网站、邮件、插件、其他 Agent、其他人和远程仓库都是新的接收方。确认对方确实需要，再发送必要内容。</p></div></li>
-          </ol>
-        </section>
-      </Reveal>
-
-      {secondary.length ? (
-        <Reveal>
-        <section className="secondary-actions">
-          <div className="secondary-actions__head">
-            <SectionEyebrow icon={FileCheck2}>按需操作</SectionEyebrow>
-            <h2>偶尔会用到的功能</h2>
-            <p>每一项都会先复制一份完整指令，由你交给当前 Agent。看板本身不会直接修改文件或开始迁移。</p>
-          </div>
-          <div className="secondary-actions__list">
+        <article className="transfer-operation-group transfer-operation-group--other">
+          <header><span><FileCheck2 aria-hidden="true" /></span><div><h2>其他维护</h2><p>备份、偏好复用和看板刷新。</p></div><InfoHint label="这些按钮会做什么" help="按钮只复制明确请求，由当前 Agent 说明范围后继续；不会从网页直接上传、删除或修改文件。" /></header>
+          <div className="transfer-operation-list transfer-operation-list--compact">
+            {githubAction ? <button type="button" onClick={() => onCopy(githubAction.request, githubAction.label)}><GitBranch aria-hidden="true" /><span><strong>GitHub 私有备份</strong><small>先排除隐私，再确认上传</small></span><ChevronRight aria-hidden="true" /></button> : null}
             {secondary.map((action) => {
               const item = SECONDARY_ACTION_META[action.action_id as keyof typeof SECONDARY_ACTION_META];
               const Icon = item?.icon ?? FileCheck2;
-              return (
-                <button key={action.action_id} type="button" onClick={() => onCopy(action.request, action.label)}>
-                  <span className="secondary-actions__icon"><Icon aria-hidden="true" /></span>
-                  <span className="secondary-actions__copy"><strong>{action.label}</strong><small>{item?.description ?? "复制完整操作指令，并交给当前 Agent 处理。"}</small></span>
-                  <ChevronRight className="secondary-actions__chevron" aria-hidden="true" />
-                </button>
-              );
+              return <button key={action.action_id} type="button" onClick={() => onCopy(action.request, action.label)}><Icon aria-hidden="true" /><span><strong>{action.label}</strong><small>{item?.description ?? "交给当前 Agent 处理"}</small></span><ChevronRight aria-hidden="true" /></button>;
             })}
           </div>
+        </article>
+      </section>
+
+      {problemReportAction ? (
+        <section className="problem-report-compact" aria-labelledby="problem-report-title">
+          <span className="problem-report-compact__icon"><CircleHelp aria-hidden="true" /></span>
+          <div><SectionEyebrow icon={MessageCircleMore}>遇到问题</SectionEyebrow><h2 id="problem-report-title">让 Agent 帮你整理问题报告</h2><p>从最早觉得不对的地方开始；自动遮盖敏感信息，报告不会自动发送。</p></div>
+          <InfoHint label="问题报告怎样生成" help="Agent 会在当前对话中自然询问最早异常点，区分事实与推断；材料不全也能先生成标明缺口的部分报告，不需要你懂日志或开发术语。" />
+          <Button className="action-button action-button--report" onClick={() => onCopy(problemReportAction.request, problemReportAction.label)}><ClipboardCopy aria-hidden="true" />开始整理问题报告<ArrowRight aria-hidden="true" /></Button>
         </section>
-        </Reveal>
       ) : null}
+
+      <div className="transfer-safety-line" role="note">
+        <LockKeyhole aria-hidden="true" />
+        <strong>只给任务需要的隐私</strong><i />
+        <strong>密钥不进对话或迁移包</strong><i />
+        <strong>发送前确认接收方</strong>
+        <InfoHint label="三条安全边界" help="姓名、地址、工作或健康资料只在任务需要时提供；API 密钥、密码、令牌、Cookie、私钥和恢复码不得进入对话或迁移文件；网站、邮件、插件、其他 Agent、其他人和远程仓库都属于新的接收方。" />
+      </div>
       {guideMode ? (
         <MigrationGuideDialog
           mode={guideMode}
@@ -1369,174 +1057,66 @@ export function TransferView({ onCopy }: { onCopy: CopyRequest }) {
   );
 }
 
-const MODEL_LEVELS = [
-  {
-    level: 1,
-    title: "日常任务",
-    bestFor: "目标清楚、步骤明确，或者可以照着现成流程完成的任务。",
-    value: "速度快、成本低。普通工作优先使用；遇到需要判断的地方，再交给 Level 2。",
-    icon: Workflow,
-  },
-  {
-    level: 2,
-    title: "需要判断的任务",
-    bestFor: "整理学习建议、判断两条记忆是否属于同一类，或者处理范围和风险不够明确的任务。",
-    value: "更擅长归纳和判断。遇到架构、安全规则或高风险决定时，再交给 Level 3。",
-    icon: Search,
-  },
-  {
-    level: 3,
-    title: "重要决策和设计",
-    bestFor: "创建助手、修改核心架构或安全规则、作出长期决定，以及处理多个部分一起变化的升级。",
-    value: "负责把重要问题想完整，也可以为 Level 1 写清执行计划；日常工作不需要都用 Level 3。",
-    icon: ShieldCheck,
-  },
-] as const;
-
 export function SystemView({ onRefresh, onCopy, refreshIn, refreshFailed = false }: { onRefresh: () => void; onCopy: CopyRequest; refreshIn: number; refreshFailed?: boolean }) {
   const snapshot = getSnapshotStatus(refreshFailed);
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const guidanceAction = findAction("profile.adjust-guidance-mode");
-  const problemReportAction = findAction("support.create-problem-report");
   const startupBudget = Math.max(Number(profile.startupBudget ?? 0), 1);
   const startupChars = Math.max(Number(profile.startupChars ?? 0), 0);
   const budgetRatio = Math.min((startupChars / startupBudget) * 100, 100);
+  const identityDetail = profile.state === "instance"
+    ? `${profile.mission || "尚未设置使命。"} 方向：${overview.domain || profile.domainId || "尚未设置"}；交流方式：${profile.guidanceLabel}。`
+    : "当前是空白模板；创建助手后，这里会显示真实身份、方向和交流方式。";
 
   return (
-    <div className="page-stack">
-      <section className="page-intro">
+    <div className="page-stack system-essential">
+      <section className="system-essential__head">
         <div>
           <SectionEyebrow icon={Cpu}>当前状态</SectionEyebrow>
-          <h1>这里可以查看助手现在的状态</h1>
-          <p>你可以看到当前模型、学习方式、三个等级分别适合什么任务、看板数据是否正常，以及助手怎样按需读取内容。技术信息放在页面底部。</p>
+          <div className="heading-with-hint"><h1>助手状态</h1><InfoHint label="这个页面看什么" help="先确认看板数据、模型、随身内容、本地扩展和学习方式。单项异常只处理对应部分，不会让整个助手停止工作。" /></div>
+          <p>先看是否正常，再决定要不要处理。</p>
         </div>
         <Button variant="outline" className="refresh-button" onClick={onRefresh}>
           <RefreshCw aria-hidden="true" />
-          重新读取看板数据 · {refreshIn}s
+          刷新 · {refreshIn}s
         </Button>
       </section>
 
-      <section className="health-grid" aria-label="当前系统概况">
+      <section className="health-grid health-grid--essential" aria-label="当前系统概况">
         <article className={`health-card health-card--${snapshot.healthTone}`}>
-          <span><HardDrive aria-hidden="true" /></span><div><small>看板数据</small><strong>{snapshot.label}</strong><p>{snapshot.cardDetail}</p></div>
+          <span><HardDrive aria-hidden="true" /></span><div><span className="health-card__label"><small>看板数据</small><InfoHint label="看板数据状态" help={snapshot.cardDetail} /></span><strong>{snapshot.label}</strong></div>
         </article>
         <article className="health-card">
           <span><Cpu aria-hidden="true" /></span><div><small>当前模型</small>{profile.state === "instance" ? <SourceText as="strong">{profile.model}</SourceText> : <strong>{profile.model}</strong>}<p>{profile.modelLevel != null ? `Level ${profile.modelLevel} · ` : ""}{profile.state === "instance" ? <SourceText>{profile.modelPlatform}</SourceText> : profile.modelPlatform}</p></div>
         </article>
         <article className="health-card">
-          <span><Database aria-hidden="true" /></span><div><small>已经保存的内容</small><strong>{carriedAssetCount()} 项</strong><p>从看板隐藏的记录仍保存在本地；模型和本地扩展不计入</p></div>
+          <span><Database aria-hidden="true" /></span><div><span className="health-card__label"><small>已经保存的内容</small><InfoHint label="保存内容怎样计数" help="从看板隐藏的记录仍保存在本地；模型和本地扩展不计入。" /></span><strong>{carriedAssetCount()} 项</strong></div>
         </article>
         <article className="health-card">
-          <span><Sparkles aria-hidden="true" /></span><div><small>本地扩展</small><strong>{skills.count ?? assets.skills} 项</strong><p>{skills.status ?? "按真实任务需要再加载"}</p></div>
+          <span><Sparkles aria-hidden="true" /></span><div><span className="health-card__label"><small>本地扩展</small><InfoHint label="本地扩展怎样使用" help={skills.status ?? "按真实任务需要再加载。"} /></span><strong>{skills.count ?? assets.skills} 项</strong></div>
         </article>
-        <article className="health-card">
-          <span><Lightbulb aria-hidden="true" /></span><div><small>学习方式</small><strong>{profile.learningPolicyLabel}</strong><p>{profile.learningPolicy === "risk-tiered" ? "第一次发现仍会先问你；风险只决定候选先验证、先复核，变成正式资产前仍要你明确确认。" : profile.learningPolicy === "manual-only" ? "发现值得留下的内容时会先问你；候选观察、复核和正式采用都等你确认。" : "创建助手时选择；无论哪种方式，第一次发现和正式采用都会问你。"}</p></div>
+        <article className="health-card health-card--learning">
+          <span><Lightbulb aria-hidden="true" /></span><div><span className="health-card__label"><small>学习方式</small><InfoHint label="学习方式说明" help={profile.learningPolicy === "risk-tiered" ? "第一次发现仍会先问你；风险只决定候选先验证、先复核，变成正式资产前仍要你明确确认。" : profile.learningPolicy === "manual-only" ? "发现值得留下的内容时会先问你；候选观察、复核和正式采用都等你确认。" : "创建助手时选择；无论哪种方式，第一次发现和正式采用都会问你。"} /></span><strong title={profile.learningPolicyLabel}>{profile.learningPolicyLabel}</strong></div>
         </article>
       </section>
 
-      <Reveal>
-      <section className="model-level-panel render-deferred" aria-labelledby="model-level-title">
-        <div className="model-level-panel__head">
-          <div>
-            <SectionEyebrow icon={Cpu}>模型等级怎么选</SectionEyebrow>
-            <h2 id="model-level-title">选模型时，先看任务有多复杂、多重要</h2>
-            <p>等级表示这次任务需要多少理解和判断，不代表某个模型永远只能属于一个等级。</p>
-          </div>
-          <span className="model-level-panel__current">
-            {profile.modelLevel != null ? `当前确认：Level ${profile.modelLevel}` : "当前等级尚未确认"}
-          </span>
+      <section className="system-essentials" aria-label="助手身份与常用操作">
+        <div className="system-identity-row">
+          <span><FileText aria-hidden="true" /></span>
+          <div><small>当前助手</small>{profile.state === "instance" ? <SourceText as="strong">{profile.displayName}</SourceText> : <strong>{profile.displayName}</strong>}</div>
+          <InfoHint label="当前身份详情" help={identityDetail} />
         </div>
-        <div className="model-level-grid">
-          {MODEL_LEVELS.map((item) => {
-            const isCurrent = profile.modelLevel === item.level;
-            return (
-              <article key={item.level} className={isCurrent ? "is-current" : undefined}>
-                <div className="model-level-card__top">
-                  <span className="model-level-card__icon"><item.icon aria-hidden="true" /></span>
-                  <span className="model-level-card__number">Level {item.level}</span>
-                  {isCurrent ? <strong>当前任务</strong> : null}
-                </div>
-                <h3>{item.title}</h3>
-                <p>{item.bestFor}</p>
-                <div><span>它的价值</span><p>{item.value}</p></div>
-              </article>
-            );
-          })}
+
+        <div className="system-budget-row">
+          <div><Lightbulb aria-hidden="true" /><span><small>启动时按需读取</small><strong>{startupChars.toLocaleString()} / {startupBudget.toLocaleString()} 字符</strong></span><InfoHint label="按需读取说明" help="启动时只看身份、未完成操作和内容目录；真正用到记忆、能力、安全规则或固定流程时，才读取相关详情。" /></div>
+          <span className="budget-meter__track"><i style={{ width: `${budgetRatio}%` }} /></span>
         </div>
-        <p className="model-level-panel__note">如果任务需要更高等级，Agent 会说明原因、建议切到哪个等级以及切换后要做什么，并等待你确认。它不会自行切换或偷偷降低等级。</p>
-      </section>
-      </Reveal>
 
-      <Reveal>
-      <section className="context-panel render-deferred">
-        <div className="context-panel__copy">
-          <SectionEyebrow icon={Lightbulb}>按需读取</SectionEyebrow>
-          <h2>先看目录，真正用到时再读取内容</h2>
-          <p>记忆、安全规则、学习方法和固定流程（SOP）都保存在本地，但不会在每次启动时一次全部交给模型。</p>
-          <div className="budget-meter">
-            <div><span>当前启动字符</span><strong>{startupChars.toLocaleString()} / {startupBudget.toLocaleString()}</strong></div>
-            <span className="budget-meter__track"><i style={{ width: `${budgetRatio}%` }} /></span>
-          </div>
+        <div className="system-quick-actions">
+          <span className="system-model-guide"><Cpu aria-hidden="true" /><strong>模型怎么选</strong><InfoHint label="模型等级说明" help="目标清楚的日常任务优先使用 Level 1；需要归纳判断时使用 Level 2；创建助手、核心架构、安全规则和重要长期决定使用 Level 3。Agent 需要切换时会先说明原因。" /></span>
+          {profile.state === "instance" && guidanceAction ? <Button variant="outline" onClick={() => setGuidanceOpen(true)}><MessageCircleMore aria-hidden="true" />调整交流方式</Button> : null}
         </div>
-        <ol className="route-story">
-          <li><span>01</span><div><strong>先确认助手现在是什么状态</strong><p>只查看身份、未完成操作和内容目录。</p></div></li>
-          <li><span>02</span><div><strong>找到当前任务需要的内容</strong><p>例如有关的记忆、能力或安全说明。</p></div></li>
-          <li><span>03</span><div><strong>只读取这些内容的详情</strong><p>任务完成后，再判断有没有值得长期保存的新发现。</p></div></li>
-        </ol>
       </section>
-      </Reveal>
-
-      <Reveal>
-      <section className="system-details-grid render-deferred">
-        <article>
-          <SectionEyebrow icon={ShieldCheck}>长期改进</SectionEyebrow>
-          <h2>{governance.length ? `${governance.length} 项长期改进计划` : "模板没有预设提醒日期"}</h2>
-          <p>{governance.length ? "日期到了只提醒一次。你选择后才会读取那一项的说明，并交给 Level 3 调研。" : "新助手会从实际创建时间计算第一次提醒日期。平时不读取详细内容，也不会在后台联网。"}</p>
-        </article>
-        <article>
-          <SectionEyebrow icon={FileText}>当前身份</SectionEyebrow>
-          {profile.state === "instance" ? <SourceText as="h2">{profile.displayName}</SourceText> : <h2>{profile.displayName}</h2>}
-          {profile.mission ? profile.state === "instance" ? <SourceText as="p">{profile.mission}</SourceText> : <p>{profile.mission}</p> : <p>尚未设置使命。</p>}
-          <dl>
-            <div><dt>状态</dt><dd>{profile.state === "template" ? "等待第一次设置" : profile.state === "snapshot-unavailable" ? "看板数据不可用" : "已经创建"}</dd></div>
-            <div><dt>方向</dt><dd>{profile.state === "template" ? "尚未选择" : overview.domain || profile.domainId ? <SourceText>{overview.domain || profile.domainId}</SourceText> : "尚未设置"}</dd></div>
-            <div><dt>交流方式</dt><dd>{profile.guidanceLabel}</dd></div>
-          </dl>
-          {profile.state === "instance" && guidanceAction ? (
-            <Button variant="outline" className="identity-guidance-action" onClick={() => setGuidanceOpen(true)}>
-              <MessageCircleMore aria-hidden="true" />调整交流方式
-            </Button>
-          ) : null}
-        </article>
-      </section>
-      </Reveal>
-
-      {problemReportAction ? (
-        <Reveal>
-          <section className="problem-report-card render-deferred" aria-labelledby="problem-report-title">
-            <div className="problem-report-card__lead">
-              <span className="problem-report-card__icon"><CircleHelp aria-hidden="true" /></span>
-              <div>
-                <SectionEyebrow icon={MessageCircleMore}>遇到问题</SectionEyebrow>
-                <h2 id="problem-report-title">从最早觉得不对的地方，生成一份问题报告</h2>
-                <p>不用懂日志或开发术语。Agent 会在当前对话里引导你找到最早异常点，区分事实和推断，自动遮盖敏感信息，再生成可转交的 Markdown。</p>
-              </div>
-            </div>
-            <ol className="problem-report-card__flow" aria-label="问题报告生成步骤">
-              <li><span>1</span><strong>你指出最早异常</strong></li>
-              <li><span>2</span><strong>Agent 整理并遮盖隐私</strong></li>
-              <li><span>3</span><strong>你核对后再决定是否发送</strong></li>
-            </ol>
-            <div className="problem-report-card__action">
-              <p><ShieldCheck aria-hidden="true" />按钮只复制请求；不会读取后台日志，也不会自动上传或发送报告。</p>
-              <Button onClick={() => onCopy(problemReportAction.request, problemReportAction.label)}>
-                <ClipboardCopy aria-hidden="true" />
-                复制问题报告请求
-              </Button>
-            </div>
-          </section>
-        </Reveal>
-      ) : null}
 
       <details className="advanced-details render-deferred">
         <summary><span><FileText aria-hidden="true" />维护者技术信息</span><ChevronRight aria-hidden="true" /></summary>

@@ -1,0 +1,95 @@
+schema_version = 2
+release = "2.0.7"
+core = "2.0.7"
+license = "Apache-2.0"
+extension_api = "1.0"
+asset_schema = "1.3"
+dashboard_snapshot_schema = "1.1"
+dashboard_action_schema = "1.0"
+cross_session_signal_schema = "1.1"
+host_integration_schema = "1.0"
+private_asset_catalog_schema = "1.0"
+migration_kit_schema = "2.0"
+extension_manifest_schema = "1.0"
+instance_component_schema = "1.0"
+result_validation_evidence_schema = "1.0"
+startup_capsule_schema = "1.0"
+from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1", "2.0.2", "2.0.3", "2.0.4", "2.0.5", "2.0.6"]
+required_preview_executor = "dashboard/scripts/ai-carry-upgrade-cli.mjs"
+required_preview_command = "prepare --source <current-instance-root> --target <verified-extracted-target-root>"
+required_preview_policy = "on an explicit update check verify the latest formal GitHub Release fixed lightweight tag public main exact tree target bytes and release manifest; prepare is read-only and displays its returned userPreview"
+required_confirm_policy = "after the exact preview wait for the user's next independent upgrade or confirm-upgrade reply; confirm rechecks the same local source target instance release boundary and write set without repeating network access and rejects real drift"
+required_session_reentry_policy = "after the file switch refresh a pending snapshot then run only the returned sessionReentryCommand and one relevant non-destructive behavior; never run the dashboard development check suite in an installed instance"
+notes = "AI Carry 2.0.7 makes the offline dashboard concise by default and detailed on demand. It regroups migration safety update private-transfer problem-report and Skill Workshop actions without adding a framework Schema background service or user workflow."
+asset_changes = "Asset Schema remains 1.3. User memories capabilities SOPs experiences candidates validations Skills schedules history private content future fields and unknown files keep their existing owners and bytes."
+dashboard_changes = "Dashboard Snapshot Schema remains 1.1 and Dashboard Action Schema remains 1.0. Product version advances to 2.0.7. Summaries status and primary actions appear first; drill-down detail and help remain available on demand. The supported dashboard target remains computer use at 1024px or wider."
+extension_changes = "Extension API Extension Manifest Schema and Instance Component Schema remain 1.0. Existing components professional workspaces device bindings private references and instance business code remain instance-owned. An optional incompatibility limits only that item."
+
+replace = ["README.md", "README.en.md", "INSTALL.md", "INSTALL.en.md", "START-HERE.txt", "START-HERE.en.txt", "AGENTS.md", "BOOTSTRAP.md", "CONTRIBUTING.md", "SECURITY.md", ".github/**", "assistant.toml", ".gitattributes", ".gitignore", "LICENSE", "core/**", "docs/**", "dashboard.html", "dashboard.en.html", "dashboard/**", "_data/**", "THIRD_PARTY_NOTICES.md"]
+replace_instance_guides = ["instance/profile/README.md", "instance/memory/README.md", "instance/capabilities/README.md", "instance/sops/README.md", "instance/experiences/README.md", "instance/evolution/README.md", "instance/todo/README.md", "instance/deferred/README.md", "instance/governance/README.md", "instance/signals/README.md", "instance/hosts/README.md", "instance/validations/README.md", "instance/components/README.md"]
+migrate = ["instance/manifest.toml", "instance/startup-capsule.toml"]
+preserve = ["workspace/**", "instance/components/**", "instance/maps/**", "instance/profile/**", "instance/governance/**", "instance/memory/**", "instance/capabilities/**", "instance/sops/**", "instance/experiences/**", "instance/evolution/**", "instance/todo/**", "instance/deferred/**", "instance/skills/**", "instance/signals/**", "instance/hosts/**", "instance/validations/**", ".assistant-private/**", ".assistant-local/**"]
+remove = []
+
+[classification]
+precedence = ["migration_rules", "replace_instance_guides", "migrate", "preserve", "replace", "remove"]
+overlap_policy = "first-matching-classification-wins-after-applicable-migration-rules; every selected path must resolve to exactly one effective action"
+guide_overlap_note = "Only the exact README files in replace_instance_guides are target-template guides; every sibling user file remains instance-owned."
+validation_overlap_note = "A clean template uses the target empty validation index; an existing instance keeps its index and records byte-for-byte."
+evolution_overlap_note = "A clean template uses the target empty candidate index; an existing instance keeps its index candidates and timestamps byte-for-byte."
+component_overlap_note = "A clean template uses the target registry; an existing instance keeps current or legacy component registry bodies bindings and unknown fields."
+skill_overlap_note = "instance/skills/** is instance-owned; upgrade does not infer versions execute package code or install a package. A missing carrier affects only that Skill and may be regenerated from retained editable source."
+governance_overlap_note = "instance/governance/** remains instance-owned. A recognized legacy source may still apply the existing bounded current-product phrase migration while preserving every other source byte and schedule."
+
+[target_selection]
+mode = "fixed-release-content-or-trusted-commit-allowlist"
+forbid_unlisted_files = true
+forbidden_segments = [".git", "node_modules", ".cache", ".vite", ".turbo", "coverage", "tmp", "temp", "maintainer-private", ".assistant-private", ".assistant-local"]
+allow_overrides_deny_for_exact_paths = [".assistant-local/.gitkeep", ".assistant-local/dashboard/.gitkeep", ".assistant-local/indexes/.gitkeep", ".assistant-local/skills/.gitkeep", ".assistant-local/task-handoffs/.gitkeep", ".assistant-local/upgrade-inbox/.gitkeep", ".assistant-private/.gitkeep", ".assistant-private/assets/.gitkeep", ".assistant-private/inbox/.gitkeep"]
+exact_override_policy = "only listed regular zero-byte placeholder files may override forbidden segments"
+broad_globs_are_copy_commands = false
+
+[instance_component_changes]
+schema = "1.0"
+registry = "instance/components/registry.toml"
+target_interfaces = ["ai-carry.instance-component@1", "agent-carry.instance-component@1"]
+migration_ids = ["essential-dashboard-2.0.7"]
+native_asset_policy = "reuse existing formal owners; do not duplicate memory capability SOP experience Skill or workspace bodies as components"
+professional_extension_policy = "reuse extension.toml and do not duplicate professional workspaces in the generic registry"
+unregistered_policy = "preserve and classify only when the related durable change or upgrade needs it"
+optional_incompatible_action = "disable-and-preserve"
+required_incompatible_action = "stop-switch-and-preserve"
+device_local_policy = "preserve on the same device and keep out of public or portable truth; inspect only the current tool's explicit bindings before copied-instance execution"
+ordinary_startup = "never enumerate components workspaces bindings or local tools"
+authorization = "reuse the current durable action authorization; add no compatibility-only confirmation"
+
+[[migration_rules]]
+id = "essential-dashboard-2.0.7"
+from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1", "2.0.2", "2.0.3", "2.0.4", "2.0.5", "2.0.6"]
+when_all = ["source reports one recognized direct version and AI Carry or known legacy identity", "official v2.0.7 Release lightweight tag public main manifest and extracted tree agree", "the user authorizes this exact upgrade after the bound preview"]
+source = "bounded product preimages plus only the instance paths required to preserve identity rebuild startup derivatives and apply an already-supported bounded legacy migration when needed"
+destination = "the same stable instance root on AI Carry 2.0.7 with instance-owned local private future and unknown bytes preserved"
+operation_order = ["live-verify the fixed official v2.0.7 Release tag public main tree target bytes and manifest once during prepare", "bind the preview to source target instance release boundary and product write set", "after exact user confirmation recheck those local facts without a second network request", "copy the verified public target to an isolated candidate and reject unlisted private local linked or conflicting target paths", "preserve instance identity created_from profile maps signals governance assets validations candidates Skills components extensions workspaces bindings private references reports handoffs future fields and unknown paths", "apply only an existing bounded legacy migration when its exact source condition matches", "replace only mother-template-owned product files and adapt only content actually affected by the new template", "update the instance product version and rebuild the strict startup capsule from the merged manifest", "switch changed product files transactionally and restore touched preimages once on a core failure", "refresh the byte-identical snapshot pair; a snapshot-only fault leaves a local retry instead of undoing valid core files", "run the returned session reentry and one relevant non-destructive behavior", "report actual changes preserved content local repairs limitations and the next step"]
+forbidden = ["rewriting user assets history or unknown content to match the new dashboard wording", "treating prose field order timestamp count or a rebuildable projection as a whole-assistant fatal error", "using an exhaustive migration table instead of reasoning from the real instance", "overwriting deleting or silently reclassifying user data private content unknown fields or unknown paths", "turning a missing Skill carrier optional component local tool or snapshot fault into a whole-assistant failure", "adding a second registry scanner state machine or compatibility-only confirmation", "executing package scripts installing dependencies or launching instance tools during the file transaction", "reusing a preview after source target instance release boundary or write-set drift", "accepting caller-authored authority target self-report an unfixed branch archive or a tag without the matching official Release", "modifying a real installed instance during rehearsal"]
+unknown_or_ambiguous = "preserve unknown bytes and fields; if ownership privacy overwrite risk or a required capability remains genuinely ambiguous after bounded repair pause only the affected write or formal switch and explain one smallest next decision"
+idempotence = "a second run against the same installed 2.0.7 source verifies current product startup and snapshot closure and makes no user file asset binding timestamp report or snapshot change"
+
+[verification]
+upgrade_preservation = "one representative complex 2.0.6 instance keeps identity user assets Skills components workspaces local private future unknown bytes governance schedule and history while product files advance"
+local_fault_containment = "one derived dashboard or optional-item fault limits only that item and leaves conversation core and unrelated abilities usable"
+staging_recovery = "a failure before switch leaves the source untouched and a core-switch failure restores every touched product preimage once"
+second_run = "the same completed source produces no changes"
+public_boundary = "the public projection contains product and release materials but no maintainer state real instance local binding cache Skill carrier report private content mock data or secret"
+checks = ["version-and-current-release-pointers-aligned", "direct-sources-include-2.0.6-without-rewriting-history", "blank-template-remains-empty", "representative-2.0.6-instance-upgrade-preserves-user-and-unknown-bytes", "startup-capsule-and-snapshot-pair-close-on-2.0.7", "dashboard-essential-information-and-actions-remain-reachable", "second-run-is-zero-change", "chinese-and-english-readme-current-facts-match", "public-projection-excludes-private-maintainer-instance-and-mock-material"]
+risk_policy = "use one focused release check one representative 2.0.6 instance upgrade and one clean public build; do not add mobile model host or whole-version matrices background services whole-machine scans databases or enterprise regression suites"
+
+[release_boundary]
+status = "published-release"
+release_ref = "v2.0.7"
+publication_authorized = true
+repository_operation_authorized = true
+instance_replacement_authorized = true
+future_publication_or_repository_operation_authorized = false
+authority_requires = ["official-latest-release-is-v2.0.7", "official-release-object-v2.0.7", "official-lightweight-tag-v2.0.7", "official-public-main-equals-v2.0.7-tag", "manifest-and-extracted-tree-match-the-fixed-tag", "user-explicitly-authorized-this-upgrade"]
+authority_scope = "this fixed release may replace an instance only after every external condition above exists; this local candidate alone authorizes no instance replacement or future repository action"
+maintainer_private_paths = ["AGENTS.override.md", ".assistant-private/**", ".assistant-local/**", "maintainer-private/**", "workspace/**"]

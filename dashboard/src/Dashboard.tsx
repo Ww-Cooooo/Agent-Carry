@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [identityIssueOpen, setIdentityIssueOpen] = useState(false);
+  const [transferStartRequest, setTransferStartRequest] = useState(0);
   const mainRef = useRef<HTMLElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
   const scrollRestoreRef = useRef<number | null>(null);
@@ -253,7 +254,7 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`app-shell${demoMode ? " app-shell--demo" : ""}${dashboardIdentity.mismatch ? " app-shell--identity-warning" : ""}`}
+      className={`app-shell app-shell--essential${demoMode ? " app-shell--demo" : ""}${dashboardIdentity.mismatch ? " app-shell--identity-warning" : ""}`}
       data-snapshot-revision={snapshotRevision}
       data-dashboard-kind={dashboardIdentity.expected.kind}
       data-dashboard-ref={dashboardIdentity.expected.ref}
@@ -300,7 +301,14 @@ export default function Dashboard() {
         </nav>
 
         <div className="rail-footer">
-          <button type="button" className="rail-carry" onClick={() => navigate({ page: "transfer" })}>
+          <button
+            type="button"
+            className="rail-carry"
+            onClick={() => {
+              navigate({ page: "transfer" });
+              setTransferStartRequest((value) => value + 1);
+            }}
+          >
             <PackageOpen aria-hidden="true" />
             <span><strong>带走本地资料</strong><small>换电脑前查看并准备</small></span>
             <ArrowRight aria-hidden="true" />
@@ -405,7 +413,7 @@ export default function Dashboard() {
                       onInspect={setDetail}
                     />
                   ) : null}
-                  {route.page === "transfer" ? <TransferView onCopy={requestCopy} /> : null}
+                  {route.page === "transfer" ? <TransferView onCopy={requestCopy} startComputerGuideRequest={transferStartRequest} /> : null}
                   {route.page === "system" ? <SystemView onRefresh={() => void refreshSnapshot()} onCopy={requestCopy} refreshIn={refreshIn} refreshFailed={refreshError} /> : null}
                 </motion.div>
               </AnimatePresence>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { InfoHint } from "@/components/dashboard/Shared";
 
 export type GuidanceMode = "step-by-step" | "balanced" | "direct";
 type DirectionChoice = "general" | "domain" | "help-decide";
@@ -141,21 +142,22 @@ function ChoiceGrid<T extends string>({
         const selected = value === choice.id;
         const Icon = choice.icon;
         return (
-          <button
-            key={choice.id}
-            type="button"
-            className={`onboarding-choice${selected ? " is-selected" : ""}`}
-            aria-pressed={selected}
-            onClick={() => onChange(choice.id)}
-          >
-            <span className="onboarding-choice__icon"><Icon aria-hidden="true" /></span>
-            <span className="onboarding-choice__copy">
-              <strong>{choice.label}</strong>
-              <span>{choice.description}</span>
-              <small>{choice.note}</small>
-            </span>
-            <span className="onboarding-choice__check" aria-hidden="true">{selected ? <Check /> : null}</span>
-          </button>
+          <div key={choice.id} className="onboarding-choice-shell">
+            <button
+              type="button"
+              className={`onboarding-choice${selected ? " is-selected" : ""}`}
+              aria-pressed={selected}
+              onClick={() => onChange(choice.id)}
+            >
+              <span className="onboarding-choice__icon"><Icon aria-hidden="true" /></span>
+              <span className="onboarding-choice__copy">
+                <strong>{choice.label}</strong>
+                <span>{choice.description}</span>
+              </span>
+              <span className="onboarding-choice__check" aria-hidden="true">{selected ? <Check /> : null}</span>
+            </button>
+            <InfoHint label="这个选项适合谁" help={choice.note} />
+          </div>
         );
       })}
     </div>
@@ -168,7 +170,7 @@ function StepDots({ step }: { step: number }) {
       {[1, 2, 3].map((item) => (
         <li key={item} className={item === step ? "is-current" : item < step ? "is-complete" : undefined} aria-current={item === step ? "step" : undefined}>
           <span>{item < step ? <Check aria-hidden="true" /> : item}</span>
-          <small>{item === 1 ? "选择交流方式" : item === 2 ? "选择助手方向" : "只需核对"}</small>
+          <small>{item === 1 ? "选择交流方式" : item === 2 ? "选择助手方向" : "最后核对"}</small>
         </li>
       ))}
     </ol>
@@ -189,6 +191,7 @@ export function OnboardingDialog({
   const [step, setStep] = useState(1);
   const [guidance, setGuidance] = useState<GuidanceMode | null>(null);
   const [direction, setDirection] = useState<DirectionChoice | null>(null);
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => {
@@ -212,12 +215,20 @@ export function OnboardingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="onboarding-dialog" aria-describedby="onboarding-description">
+      <DialogContent
+        className="onboarding-dialog"
+        aria-describedby="onboarding-description"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus({ preventScroll: true });
+        }}
+      >
         <DialogHeader className="onboarding-dialog__header">
           <span className="onboarding-dialog__mark"><Sparkles aria-hidden="true" />第一次设置</span>
-          <DialogTitle>用你舒服的方式，创建自己的助手</DialogTitle>
-          <DialogDescription id="onboarding-description">
-            这里先确定交流方式和助手方向。网页不会直接修改文件；核对后，你会得到一段完整指令交给当前 Agent。
+          <DialogTitle ref={titleRef} tabIndex={-1}>用你舒服的方式，创建自己的助手</DialogTitle>
+          <DialogDescription id="onboarding-description" className="onboarding-dialog__summary">
+            <span>先选交流方式和助手方向，最后核对一次。</span>
+            <InfoHint label="创建助手会怎样继续" help="网页只负责整理并复制创建请求，不会直接修改文件。当前 Agent 收到请求后，还会了解你的实际需要、展示完整预览，并在正式创建前再次等你确认。" />
           </DialogDescription>
         </DialogHeader>
 
@@ -236,9 +247,8 @@ export function OnboardingDialog({
               {step === 1 ? (
                 <>
                   <div className="onboarding-step__heading">
-                    <span>第 1 步</span>
                     <h2 id="guidance-choice-title">你希望 Agent 怎样和你交流？</h2>
-                    <p>这不是能力测试，以后随时可以调整。请选择现在最舒服的一种。</p>
+                    <p className="onboarding-step__summary">选择现在最舒服的一种。<InfoHint label="交流方式说明" help="这不是能力测试，只影响解释深度和提问节奏；创建后仍可随时调整。" /></p>
                   </div>
                   <ChoiceGrid choices={GUIDANCE_OPTIONS} value={guidance} onChange={setGuidance} labelledBy="guidance-choice-title" />
                 </>
@@ -247,9 +257,8 @@ export function OnboardingDialog({
               {step === 2 ? (
                 <>
                   <div className="onboarding-step__heading">
-                    <span>第 2 步</span>
                     <h2 id="direction-choice-title">你想先把它培养成什么助手？</h2>
-                    <p>正式创建后方向会锁定。拿不准时先让 Agent 帮你比较，不会替你决定。</p>
+                    <p className="onboarding-step__summary">选择一个方向，拿不准也可以先让 Agent 帮你判断。<InfoHint label="助手方向说明" help="正式创建后方向会锁定，避免助手在长期使用中反复漂移；Agent 可以比较选项，但不会替你决定。" /></p>
                   </div>
                   <ChoiceGrid choices={DIRECTION_OPTIONS} value={direction} onChange={setDirection} labelledBy="direction-choice-title" />
                 </>
@@ -260,16 +269,11 @@ export function OnboardingDialog({
                   <header className="wizard-review-sheet__hero">
                     <span className="wizard-review-sheet__mark"><CheckCircle2 aria-hidden="true" /></span>
                     <div>
-                      <small>第 3 步 · 核对单</small>
-                      <strong>这一步没有需要选择的内容</strong>
-                      <p>只需检查下面两项是否正确。内容正确就点击窗口底部的“核对无误”；需要调整就返回修改。</p>
+                      <small>第 3 步 · 最后核对</small>
+                      <strong>确认这两项选择</strong>
+                      <p>内容不对就返回修改。</p>
                     </div>
-                    <span className="wizard-review-sheet__badge">无需选择 · 只需核对</span>
                   </header>
-                  <div className="wizard-review-sheet__title">
-                    <div><small>你刚刚选择的信息</small><strong>创建助手前的最后核对</strong></div>
-                    <span>共 2 项</span>
-                  </div>
                   <dl className="onboarding-review-list">
                     <div>
                       <dt>
@@ -290,7 +294,10 @@ export function OnboardingDialog({
                   </dl>
                   <footer className="wizard-review-sheet__footnote">
                     <Check aria-hidden="true" />
-                    <p><strong>网页不会直接创建或锁定助手。</strong>它只生成一段完整指令；当前 Agent 完成访谈并展示预览后，仍要等你明确确认。</p>
+                    <div className="compact-fact">
+                      <strong>生成请求后，Agent 仍会先访谈、展示完整预览并等你确认。</strong>
+                      <InfoHint label="为什么还需要确认" help="这张看板只整理你的选择，不会直接创建或锁定助手。最终预览能让你在写入前核对名称、方向、目标和边界。" />
+                    </div>
                   </footer>
                 </section>
               ) : null}

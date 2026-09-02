@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Clock3, ListChecks, Route, ShieldCheck, Sparkles, Workflow } from "lucide-react";
+import { InfoHint } from "@/components/dashboard/Shared";
 import type { GrowthKind } from "@/dashboard-config";
 import { localizeText } from "@/lib/i18n";
 
@@ -212,8 +213,7 @@ function GuideNodeCard({ data }: NodeProps<GuideNode>) {
       <span className="growth-guide-node__icon">{data.icon}</span>
       <span className="growth-guide-node__copy">
         <small>{data.eyebrow}</small>
-        <strong>{data.title}</strong>
-        <span>{data.detail}</span>
+        <span className="growth-guide-node__title"><strong>{data.title}</strong><InfoHint label={data.title} help={data.detail} /></span>
       </span>
       <Handle type="source" position={Position.Right} className="growth-guide-node__handle" />
     </div>
@@ -242,8 +242,7 @@ export default function GrowthGuide({ kind, count }: { kind: GrowthKind; count: 
       <div className="growth-guide__head">
         <div>
           <p className="growth-guide__eyebrow">{definition.eyebrow}</p>
-          <h2 id={`growth-guide-${kind}-title`}>{definition.title}</h2>
-          <p>{definition.summary}</p>
+          <div className="heading-with-hint"><h2 id={`growth-guide-${kind}-title`}>{definition.title}</h2><InfoHint label={`${definition.title}说明`} help={definition.summary} /></div>
         </div>
         <div className="growth-guide__status" aria-label={`${definition.statusLabel} ${count} 项`}>
           <strong>{count}</strong>
@@ -251,7 +250,7 @@ export default function GrowthGuide({ kind, count }: { kind: GrowthKind; count: 
         </div>
       </div>
 
-      <div className="growth-guide__flow" aria-hidden="true">
+      <div className="growth-guide__flow" aria-label="当前内容的简要流程">
         <ReactFlow
           nodes={definition.nodes}
           edges={edges}

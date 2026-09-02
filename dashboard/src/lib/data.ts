@@ -542,18 +542,18 @@ export function assetUsagePresentation(
   const useVerb = kind === "memories" ? "读取" : kind === "sops" ? "执行" : kind === "capabilities" ? "调用" : "参考";
 
   if ((kind === "memories" || kind === "experiences") && (!item.subtype || item.subtype === "legacy-unclassified")) {
-    return { key: "unknown", statusToken: "asset-legacy-unclassified", label: "类型待整理", behaviorTitle: "先让 Agent 确认这条内容属于哪一类", behaviorSummary: `这是旧版本留下的${noun}，正式授权仍保留，但缺少当前召回所需的类型标记。Level 3 完成分类并回读前，不会把它当成普通可自动匹配内容。`, actionLabel: `整理${noun}类型`, usable: false };
+    return { key: "unknown", statusToken: "asset-legacy-unclassified", label: "旧版信息待补齐", behaviorTitle: "让 Agent 补齐旧版分类后再使用", behaviorSummary: `这是旧版本留下的${noun}，正式授权仍保留，但缺少当前召回所需的类型标记。Agent 会只核对这一条并补齐可确定的信息；完成前不会把它当成普通可自动匹配内容。`, actionLabel: `让 Agent 补齐这条${noun}`, usable: false };
   }
 
   if (status === "active" && authorization !== "invalid") {
-    return { key: "active", statusToken: "asset-active", label: "可按需使用", behaviorTitle: `任务命中后按需${useVerb}`, behaviorSummary: `这条${noun}有可核验的使用授权。Agent 仍会先核对当前范围、条件和风险，再只加载必要正文。`, actionLabel: kind === "memories" ? "手动指定这条记忆" : kind === "sops" ? "复制流程指令" : kind === "capabilities" ? "复制能力调用指令" : "复制经验参考指令", usable: true };
+    return { key: "active", statusToken: "asset-active", label: "可按需使用", behaviorTitle: `任务命中后按需${useVerb}`, behaviorSummary: `这条${noun}有可核验的使用授权。Agent 仍会先核对当前范围、条件和风险，再只加载必要正文。`, actionLabel: kind === "memories" ? "需要时手动指定" : kind === "sops" ? "让 Agent 执行这项流程" : kind === "capabilities" ? "让 Agent 调用这项能力" : "让 Agent 参考这条经验", usable: true };
   }
   const risk = typeof item.riskTier === "string" ? item.riskTier.trim().toLocaleLowerCase() : "";
   if (status === "provisional" && authorization !== "invalid" && risk === "low") {
-    return { key: "trial", statusToken: "asset-trial", label: "限定试用", behaviorTitle: "只在登记范围内试用", behaviorSummary: `这条${noun}尚未成为稳定资产。只有当前任务精确命中已登记范围且没有冲突时才可${useVerb}；范围外或影响不清时先询问用户。`, actionLabel: kind === "memories" ? "在当前任务试用" : kind === "sops" ? "复制限定试用指令" : kind === "capabilities" ? "复制限定调用指令" : "复制限定参考指令", usable: true };
+    return { key: "trial", statusToken: "asset-trial", label: "限定试用", behaviorTitle: "只在登记范围内试用", behaviorSummary: `这条${noun}尚未成为稳定资产。只有当前任务精确命中已登记范围且没有冲突时才可${useVerb}；范围外或影响不清时先询问用户。`, actionLabel: kind === "memories" ? "在当前任务试用" : kind === "sops" ? "让 Agent 试用这项流程" : kind === "capabilities" ? "让 Agent 试用这项能力" : "让 Agent 试用这条经验", usable: true };
   }
   if (status === "review") {
-    return { key: "review", statusToken: "asset-review", label: "需要复核", behaviorTitle: "复核完成前暂停使用", behaviorSummary: `这条${noun}的旧证据、适用范围或当前环境需要重新检查。复核完成前不能把它当作可用资产。`, actionLabel: `复制${noun}复核指令`, usable: false };
+    return { key: "review", statusToken: "asset-review", label: "需要复核", behaviorTitle: "复核完成前暂停使用", behaviorSummary: `这条${noun}的旧证据、适用范围或当前环境需要重新检查。复核完成前不能把它当作可用资产。`, actionLabel: `让 Agent 复核这条${noun}`, usable: false };
   }
   if (["history", "paused", "archived"].includes(status)) {
     return { key: "history", statusToken: "asset-history", label: "仅作历史", behaviorTitle: "不会用于普通任务", behaviorSummary: `这条${noun}只保留用于解释、审计或以后恢复；重新启用前必须核对当前内容、范围和授权。`, actionLabel: `查看${noun}历史状态`, usable: false };
@@ -963,6 +963,22 @@ export function buildSkillExportAction(
   };
 }
 
+export function buildInstalledSkillRepairAction(
+  target: Pick<InstalledSkillItem, "id" | "title" | "state">,
+): DashboardCopyAction {
+  const operation = target.state === "unavailable" ? "diagnose-and-recover" : "review-and-repair";
+  const buttonLabel = target.state === "unavailable" ? "让 Agent 诊断并恢复" : "让 Agent 检查并处理";
+  return {
+    buttonLabel,
+    text: `我想让你只检查 AI Carry 中这一项已安装 Skill，并用自然语言说明它为什么${target.state === "unavailable" ? "暂不可用" : "需要复核"}、能否局部修复，以及修复后怎样验证。
+
+请从根地图进入 local-operations → skill-workshop，读取 Skill 工坊指南和正式 Skill 小地图；只按下面的稳定 ID 定位这一项，不要根据标题猜测，也不要扫描或改变其他 Skill：
+${JSON.stringify({ skill_id: stableTargetId(target), expected_state: target.state, requested_operation: operation })}
+
+能从正式记录唯一确定的索引或兼容信息可以局部修复；需要安装依赖、修改权限、执行脚本、联网或覆盖用户内容时，先说明必要性和影响并等我决定。任何失败只隔离这一项 Skill，AI Carry 主体和其他 Skill 继续可用。完成后告诉我原因、实际处理、验证结果和下一步。`,
+  };
+}
+
 /* 兼容既有导出；所有新入口优先使用 getGlobalActions()。 */
 export const CARRY_ACTION: DashboardCopyAction = {
   buttonLabel: "复制隐私包导出指令",
@@ -1057,7 +1073,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
 }> = {
   sops: {
     label: "执行这项流程",
-    buttonLabel: "复制流程指令",
+    buttonLabel: "让 Agent 执行这项流程",
     goal: "我现在要让你执行 AI Carry 中由稳定 ID 指定的固定流程（SOP）。",
     requirements: [
       "读取这个 SOP 的当前正式版本及它明确登记的必要依赖，不要只根据按钮里的一句触发语自由发挥。",
@@ -1068,7 +1084,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   },
   capabilities: {
     label: "调用这项能力",
-    buttonLabel: "复制能力调用指令",
+    buttonLabel: "让 Agent 调用这项能力",
     goal: "我现在要让你调用 AI Carry 中由稳定 ID 指定的能力。",
     requirements: [
       "读取该能力的正式定义、输入输出和必要依赖，再把它用于当前任务；不能只复述能力名称。",
@@ -1091,7 +1107,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   },
   experiences: {
     label: "参考这条经验",
-    buttonLabel: "复制经验参考指令",
+    buttonLabel: "让 Agent 参考这条经验",
     goal: "我现在要让你在相关任务中参考 AI Carry 中由稳定 ID 指定的任务经验。",
     requirements: [
       "只加载这条经验和当前任务必要的依赖，不要批量加载全部历史记录。",
@@ -1102,7 +1118,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   },
   todos: {
     label: "处理这项待办",
-    buttonLabel: "复制待办处理指令",
+    buttonLabel: "让 Agent 处理这项待办",
     goal: "我现在要让你处理 AI Carry 中由稳定 ID 指定的普通待办。",
     requirements: [
       "只读取这张待办卡和完成它所需的最小充分上下文，不要加载全部 TODO。",
@@ -1113,7 +1129,7 @@ const KIND_META: Record<Exclude<DashboardActionKind, "governance">, {
   },
   evolution: {
     label: "处理这条学习建议",
-    buttonLabel: "复制学习建议处理指令",
+    buttonLabel: "让 Agent 评估这条学习建议",
     goal: "我现在要让你判断并按 AI Carry 的正式生命周期处理由稳定 ID 指定的改进或进化候选。",
     requirements: [
       "只读取这条候选及必要证据，不要把其他候选或完整历史一起载入。",
@@ -1194,7 +1210,7 @@ function buildGovernanceAction(target: DashboardActionTarget): DashboardCopyActi
     requirements.push("该治理卡 ID 未出现在正式登记表中，请停止并向我报告缺少什么，不要自行猜测另一套流程。");
   }
   return {
-    buttonLabel: "复制长期改进指令",
+    buttonLabel: "开始这项长期改进任务",
     text: buildAssetRequest({
       buttonLabel: "开始这项长期改进",
       goal: "我现在明确要求由 Level 3 启动 AI Carry 中由稳定 ID 指定的长期改进项目，并完成这一轮调研。",
@@ -1230,7 +1246,7 @@ export function buildDashboardAction(kind: DashboardActionKind, target: Dashboar
   if (kind === "governance") return buildGovernanceAction(target);
   if (kind === "todos" && target.status === "done") {
     return {
-      buttonLabel: "复制从看板隐藏指令",
+      buttonLabel: "从看板隐藏这项待办",
       text: buildAssetRequest({
         buttonLabel: "从看板隐藏已完成待办",
         goal: "我现在要把 AI Carry 中由稳定 ID 指定、且已经完成的待办从看板隐藏。",

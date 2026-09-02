@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SectionEyebrow, StatusBadge } from "@/components/dashboard/Shared";
+import { InfoHint, SectionEyebrow, StatusBadge } from "@/components/dashboard/Shared";
 
 export function MemoryAccessGuide() {
   const reduceMotion = useReducedMotion();
@@ -37,8 +37,7 @@ export function MemoryAccessGuide() {
       <div className="memory-access-guide__head">
         <div>
           <SectionEyebrow icon={Brain}>记忆怎样参与任务</SectionEyebrow>
-          <h2 id="memory-access-guide-title">直接说想做什么，不必记住记忆或流程的准确名称</h2>
-          <p>AI Carry 会先用极小目录理解你的日常说法，只比较少量标题、摘要和适用范围；找到以后才读取真正相关的正文。</p>
+          <div className="heading-with-hint"><h2 id="memory-access-guide-title">直接说想做什么，不必记住记忆或流程的准确名称</h2><InfoHint label="记忆怎样按需读取" help="AI Carry 会先用极小目录理解你的日常说法，只比较少量标题、摘要和适用范围；找到以后才读取真正相关的正文。" /></div>
         </div>
         <span className="memory-access-guide__default">默认自动进行</span>
       </div>
@@ -47,14 +46,14 @@ export function MemoryAccessGuide() {
         <div className="memory-auto-route">
           <span className="memory-route-label">平时这样用</span>
           <div className="memory-auto-route__steps" aria-label="记忆自动按需读取过程">
-            <article><span>01</span><strong>用日常语言说任务</strong><small>“按上次那样弄”也可以</small></article>
+            <article><span>01</span><strong>用日常语言说任务</strong><InfoHint label="日常说法" help="“按上次那样弄”也可以。" /></article>
             <motion.span
               aria-hidden="true"
               initial={reduceMotion ? false : { opacity: 0.35, x: -4 }}
               whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
               viewport={{ once: true }}
             ><ArrowRight /></motion.span>
-            <article><span>02</span><strong>极小目录找候选</strong><small>只比较低敏摘要，不读全部正文</small></article>
+            <article><span>02</span><strong>极小目录找候选</strong><InfoHint label="极小目录" help="只比较低敏摘要，不读全部正文。" /></article>
             <motion.span
               aria-hidden="true"
               initial={reduceMotion ? false : { opacity: 0.35, x: -4 }}
@@ -62,14 +61,13 @@ export function MemoryAccessGuide() {
               viewport={{ once: true }}
               transition={{ delay: 0.08 }}
             ><ArrowRight /></motion.span>
-            <article><span>03</span><strong>提醒或确认后再读取</strong><small>只加载命中的一项和必要依赖</small></article>
+            <article><span>03</span><strong>提醒或确认后再读取</strong><InfoHint label="按需读取" help="只加载命中的一项和必要依赖。" /></article>
           </div>
         </div>
 
         <aside className="memory-manual-route">
           <span className="memory-route-label memory-route-label--manual">也可以手动</span>
-          <div><ClipboardCopy aria-hidden="true" /><strong>想明确使用某一条时</strong></div>
-          <p>打开那条记忆，点击“手动指定这条记忆”，再把复制好的指令发给当前 Agent。</p>
+          <div><ClipboardCopy aria-hidden="true" /><strong>想明确使用某一条时</strong><InfoHint label="手动指定记忆" help="打开那条记忆，点击“手动指定这条记忆”，再把复制好的指令发给当前 Agent。" /></div>
         </aside>
       </div>
 
@@ -91,8 +89,7 @@ export function HabitLearningGuide({ count }: { count: number }) {
       <div className="habit-learning-guide__intro">
         <div>
           <SectionEyebrow icon={Sparkles}>我的习惯</SectionEyebrow>
-          <h2 id="habit-learning-guide-title">你只管正常做事，值得留下的习惯会先问过你</h2>
-          <p>不需要说“写入记忆”或“形成 SOP”。AI Carry 负责发现和分类，你只需确认内容是否正确、以后哪些情况要沿用。</p>
+          <div className="heading-with-hint"><h2 id="habit-learning-guide-title">你只管正常做事，值得留下的习惯会先问过你</h2><InfoHint label="习惯怎样形成" help="不需要说“写入记忆”或“形成 SOP”。AI Carry 负责发现和分类，你只需确认内容是否正确、以后哪些情况要沿用。" /></div>
         </div>
         <span className={count ? "habit-learning-guide__count is-active" : "habit-learning-guide__count"}>
           <strong>{count}</strong>
@@ -109,7 +106,7 @@ export function HabitLearningGuide({ count }: { count: number }) {
             transition={{ duration: 0.34, delay: index * 0.08 }}
           >
             <span><step.icon aria-hidden="true" /></span>
-            <div><strong>{step.label}</strong><small>{step.note}</small></div>
+            <div><span className="compact-fact"><strong>{step.label}</strong><InfoHint label={step.label} help={step.note} /></span></div>
             <b>{String(index + 1).padStart(2, "0")}</b>
           </motion.article>
         ))}
@@ -215,7 +212,6 @@ export function AssetValidationGuide() {
                 <article>
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <strong>{step.label}</strong>
-                  <small>{step.note}</small>
                 </article>
                 {index < VALIDATION_SUMMARY_STEPS.length - 1 ? (
                   <motion.span
@@ -237,22 +233,20 @@ export function AssetValidationGuide() {
         <DialogContent className="asset-guide-dialog">
           <DialogHeader>
             <DialogTitle>一项流程或能力，怎样从真实任务中形成并走到可靠</DialogTitle>
-            <DialogDescription>下面是完整过程。它跟着真实工作自然发生，不会为了更新状态另外开一套测试。</DialogDescription>
+            <DialogDescription>先看四个关键阶段；问号里保留每一步的判断依据。</DialogDescription>
           </DialogHeader>
 
           <div className="asset-guide-dialog__body">
             <section className="asset-origin-guide" aria-labelledby="asset-origin-guide-title">
               <div className="asset-origin-guide__head">
                 <SectionEyebrow icon={Lightbulb}>首次使用之前</SectionEyebrow>
-                <h3 id="asset-origin-guide-title">这个 SOP 或能力最开始是怎么来的？</h3>
-                <p>它不是 Agent 凭空写出来的，也不是一段对话自动升级而来。起点必须是用户要求或真实任务里出现了值得以后复用的做法。</p>
+                <div className="heading-with-hint"><h3 id="asset-origin-guide-title">这个 SOP 或能力最开始是怎么来的？</h3><InfoHint label="形成起点" help="它不是 Agent 凭空写出来的，也不是一段对话自动升级而来。起点必须是用户要求或真实任务里出现了值得以后复用的做法。" /></div>
               </div>
               <div className="asset-origin-flow">
                 {ORIGIN_STEPS.map((step) => (
                   <article key={step.number}>
                     <span>{step.number}</span>
-                    <h4>{step.title}</h4>
-                    <p>{step.detail}</p>
+                    <div className="heading-with-hint"><h4>{step.title}</h4><InfoHint label={step.title} help={step.detail} /></div>
                   </article>
                 ))}
               </div>
@@ -262,12 +256,11 @@ export function AssetValidationGuide() {
               <div className="asset-validation-guide__head">
                 <div>
                   <SectionEyebrow icon={FileCheck2}>保存之后怎样成熟</SectionEyebrow>
-                  <h3>从“待验证”到“可靠”，每一步都要有真实结果</h3>
-                  <p>普通看板只显示“待验证、可使用、需要复核”三种简单状态；更细的进度和证据保存在资产记录里。</p>
+                  <div className="heading-with-hint"><h3>从“待验证”到“可靠”，每一步都要有真实结果</h3><InfoHint label="成熟度怎样显示" help="普通看板只显示“待验证、可使用、需要复核”三种简单状态；更细的进度和证据保存在资产记录里。" /></div>
                 </div>
                 <div className="validation-count-rule">
                   <CheckCircle2 aria-hidden="true" />
-                  <p><strong>什么叫一次独立成功？</strong><span>另一项真实任务已经完成，并且结果核对通过。任务内重试不重复累计。</span></p>
+                  <p><strong>什么叫一次独立成功？</strong><InfoHint label="独立成功" help="另一项真实任务已经完成，并且结果核对通过。任务内重试不重复累计。" /></p>
                 </div>
               </div>
 
@@ -294,8 +287,7 @@ export function AssetValidationGuide() {
                       <StatusBadge value={step.status} showHelp={false} />
                     </div>
                     <p className="validation-stage__stage">{step.stage}</p>
-                    <h4>{step.title}</h4>
-                    <p className="validation-stage__detail">{step.detail}</p>
+                    <div className="heading-with-hint"><h4>{step.title}</h4><InfoHint label={step.title} help={step.detail} /></div>
                   </motion.article>
                 ))}
               </div>
@@ -312,9 +304,9 @@ export function AssetValidationGuide() {
                 <div className="review-route__state"><StatusBadge value="需要复核" showHelp={false} /><span>先暂停直接复用</span></div>
                 <ArrowRight className="review-route__arrow" aria-hidden="true" />
                 <ol className="review-route__steps">
-                  <li><span>1</span><p><strong>先检查</strong>旧证据、当前环境和失败原因</p></li>
-                  <li><span>2</span><p><strong>再使用</strong>在下一项合适的真实任务中重新验证</p></li>
-                  <li><span>3</span><p><strong>按结果处理</strong>通过则回到证据对应的状态；未通过则保留复核并修改范围或做法</p></li>
+                  <li><span>1</span><p><strong>先检查</strong><InfoHint label="先检查" help="核对旧证据、当前环境和失败原因。" /></p></li>
+                  <li><span>2</span><p><strong>再使用</strong><InfoHint label="再使用" help="在下一项合适的真实任务中重新验证。" /></p></li>
+                  <li><span>3</span><p><strong>按结果处理</strong><InfoHint label="按结果处理" help="通过则回到证据对应的状态；未通过则保留复核并修改范围或做法。" /></p></li>
                 </ol>
               </div>
 
@@ -400,7 +392,6 @@ export function ExperienceExplainer() {
                 <article>
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <strong>{step.label}</strong>
-                  <small>{step.note}</small>
                 </article>
                 {index < EXPERIENCE_SUMMARY_STEPS.length - 1 ? (
                   <motion.span
@@ -422,22 +413,20 @@ export function ExperienceExplainer() {
         <DialogContent className="asset-guide-dialog asset-guide-dialog--experience">
           <DialogHeader>
             <DialogTitle>经验是什么，什么时候应该复制使用</DialogTitle>
-            <DialogDescription>经验是一份真实任务的复盘记录。它帮助当前 Agent 少走一次旧弯路，但不会替代当前任务的判断和验证。</DialogDescription>
+            <DialogDescription>先看经验与其他内容的区别，以及什么时候值得参考。</DialogDescription>
           </DialogHeader>
 
           <div className="asset-guide-dialog__body">
             <section className="experience-explainer" aria-label="经验与其他资产的区别">
               <div className="experience-explainer__head">
                 <SectionEyebrow icon={Route}>先分清四类内容</SectionEyebrow>
-                <h3>经验回答的是“那次发生了什么，以及下次要注意什么”</h3>
-                <p>它会记下当时的情况、做法、失败与修正、结果证据和适用边界。以后遇到相似任务时可以参考，但不会不看当前条件就原样照搬。</p>
+                <div className="heading-with-hint"><h3>经验回答的是“那次发生了什么，以及下次要注意什么”</h3><InfoHint label="经验里保存什么" help="它会记下当时的情况、做法、失败与修正、结果证据和适用边界。以后遇到相似任务时可以参考，但不会不看当前条件就原样照搬。" /></div>
               </div>
               <div className="experience-comparison">
                 {ASSET_COMPARISON.map((item) => (
                   <article key={item.id} className={item.id === "experience" ? "is-current" : ""}>
                     <div className="experience-comparison__title"><span><item.icon aria-hidden="true" /></span><strong>{item.label}</strong></div>
-                    <p>{item.role}</p>
-                    <small>{item.example}</small>
+                    <div className="compact-fact"><p>{item.role}</p><InfoHint label={`${item.label}示例`} help={item.example} /></div>
                   </article>
                 ))}
               </div>
@@ -446,8 +435,7 @@ export function ExperienceExplainer() {
             <section className="experience-use-guide" aria-labelledby="experience-use-guide-title">
               <div className="experience-use-guide__head">
                 <SectionEyebrow icon={History}>什么时候复制使用</SectionEyebrow>
-                <h3 id="experience-use-guide-title">先有一项相似的当前任务，再选择对应经验</h3>
-                <p>不是每次打开看板都要读经验。只有当前任务与某条经验的场景、失败风险或修正方法真正相关时，才打开那张经验卡片。</p>
+                <div className="heading-with-hint"><h3 id="experience-use-guide-title">先有一项相似的当前任务，再选择对应经验</h3><InfoHint label="什么时候打开经验" help="不是每次打开看板都要读经验。只有当前任务与某条经验的场景、失败风险或修正方法真正相关时，才打开那张经验卡片。" /></div>
               </div>
               <div className="experience-use-layout">
                 <div className="experience-use-when">
@@ -460,11 +448,11 @@ export function ExperienceExplainer() {
                   </ul>
                 </div>
                 <ol className="experience-use-steps">
-                  <li><span>01</span><div><strong>打开经验卡片</strong><p>先看标题、摘要和适用范围，确认它和当前任务确实相关。</p></div></li>
-                  <li><span>02</span><div><strong>点击“复制经验参考指令”</strong><p>不用自己复制经验正文；按钮会带上稳定编号、按需读取路线和使用边界。</p></div></li>
-                  <li><span>03</span><div><strong>把完整指令发给当前 Agent</strong><p>Agent 只读取这条经验和当前任务必需的材料，不会加载全部历史经验。</p></div></li>
-                  <li><span>04</span><div><strong>让 Agent 先比较条件，再决定采用什么</strong><p>适用的部分可以参考；旧路径、旧工具或不适合当前环境的部分会明确跳过。</p></div></li>
-                  <li><span>05</span><div><strong>任务完成后核对结果</strong><p>Agent 会说明用了哪些经验、哪些没有用，以及本次是否产生值得保存的新修正。</p></div></li>
+                  <li><span>01</span><div className="compact-fact"><strong>打开经验卡片</strong><InfoHint label="打开经验卡片" help="先看标题、摘要和适用范围，确认它和当前任务确实相关。" /></div></li>
+                  <li><span>02</span><div className="compact-fact"><strong>复制经验参考指令</strong><InfoHint label="复制经验参考指令" help="不用自己复制经验正文；按钮会带上稳定编号、按需读取路线和使用边界。" /></div></li>
+                  <li><span>03</span><div className="compact-fact"><strong>发给当前 Agent</strong><InfoHint label="发给当前 Agent" help="Agent 只读取这条经验和当前任务必需的材料，不会加载全部历史经验。" /></div></li>
+                  <li><span>04</span><div className="compact-fact"><strong>先比较当前条件</strong><InfoHint label="比较当前条件" help="适用的部分可以参考；旧路径、旧工具或不适合当前环境的部分会明确跳过。" /></div></li>
+                  <li><span>05</span><div className="compact-fact"><strong>任务完成后核对结果</strong><InfoHint label="核对结果" help="Agent 会说明用了哪些经验、哪些没有用，以及本次是否产生值得保存的新修正。" /></div></li>
                 </ol>
               </div>
               <p className="experience-use-example"><History aria-hidden="true" /><span><strong>举例：</strong>你再次进行跨 Agent 迁移时，可以复制过去那条迁移经验。Agent 会参考当时的隐私检查和核对方法，但不会照搬旧电脑路径或旧 Agent 的按钮。</span></p>

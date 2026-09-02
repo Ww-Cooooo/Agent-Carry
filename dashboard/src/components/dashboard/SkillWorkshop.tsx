@@ -1,12 +1,11 @@
 import { useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { BookOpen, ChevronRight, CircleHelp, ClipboardCopy, Download, FileArchive, FolderOpen, Link2, PackageOpen, ShieldCheck, Sparkles, Upload, Workflow } from "lucide-react";
+import { ArrowRight, ChevronRight, CircleHelp, ClipboardCopy, Download, FileArchive, FolderOpen, Link2, PackageOpen, ShieldCheck, Sparkles, Upload, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SectionEyebrow, SourceText, StatusBadge } from "@/components/dashboard/Shared";
+import { InfoHint, SectionEyebrow, SourceText, StatusBadge } from "@/components/dashboard/Shared";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -14,6 +13,7 @@ import {
 import {
   buildSkillCreateAction,
   buildSkillExportAction,
+  buildInstalledSkillRepairAction,
   capabilities,
   getGlobalActions,
   profile,
@@ -21,6 +21,7 @@ import {
   sops,
   type AssetItem,
   type ExportedSkillItem,
+  type InstalledSkillItem,
 } from "@/lib/data";
 import { recommendForSkillWorkshop, type SkillWorkshopSourceKind } from "@/lib/skill-workshop";
 
@@ -119,6 +120,14 @@ const INSTALLED_SKILL_HELP: Record<string, string> = {
 function MethodTicket({ asset, onCopy }: { asset: WorkshopAsset; onCopy: CopyRequest }) {
   const recommendation = recommendForSkillWorkshop(asset.kind, asset.item);
   const action = buildSkillCreateAction(asset.kind, asset.item);
+  const actionLabel = recommendation.state === "ready"
+    ? "生成 Skill 并选择分享方式"
+    : recommendation.state === "inspect"
+      ? "让 Agent 检查后生成"
+      : "让 Agent 补齐后再生成";
+  const request = recommendation.state === "refine"
+    ? `${action.text}\n\n这项方法当前还需要完善。不要只停在“先继续完善”：请用自然语言说明缺少的唯一关键条件；当前对话能安全补齐时继续完成，不得伪造真实任务证据。达到可生成条件后，接着询问一次分享方式并生成所选本地载体；暂时不能补齐时给我一项明确的下一步。`
+    : action.text;
   return (
     <article className={`method-ticket method-ticket--${recommendation.state}`}>
       <div className="method-ticket__rail" aria-hidden="true"><i /><i /><i /></div>
@@ -128,17 +137,16 @@ function MethodTicket({ asset, onCopy }: { asset: WorkshopAsset; onCopy: CopyReq
           <StatusBadge value={asset.item.reliability} />
         </div>
         <SourceText as="h3">{asset.item.title}</SourceText>
-        <SourceText as="p">{asset.item.summary}</SourceText>
+        <SourceText as="p" className="method-ticket__summary">{asset.item.summary}</SourceText>
         <div className="method-ticket__decision">
-          <StatusBadge value={recommendation.label} helpText={recommendation.help} />
-          <span>{recommendation.reason}</span>
+          <StatusBadge value={recommendation.label} showHelp={false} />
+          <InfoHint label="为什么这样推荐" help={`${recommendation.reason} ${recommendation.help}`} />
         </div>
-        {recommendation.state !== "refine" ? (
-          <Button variant="outline" onClick={() => onCopy(action.text, action.buttonLabel)}>
-            <ClipboardCopy aria-hidden="true" />
-            {recommendation.state === "ready" ? "整理并选择分享方式" : "让 Agent 判断"}
-          </Button>
-        ) : null}
+        <Button className={`action-button method-ticket__action action-button--${recommendation.state === "ready" ? "teal" : recommendation.state === "inspect" ? "violet" : "soft"}`} variant="outline" onClick={() => onCopy(request, actionLabel)}>
+          <Sparkles aria-hidden="true" />
+          {actionLabel}
+          <ArrowRight aria-hidden="true" />
+        </Button>
       </div>
     </article>
   );
@@ -174,9 +182,8 @@ function ExportedSkillDetailDialog({
         }}
       >
         <DialogHeader>
-          <div className="skill-export-dialog__eyebrow"><PackageOpen aria-hidden="true" />我的 Skill</div>
+          <div className="skill-export-dialog__eyebrow"><PackageOpen aria-hidden="true" />我的 Skill <InfoHint label="看板展示范围" help="这里显示的是这份 Skill 的低敏说明，不包含来源路径或私密内容。" /></div>
           <DialogTitle ref={titleRef} tabIndex={-1} className="skill-export-dialog__title"><SourceText>{item.title}</SourceText></DialogTitle>
-          <DialogDescription>这里显示的是这份 Skill 的低敏说明，不包含来源路径或私密内容。</DialogDescription>
         </DialogHeader>
 
         <div className="skill-export-dialog__facts">
@@ -187,12 +194,10 @@ function ExportedSkillDetailDialog({
           <section>
             <span>现在是什么状态</span>
             <StatusBadge value={view.label} helpText={view.help} />
-            <p>{view.help}</p>
           </section>
           <section>
             <span>分享方式与文件</span>
-            <strong>{view.deliveryTitle}</strong>
-            <p>{view.deliveryCopy}</p>
+            <div className="compact-fact"><strong>{view.deliveryTitle}</strong><InfoHint label="分享文件说明" help={view.deliveryCopy} /></div>
           </section>
           <section className="skill-export-dialog__next">
             <span>接下来可以做什么</span>
@@ -200,13 +205,9 @@ function ExportedSkillDetailDialog({
           </section>
         </div>
 
-        <div className="skill-export-dialog__privacy" role="note">
-          <ShieldCheck aria-hidden="true" />
-          <span>这里只显示用途和状态；来源路径、原始资产编号和实例身份不会出现在看板里。</span>
-        </div>
-        <div className="skill-export-dialog__action-note" role="note">
-          <ClipboardCopy aria-hidden="true" />
-          <span>点击下方按钮只会复制一段请求。把它发给 Agent 后才会继续；网页不会直接改文件、联网或替你发送。</span>
+        <div className="skill-export-dialog__assurances" role="note">
+          <span><ShieldCheck aria-hidden="true" />看板不展示私密位置<InfoHint label="隐私展示范围" help="这里只显示用途和状态；来源路径、原始资产编号和实例身份不会出现在看板里。" /></span>
+          <span><ClipboardCopy aria-hidden="true" />按钮只复制请求<InfoHint label="按钮怎样工作" help="把复制的请求发给 Agent 后才会继续；网页不会直接改文件、联网或替你发送。" /></span>
         </div>
         <DialogFooter className="skill-export-dialog__footer">
           <Button variant="outline" onClick={onClose}>关闭</Button>
@@ -226,10 +227,72 @@ function ExportedSkillDetailDialog({
   );
 }
 
+function InstalledSkillDetailDialog({
+  item,
+  onCopy,
+  onClose,
+}: {
+  item: InstalledSkillItem | null;
+  onCopy: CopyRequest;
+  onClose: () => void;
+}) {
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  if (!item) return null;
+  const repairAction = item.state === "available" ? null : buildInstalledSkillRepairAction(item);
+  const nextStep = item.state === "available"
+    ? "相关任务出现时会自动按需读取；你也可以直接告诉 Agent 想用它完成什么。"
+    : item.state === "review"
+      ? "让 Agent 只检查这一项，说明需要复核的入口、依赖、权限或兼容问题，并处理能安全修复的部分。"
+      : "让 Agent 只诊断这一项，能恢复就局部恢复；需要安装、权限或联网时再让你决定。";
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        className="skill-export-dialog installed-skill-dialog sm:max-w-[660px]"
+        onOpenAutoFocus={(event) => {
+          openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          event.preventDefault();
+          titleRef.current?.focus({ preventScroll: true });
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          openerRef.current?.focus({ preventScroll: true });
+          openerRef.current = null;
+        }}
+      >
+        <DialogHeader>
+          <div className="skill-export-dialog__eyebrow installed-skill-dialog__eyebrow"><Download aria-hidden="true" />已安装 Skill</div>
+          <DialogTitle ref={titleRef} tabIndex={-1} className="skill-export-dialog__title"><SourceText>{item.title}</SourceText></DialogTitle>
+        </DialogHeader>
+        <div className="skill-export-dialog__facts">
+          <section className="skill-export-dialog__purpose"><span>这个 Skill 是做什么的</span><SourceText as="p">{item.summary}</SourceText></section>
+          <section><span>现在是什么状态</span><StatusBadge value={item.state} helpText={INSTALLED_SKILL_HELP[item.state]} /></section>
+          <section><span>适用平台</span><strong>{item.platform ? <SourceText>{item.platform}</SourceText> : "未单独限制"}</strong></section>
+          <section className="skill-export-dialog__next"><span>接下来可以做什么</span><p>{nextStep}</p></section>
+          {item.triggers.length ? <section className="installed-skill-dialog__triggers"><span>这些任务可能会用到</span><div>{item.triggers.slice(0, 3).map((trigger) => <SourceText key={trigger}>“{trigger}”</SourceText>)}</div></section> : null}
+        </div>
+        <div className="skill-export-dialog__assurances" role="note">
+          <span><ShieldCheck aria-hidden="true" />问题只影响这一项 Skill</span>
+          <span><ClipboardCopy aria-hidden="true" />处理按钮只复制明确请求</span>
+        </div>
+        <DialogFooter className="skill-export-dialog__footer">
+          <Button variant="outline" onClick={onClose}>关闭</Button>
+          {repairAction ? (
+            <Button className="action-button action-button--violet installed-skill-dialog__action" onClick={() => { onClose(); onCopy(repairAction.text, repairAction.buttonLabel); }}>
+              <Sparkles aria-hidden="true" />{repairAction.buttonLabel}<ArrowRight aria-hidden="true" />
+            </Button>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
   const reduced = useReducedMotion();
   const [activeTab, setActiveTab] = useState<WorkshopTab>("methods");
   const [selectedExport, setSelectedExport] = useState<ExportedSkillItem | null>(null);
+  const [selectedInstalled, setSelectedInstalled] = useState<InstalledSkillItem | null>(null);
   const installAction = getGlobalActions().find((action) => action.action_id === "skill.install-shared");
   const assets: WorkshopAsset[] = [
     ...sops.map((item) => ({ kind: "sop" as const, item })),
@@ -250,29 +313,13 @@ export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
 
   return (
     <div className="skill-workshop-page">
-      <motion.section
-        className="workshop-hero"
-        initial={reduced ? false : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.42, ease: [0.16, 0.84, 0.3, 1] }}
-      >
+      <header className="workshop-command-head">
         <div>
           <SectionEyebrow icon={Sparkles}>Skill 工坊</SectionEyebrow>
-          <h1>把好方法整理成 Skill<br />生成后就能交给别人</h1>
-          <p>这里会推荐可能适合整理的方法，也能检查别人分享的 Skill。推荐只是建议，不会自动转换任何内容。开始整理前，Agent 会先问你想要 ZIP、独立文件夹、分享链接，还是先只保存在本机；选好后由它完成生成和检查。</p>
+          <div className="heading-with-hint"><h1>Skill 工坊</h1><InfoHint label="Skill 工坊怎样工作" help="这里可以把已经验证的方法整理成 Skill、管理自己的 Skill、查看已安装内容，或检查别人分享的 Skill。任何转换和安装都从你主动选择后开始。" /></div>
         </div>
-        <div className="workshop-hero__promise" role="note">
-          <ShieldCheck aria-hidden="true" />
-          <div><strong>Agent 自动处理隐私，并生成你选择的分享文件</strong><span>Agent 只处理这个方法复制出的本地草稿：去掉身份、路径和私密内容，再生成 Skill。推荐列表和原来的 SOP／能力都不会被修改；选择链接时，也只有目标和可见范围明确后才会联网发布。</span></div>
-        </div>
-      </motion.section>
-
-      {!instanceReady ? (
-        <section className="workshop-template-note" role="status">
-          <BookOpen aria-hidden="true" />
-          <div><strong>创建助手后，这里才会出现你的方法和已安装 Skill</strong><span>当前空模板不会预造推荐、导出记录或安装内容。</span></div>
-        </section>
-      ) : null}
+        <p>{instanceReady ? "整理自己的方法，也能接入别人分享的 Skill。" : "创建助手后，这里会出现真实方法和已安装 Skill。"}</p>
+      </header>
 
       <div className="workshop-tabs" role="tablist" aria-label="Skill 工坊内容分类">
         {tabs.map(({ id, label, count, icon: Icon, tone }) => (
@@ -306,23 +353,8 @@ export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
         transition={{ duration: 0.22, ease: [0.16, 0.84, 0.3, 1] }}
       >
         {activeTab === "methods" ? (
-          <>
-            <div className="binding-lane binding-lane--method binding-lane--single">
-              <div className="binding-lane__heading">
-                <span><Workflow aria-hidden="true" /></span>
-                <div><small>Agent 的建议</small><h2>把适合的方法整理成 Skill</h2></div>
-              </div>
-              <ol className="binding-lane__steps">
-                <li><b>01</b><span><strong>选择方法和分享方式</strong>你选一个正式 SOP；Agent 再问一次要 ZIP、独立文件夹、链接还是先保存在本机。</span></li>
-                <li><b>02</b><span><strong>Agent 自动处理本地副本</strong>你不需要自己复制或处理隐私。Agent 会把选中的方法复制到隔离草稿，只在草稿中去掉身份、路径和私密内容，并把专用值改成参数。</span></li>
-                <li><b>03</b><span><strong>Agent 自动检查并生成载体</strong>它会核对触发、非触发和隐私边界，再生成真实 ZIP／文件夹；链接方式先准备本地 ZIP。原方法保持不变，也不会执行包内脚本。</span></li>
-              </ol>
-            </div>
-            <section className="method-shelf">
-              <div className="workshop-section-heading">
-                <div><SectionEyebrow icon={Workflow}>Agent 的建议</SectionEyebrow><h2>这些方法适合整理成 Skill</h2></div>
-                <p>这是 Agent 根据已有使用证据给出的建议，不是任务。你不整理，也不会影响原来的 SOP 或能力。</p>
-              </div>
+          <section className="method-shelf method-shelf--essential">
+              <div className="workshop-panel-note"><Workflow aria-hidden="true" /><span><strong>选一个方法即可开始</strong><small>Agent 会询问分享方式，并自动处理副本与隐私。</small></span><InfoHint label="推荐与整理说明" help="推荐只是建议，不会自动转换原来的 SOP 或能力。你主动选择后，Agent 才会询问要 ZIP、独立文件夹、链接还是仅保存在本机，并在隔离副本中完成检查与生成。" /></div>
               {ranked.length ? (
                 <div className="method-ticket-stack">
                   {ranked.map((asset) => <MethodTicket key={`${asset.kind}-${asset.item.id}`} asset={asset} onCopy={onCopy} />)}
@@ -334,83 +366,79 @@ export function SkillWorkshop({ onCopy }: { onCopy: CopyRequest }) {
                   <span>完成真实任务并形成 SOP 后，这里会按当前证据给出建议；不会为了填满页面制造内容。</span>
                 </div>
               )}
-            </section>
-          </>
+          </section>
         ) : null}
 
         {activeTab === "mine" ? (
           <aside className="skill-ledger skill-ledger--single" aria-label="我的 Skill">
-            <div className="ledger-block">
-              <div className="ledger-block__title"><span><PackageOpen aria-hidden="true" /></span><div><small>真源、分享文件和当前状态</small><h2>我的 Skill</h2></div><b>{skills.exports.length}</b></div>
+            <div className="workshop-panel-note"><ShieldCheck aria-hidden="true" /><span><strong>这里显示可编辑真源和分享状态</strong><small>本机路径、来源身份和分享链接不会出现在看板。</small></span><InfoHint label="我的 Skill 展示范围" help="点开一项可以查看用途、当前载体和下一步；工坊只显示低敏状态，不展示来源地址、本机路径、分享链接或原始资产 ID。" /></div>
+            <div className="ledger-block ledger-block--plain">
               {skills.exports.length ? (
                 <ul>{skills.exports.map((item) => {
                   const view = exportedSkillView(item);
                   return (
-                    <li key={item.id}>
+                    <li key={item.id} className="skill-ledger-row">
                       <button type="button" className="skill-ledger-row__open" onClick={() => setSelectedExport(item)}>
                         <span className="skill-ledger-row__copy"><SourceText as="strong">{item.title}</SourceText><SourceText as="span">{item.summary}</SourceText></span>
                         <span className="skill-ledger-row__hint">查看详情<ChevronRight aria-hidden="true" /></span>
                       </button>
-                      <StatusBadge value={view.label} helpText={view.help} />
+                      <span className="skill-ledger-row__status"><StatusBadge value={view.label} helpText={view.help} /></span>
                     </li>
                   );
                 })}</ul>
-              ) : <p>第一次整理 Skill 后才会在这里出现。生成时可以直接得到 ZIP、独立文件夹或链接所需的本地载体；空模板不会预造记录。</p>}
+              ) : <p>还没有自己的 Skill。选择一个已验证的方法后即可开始整理。</p>}
             </div>
-            <div className="ledger-footnote"><ShieldCheck aria-hidden="true" /><span>工坊只展示低敏状态，不展示来源地址、本机路径、分享链接或原始资产 ID。</span></div>
           </aside>
         ) : null}
 
         {activeTab === "installed" ? (
           <aside className="skill-ledger skill-ledger--single skill-ledger--installed" aria-label="已安装 Skill">
-            <div className="ledger-block ledger-block--installed">
-              <div className="ledger-block__title"><span><Download aria-hidden="true" /></span><div><small>我的助手</small><h2>已安装 Skill</h2></div><b>{skills.items.length}</b></div>
+            <div className="workshop-panel-note"><Download aria-hidden="true" /><span><strong>{skills.items.length} 个 Skill 已登记</strong><small>相关任务出现时按需读取，不会一次全部加载。</small></span><InfoHint label="已安装 Skill 状态" help="需要复核或暂时不可用的 Skill 只会隔离自身，不影响 AI Carry 主体和其他 Skill。安装入口、来源地址和本机路径不会显示在看板。" /></div>
+            <div className="ledger-block ledger-block--plain ledger-block--installed">
               {skills.items.length ? (
-                <ul>{skills.items.map((item) => <li key={item.id}><div><SourceText as="strong">{item.title}</SourceText><SourceText as="span">{item.summary}</SourceText></div><StatusBadge value={item.state} helpText={INSTALLED_SKILL_HELP[item.state]} /></li>)}</ul>
+                <ul>{skills.items.map((item) => (
+                  <li key={item.id} className="skill-ledger-row skill-ledger-row--installed">
+                    <button type="button" className="skill-ledger-row__open" onClick={() => setSelectedInstalled(item)}>
+                      <span className="skill-ledger-row__copy"><SourceText as="strong">{item.title}</SourceText><SourceText as="span">{item.summary}</SourceText></span>
+                      <span className="skill-ledger-row__hint">查看详情<ChevronRight aria-hidden="true" /></span>
+                    </button>
+                    <span className="skill-ledger-row__status"><StatusBadge value={item.state} helpText={INSTALLED_SKILL_HELP[item.state]} /></span>
+                  </li>
+                ))}</ul>
               ) : <p>{skills.status || "还没有登记已安装 Skill。"}</p>}
             </div>
-            <div className="ledger-footnote"><ShieldCheck aria-hidden="true" /><span>工坊不展示安装入口、来源地址或本机路径。</span></div>
           </aside>
         ) : null}
 
         {activeTab === "import" ? (
-          <div className="binding-lane binding-lane--import binding-lane--single">
-            <div className="binding-lane__heading">
+          <section className="workshop-import-essential">
+            <div className="workshop-import-essential__lead">
               <span><Download aria-hidden="true" /></span>
-              <div><small>别人的 Skill</small><h2>检查后接入我的助手</h2></div>
+              <div><h2>把你拿到的 Skill 交给 Agent</h2><p>文件夹、ZIP、链接都可以；不知道类型也可以直接说。</p></div>
+              <InfoHint label="接入 Skill 怎样完成" help="点击按钮复制请求并发给 Agent。它会引导你提供位置或链接，先在本机检查用途、脚本、依赖、权限和冲突，再让你确认是否安装；问题只隔离这一份 Skill。" />
             </div>
-            <div className="skill-source-guide" role="note">
-              <ClipboardCopy aria-hidden="true" />
-              <div>
-                <strong>点击下方“复制检查请求”按钮，再把复制的内容发给 Agent</strong>
-                <span>点击按钮只会复制请求，不会立即安装。发给 Agent 后，它会继续引导你提供这个 Skill 的位置或链接；如果不知道放在哪，也可以直接让 Agent 帮你判断。</span>
-              </div>
+            <div className="workshop-source-chips" aria-label="支持的 Skill 来源">
+              <span><FolderOpen aria-hidden="true" />本地文件夹</span>
+              <span><FileArchive aria-hidden="true" />ZIP 文件</span>
+              <span><Link2 aria-hidden="true" />Skill 链接</span>
+              <span><CircleHelp aria-hidden="true" />我不确定</span>
             </div>
-            <section className="skill-source-picker" aria-label="可以提供给 Agent 的 Skill 来源">
-              <div className="skill-source-picker__heading">
-                <strong>你可以给 Agent 下面任意一种来源</strong>
-                <span>不需要先判断哪种更合适，把你手里现有的内容告诉它就可以。</span>
-              </div>
-              <div className="skill-source-options">
-                <article><FolderOpen aria-hidden="true" /><div><strong>本地文件夹</strong><span>别人直接发来的 Skill 文件夹，或你已经解压好的文件夹。</span></div></article>
-                <article><FileArchive aria-hidden="true" /><div><strong>ZIP 文件</strong><span>别人发来的 Skill 压缩包，不需要你先运行里面的内容。</span></div></article>
-                <article><Link2 aria-hidden="true" /><div><strong>Skill 链接</strong><span>GitHub 仓库、Release 页面或其他明确的下载链接。</span></div></article>
-                <article><CircleHelp aria-hidden="true" /><div><strong>我不确定</strong><span>告诉 Agent 你现在拿到的文件、页面或描述，它会先帮你判断。</span></div></article>
-              </div>
-            </section>
-            <p>Agent 会先在本机只读检查用途、触发、脚本、依赖、权限和冲突，不会自动改写这个 Skill。检查通过后仍会先向你说明影响，得到确认才安装；发现问题会保留并隔离，等你决定，其他能力照常使用。</p>
-            <Button
-              className="workshop-install-action"
-              disabled={!instanceReady || !installAction}
-              onClick={() => { if (installAction) onCopy(installAction.request, installAction.label); }}
-            >
-              <Upload aria-hidden="true" />
-              {instanceReady ? "复制检查请求" : "创建助手后使用"}
-            </Button>
-          </div>
+            <div className="workshop-import-essential__action">
+              <span><ShieldCheck aria-hidden="true" />先检查这一份，其他能力照常使用</span>
+              <Button
+                className="workshop-install-action"
+                disabled={!instanceReady || !installAction}
+                onClick={() => { if (installAction) onCopy(installAction.request, installAction.label); }}
+              >
+                <Upload aria-hidden="true" />
+                {instanceReady ? "复制检查请求" : "创建助手后使用"}
+              </Button>
+            </div>
+          </section>
         ) : null}
       </motion.section>
       <ExportedSkillDetailDialog item={selectedExport} onCopy={onCopy} onClose={() => setSelectedExport(null)} />
+      <InstalledSkillDetailDialog item={selectedInstalled} onCopy={onCopy} onClose={() => setSelectedInstalled(null)} />
     </div>
   );
 }

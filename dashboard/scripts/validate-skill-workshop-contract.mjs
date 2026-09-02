@@ -34,7 +34,7 @@ try {
     assert(ui.includes(label), `desktop workshop lost the ${label} lane`);
   }
   assert(ui.includes("ExportedSkillDetailDialog") && ui.includes("buildSkillExportAction"), "generated Skills lost detail or copy-to-Agent action");
-  assert(ui.includes("你不需要自己复制或处理隐私") && ui.includes("Agent 自动检查"), "generation still reads like manual user sanitization");
+  assert(ui.includes("自动处理副本与隐私") && ui.includes("在隔离副本中完成检查与生成"), "generation still reads like manual user sanitization");
   assert(source("dashboard/src/index.css").includes("z-index: 2147483000"), "status help can be hidden behind the workshop");
 
   const actions = source("core/maps/dashboard-actions.toml");
