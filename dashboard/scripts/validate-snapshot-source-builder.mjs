@@ -48,7 +48,7 @@ direct_user_instruction = "direct-authorization"
 evidence_index_ref = "instance/validations/index.toml"
 
 [versions]
-product = "2.0.5"
+product = "2.0.6"
 asset_schema = "1.2"
 evolution_candidate_index_schema = "1.0"
 asset_confirmation_gate_schema = "1.0"
@@ -60,15 +60,15 @@ try {
   write("assistant.toml", `schema_version = 1
 product_id = "ai-carry"
 product_name = "AI Carry"
-product_version = "2.0.5"
-core_version = "2.0.5"
+product_version = "2.0.6"
+core_version = "2.0.6"
 
 [bootstrap]
 maximum_characters = 20000
 `);
   write("core/manifest.toml", `schema_version = 1
 core_id = "ai-carry-core"
-version = "2.0.5"
+version = "2.0.6"
 asset_schema = "1.2"
 evolution_candidate_index_schema = "1.0"
 asset_confirmation_gate_schema = "1.0"
@@ -322,6 +322,10 @@ delivery_generated_at = "2026-08-24T04:30:00+08:00"
   const staleDelivery = buildSnapshotCandidate(root, { existingSource: delivered.source, now: new Date("2026-08-24T05:02:00+08:00") });
   assert(staleDelivery.snapshot.skills.exports?.[0]?.delivery_state === "stale", "changed editable Skill content did not locally mark its old carrier stale");
   writeFileSync(exportSourcePath, exportSourceBytes);
+  rmSync(resolve(root, "instance/skills/shares/grade-summary-share/grade-summary-share-fixture.zip"), { force: false });
+  const missingDelivery = buildSnapshotCandidate(root, { existingSource: delivered.source, now: new Date("2026-08-24T05:02:30+08:00") });
+  assert(missingDelivery.snapshot.skills.exports?.[0]?.delivery_state === "stale",
+    "a missing Skill carrier did not stay local and degrade its artifact-ready projection to stale");
   writeFileSync(exportIndexPath, exportIndexBytes);
   rmSync(resolve(root, "instance/skills/shares"), { recursive: true, force: true });
   const restoredDelivery = buildSnapshotCandidate(root, { existingSource: first.source, now: new Date("2026-08-24T05:03:00+08:00") });
@@ -466,7 +470,7 @@ unexpected_field = "must-survive-byte-for-byte"
   assert(locationBlocked, "an absolute local location hidden in the instance source set was accepted");
   rmSync(resolve(root, "instance/profile/local-note.md"), { force: true });
 
-  console.log("Snapshot source builder passed strict source truth, duplicate-Skill area isolation, operational unrelated-item isolation, current-target denial, bounded health, idempotence, forged-digest rejection, and whole-instance safety checks.");
+  console.log("Snapshot source builder passed strict source truth, missing Skill carrier stale degradation, duplicate-Skill area isolation, operational unrelated-item isolation, current-target denial, bounded health, idempotence, forged-digest rejection, and whole-instance safety checks.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

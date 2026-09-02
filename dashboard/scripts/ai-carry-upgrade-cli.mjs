@@ -76,6 +76,19 @@ const exactInstanceGuides = Object.freeze([
 ]);
 const legacyProfileRef = "instance/profile/README.md";
 const approvedProfileRef = "instance/profile/approved-profile.md";
+const memoryGovernanceRef = "instance/governance/memory-governance-card.md";
+const noGovernanceBrandMigration = Object.freeze({ required: false, sourceSha256: "", migratedSha256: "" });
+const legacyProductDisplayName = LEGACY_PRODUCT_IDENTITY.productNames[0];
+const memoryGovernanceBrandPhrases = Object.freeze([
+  Object.freeze([
+    `周期性研究更适合 ${legacyProductDisplayName} 的记忆、检索与自我进化技术。`,
+    "周期性研究更适合 AI Carry 的记忆、检索与自我进化技术。",
+  ]),
+  Object.freeze([
+    `寻找比现有方案更适合 ${legacyProductDisplayName} 的记忆治理方式`,
+    "寻找比现有方案更适合 AI Carry 的记忆治理方式",
+  ]),
+]);
 
 function fail(message) { throw new Error(`AI Carry upgrade failed: ${message}`); }
 function sha256(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
@@ -382,12 +395,13 @@ function runSnapshotRefresh(root) {
   return JSON.parse(String(output).trim());
 }
 
-function validateCandidate(candidate, sourceIdentity, profileMigration = null, { requireSnapshot = true } = {}) {
+function validateCandidate(candidate, sourceIdentity, profileMigration = null, governanceBrandMigration = null, { requireSnapshot = true } = {}) {
   const identity = manifestIdentity(candidate, "candidate");
   if (identity.version !== TARGET_VERSION || identity.instanceId !== sourceIdentity.instanceId || identity.state !== sourceIdentity.state) {
     fail("candidate instance identity or product version drifted");
   }
   verifyLegacyProfileMigration(candidate, identity, profileMigration);
+  verifyMemoryGovernanceBrandMigration(candidate, governanceBrandMigration);
   const snapshot = requireSnapshot ? validateSnapshotPair(candidate) : Object.freeze({ snapshotSha256: "" });
   return Object.freeze({ identity, snapshotSha256: snapshot.snapshotSha256 });
 }
@@ -594,6 +608,46 @@ export function verifyLegacyProfileMigration(candidate, identity, plan) {
   if (!destination.exists || destination.sha256 !== plan.sourceSha256) fail("migrated approved profile bytes differ from the legacy source");
 }
 
+export function migrateMemoryGovernanceBrand(source) {
+  if (!/^id = "governance\.memory-technology-review"$/mu.test(source)) return source;
+  return memoryGovernanceBrandPhrases.reduce(
+    (result, [legacy, current]) => result.replaceAll(legacy, current),
+    source,
+  );
+}
+
+export function planMemoryGovernanceBrandMigration(source, instance) {
+  if (instance.state !== "instance") return noGovernanceBrandMigration;
+  const state = inspectFilePath(source, memoryGovernanceRef, "memory governance brand source");
+  if (!state.exists || state.bytes > 128 * 1024) return noGovernanceBrandMigration;
+  const current = readUtf8(resolve(source, ...memoryGovernanceRef.split("/")), "memory governance brand source", 128 * 1024);
+  const migrated = migrateMemoryGovernanceBrand(current);
+  if (migrated === current) return noGovernanceBrandMigration;
+  return Object.freeze({
+    required: true,
+    sourceSha256: sha256(Buffer.from(current, "utf8")),
+    migratedSha256: sha256(Buffer.from(migrated, "utf8")),
+  });
+}
+
+export function installMemoryGovernanceBrandMigration(source, candidate, plan) {
+  if (!plan.required) return;
+  const sourcePath = resolve(source, ...memoryGovernanceRef.split("/"));
+  const current = readUtf8(sourcePath, "memory governance brand source", 128 * 1024);
+  if (sha256(Buffer.from(current, "utf8")) !== plan.sourceSha256) fail("memory governance card drifted after preview");
+  const migrated = migrateMemoryGovernanceBrand(current);
+  if (sha256(Buffer.from(migrated, "utf8")) !== plan.migratedSha256) fail("memory governance brand migration is not deterministic");
+  const destination = resolve(candidate, ...memoryGovernanceRef.split("/"));
+  mkdirSync(dirname(destination), { recursive: true });
+  writeFileSync(destination, migrated, "utf8");
+}
+
+export function verifyMemoryGovernanceBrandMigration(candidate, plan) {
+  if (!plan?.required) return;
+  const migrated = inspectFilePath(candidate, memoryGovernanceRef, "migrated memory governance card");
+  if (!migrated.exists || migrated.sha256 !== plan.migratedSha256) fail("migrated memory governance card differs from the bound preview");
+}
+
 function verifyPathStates(root, snapshot, label) {
   const actual = snapshotPathStates(root, snapshot.entries.map((item) => item.path), label);
   if (actual.fingerprint !== snapshot.fingerprint) fail(`${label} drifted`);
@@ -776,6 +830,7 @@ function buildUpgradeBinding({
   sourceProductFingerprint,
   targetTreeFingerprint,
   profileMigration,
+  governanceBrandMigration = noGovernanceBrandMigration,
   instanceId,
   sourceVersion,
 }) {
@@ -786,6 +841,8 @@ function buildUpgradeBinding({
     targetTreeFingerprint,
     profileMigration.required ? profileMigration.sourceSha256 : "",
     profileMigration.conflict ? "profile-conflict" : "",
+    governanceBrandMigration.required ? governanceBrandMigration.sourceSha256 : "",
+    governanceBrandMigration.required ? governanceBrandMigration.migratedSha256 : "",
     instanceId,
     sourceVersion,
     TARGET_VERSION,
@@ -803,10 +860,14 @@ function prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial = true 
     ? validateOfficialReleaseLive(target, targetTree, targetValidation.releaseRef)
     : null;
   const profileMigration = planLegacyProfileMigration(source, sourceState.instance);
+  const governanceBrandMigration = sourceState.alreadyCurrent
+    ? noGovernanceBrandMigration
+    : planMemoryGovernanceBrandMigration(source, sourceState.instance);
   const targetPaths = targetWritePaths(targetTree, sourceState.instance.state, targetValidation.releasePathPolicy);
   const writePaths = Object.freeze([...new Set([
     ...targetPaths,
     ...(profileMigration.required ? [approvedProfileRef] : []),
+    ...(governanceBrandMigration.required ? [memoryGovernanceRef] : []),
   ])].sort());
   if (sourceState.alreadyCurrent) {
     const instanceDerived = new Set([
@@ -847,6 +908,7 @@ function prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial = true 
     sourceProductFingerprint: sourceProductState.fingerprint,
     targetTreeFingerprint: targetTree.fingerprint,
     profileMigration,
+    governanceBrandMigration,
     instanceId: sourceState.instance.instanceId,
     sourceVersion: sourceState.instance.version,
   });
@@ -857,10 +919,12 @@ function prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial = true 
     migrate: Object.freeze(sourceState.instance.state === "instance"
       ? ["只更新 instance/manifest.toml 的产品版本", ...(profileMigration.required
         ? ["把旧 profile/README.md 用户正文逐字节迁到 approved-profile.md 并更新引用"] : []),
+      ...(governanceBrandMigration.required
+        ? ["只把内置记忆治理卡中仍代表当前产品的已知旧名短语改为 AI Carry，其余内容与排期保持不变"] : []),
       "从合并后 manifest 重建 startup capsule", "从合并后正式真源重建 public/dist 双快照"]
       : ["按目标路径更新空模板，继续保持 template 身份和零业务资产"]),
     preserve: Object.freeze(sourceState.instance.state === "instance"
-      ? ["实例资产、工作区、本机层、私密层和未知根文件不在产品写集内，原地不碰", "保留身份、created_from、档案、地图、资产、Skill、组件和未知字段；相关能力首次使用时再检查兼容"]
+      ? ["除预览明确列出的最小迁移项外，实例资产、工作区、本机层、私密层和未知根文件不在产品写集内，原地不碰", "保留身份、created_from、档案、地图、资产、Skill、组件和未知字段；相关能力首次使用时再检查兼容"]
       : ["源中不属于目标产品路径的未知文件留在原位，不推断删除"]),
     remove: Object.freeze([]),
     conflicts: Object.freeze([
@@ -882,10 +946,10 @@ function prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial = true 
       : `实例身份保持：${sourceState.instance.instanceId}。本次确认只复核预览已经绑定的本地来源和目标字节，不重复联网。`,
     `【替换】最多核对并切换 ${writePaths.length} 个发布清单明确拥有的产品路径；实际相同字节不会重复写。`,
     sourceState.instance.state === "instance"
-      ? `【迁移】更新 manifest 产品版本${profileMigration.required ? "；旧 profile/README.md 用户正文会逐字节迁到 approved-profile.md 并更新引用" : ""}；随后确定性重建启动胶囊和两份真实快照。`
+      ? `【迁移】更新 manifest 产品版本${profileMigration.required ? "；旧 profile/README.md 用户正文会逐字节迁到 approved-profile.md 并更新引用" : ""}${governanceBrandMigration.required ? "；内置记忆治理卡中仍代表当前产品的已知旧名短语会改为 AI Carry，其他正文和排期保持不变" : ""}；随后确定性重建启动胶囊和两份真实快照。`
       : "【迁移】按目标产品路径更新空模板，继续保持 template 身份和零业务资产。",
     sourceState.instance.state === "instance"
-      ? "【保留】实例资产、工作区、本机层、私密层和未知根文件不在产品写集内，保持原地，不扫描正文、不复制、不删除。"
+      ? "【保留】除上面明确列出的最小迁移项外，实例资产、工作区、本机层、私密层和未知根文件保持原地，不扫描工作区正文、不复制、不删除。"
       : "【保留】不属于目标产品路径的源文件保持原地，不推断删除。",
     "【删除】0 项。当前实例根路径不移动；只为实际变化的产品文件保留有清单的回滚前像，不复制整棵用户目录。",
     conflictText,
@@ -899,7 +963,7 @@ function prepareUpgrade(sourceArgument, targetArgument, { verifyOfficial = true 
     inspectedProductBytes: sourceProductState.totalBytes, protectedFileCount: 0,
     preservationMethod: "not-in-product-write-set",
     targetFileCount: targetTree.fileCount, writePaths, sourceProductFingerprint: sourceProductState.fingerprint,
-    profileMigration,
+    profileMigration, governanceBrandMigration,
     targetTreeFingerprint: targetTree.fingerprint, officialEvidence, platformMetadata,
     targetReleaseBoundary: targetValidation.releaseBoundary,
     previewAuthority: verifyOfficial ? "live-github-release-and-exact-tag-tree-verified" : "previous-preview-bound-local-target", changePreview, userPreview,
@@ -956,12 +1020,13 @@ function applyUpgradeWithHostConfirmation(sourceArgument, targetArgument, confir
     }
     if (sourceState.instance.state === "instance") {
       installLegacyProfileMigration(source, candidate, prepared.profileMigration);
+      installMemoryGovernanceBrandMigration(source, candidate, prepared.governanceBrandMigration);
       writeFileSync(resolve(candidate, "instance/manifest.toml"), migrateInstanceManifest(sourceState.instance.source, sourceState.instance.version, {
         migrateLegacyProfile: prepared.profileMigration.required,
       }), "utf8");
     }
     const derived = rebuildDerived(candidate);
-    validateCandidate(candidate, sourceState.instance, prepared.profileMigration, { requireSnapshot: false });
+    validateCandidate(candidate, sourceState.instance, prepared.profileMigration, prepared.governanceBrandMigration, { requireSnapshot: false });
     verifyPathStates(source, sourceProductBefore, "source product paths");
     if (process.env.AI_CARRY_UPGRADE_FAIL_AT === "before-switch") throw new Error("injected-before-switch");
     const token = match[1] + match[2]; const attempt = Number(match[3]);
@@ -969,7 +1034,7 @@ function applyUpgradeWithHostConfirmation(sourceArgument, targetArgument, confir
     if (paths.rollbackPackage !== rollbackPackage) fail("rollback package path drifted after preview");
     const coreWritePaths = prepared.writePaths.filter((path) => !snapshotPaths.has(path));
     switchState = commitCandidateInPlace(source, candidate, rollbackPackage, token, attempt, confirmationRef, coreWritePaths, sourceState);
-    const installed = validateCandidate(source, sourceState.instance, prepared.profileMigration, { requireSnapshot: false });
+    const installed = validateCandidate(source, sourceState.instance, prepared.profileMigration, prepared.governanceBrandMigration, { requireSnapshot: false });
     const cleanupWarnings = cleanupSuccessfulSwitch(switchState);
     let snapshotResult;
     let snapshotState = "current";

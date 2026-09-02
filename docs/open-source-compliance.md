@@ -59,7 +59,7 @@ Codex、Claude Code、DeepSeek、QoderWork 等名称只用于兼容示例。项�
 
 看板目录提供三层检查：
 
-1. `npm run check:licenses`：生产依赖清单、版本、许可证文本和 NOTICE 与锁文件保持一致。
+1. `npm run check:licenses`：生产依赖清单、版本、许可证文本和 NOTICE 与锁文件保持一致。它是维护者开发／发布检查，需要在隔离开发或候选副本中按锁文件准备依赖；普通安装实例和没有 `node_modules` 的干净源码包不需要运行，也不能把缺少开发依赖误判成实例损坏。
 2. `npm run check:compliance`：检查项目许可证、已审核 SPDX 集合、shadcn/ui 来源映射、字体来源与转换证据、许可证摘要，以及未登记二进制文件和误提交的 `node_modules`。普通本地构建只允许忽略安装工具实际放在 `dashboard/node_modules/` 的依赖，根目录或其他位置的同名目录仍会失败。
 
 该检查支持两种明确入口：在 Git 工作区中使用 Git 的公开文件集合；在 GitHub 自动生成、没有 `.git` 元数据的源码 ZIP 中，使用 `dashboard/public/licenses/public-distribution-files.json` 这份严格排序的公开分发清单。普通本地构建使用显式的本地依赖模式，只忽略安装工具实际放在 `dashboard/node_modules/` 的依赖；正式候选与源码归档发布门使用严格归档模式，遍历整棵目录，并拒绝维护者私密目录、非占位的 `.assistant-*` 内容、被写入正文的非空 `.gitkeep`、任意位置的 `node_modules`、未登记普通文件、符号链接和其他非常规文件，不能先忽略再宣称整包干净。公开文件发生变化时，维护者先运行 `npm run compliance:manifest` 更新清单，再运行正式构建；清单缺失、损坏、重复、乱序、含危险路径或与候选不一致都会失败关闭。

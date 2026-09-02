@@ -23,14 +23,18 @@ import {
   confirmUpgrade,
   inspectInstalledSourceLayout,
   installLegacyProfileMigration,
+  installMemoryGovernanceBrandMigration,
+  migrateMemoryGovernanceBrand,
   migrateInstanceManifest,
   pathIsInside,
   planLegacyProfileMigration,
+  planMemoryGovernanceBrandMigration,
   releaseBoundaryFrom,
   releasePathPolicyFrom,
   targetWritePaths,
   validateUpgradeRuntimeContract,
   verifyLegacyProfileMigration,
+  verifyMemoryGovernanceBrandMigration,
 } from "./ai-carry-upgrade-cli.mjs";
 import {
   OFFICIAL_RELEASE_REQUEST_BUDGET,
@@ -60,10 +64,10 @@ function gitBlobSha(bytes) {
 try {
   let localBoundaryRejected = false;
   try {
-    releaseBoundaryFrom(`[release_boundary]\nstatus = "local-unreleased-candidate"\nrelease_ref = "v2.0.5"\npublication_authorized = false\ninstance_replacement_authorized = false\n`);
+    releaseBoundaryFrom(`[release_boundary]\nstatus = "local-unreleased-candidate"\nrelease_ref = "v2.0.6"\npublication_authorized = false\ninstance_replacement_authorized = false\n`);
   } catch { localBoundaryRejected = true; }
   expect(localBoundaryRejected, "a local candidate release boundary could authorize instance replacement");
-  const published = releaseBoundaryFrom(`[release_boundary]\nstatus = "published-release"\nrelease_ref = "v2.0.5"\npublication_authorized = true\ninstance_replacement_authorized = true\n`);
+  const published = releaseBoundaryFrom(`[release_boundary]\nstatus = "published-release"\nrelease_ref = "v2.0.6"\npublication_authorized = true\ninstance_replacement_authorized = true\n`);
   expect(published.status === "published-release", "a published replacement boundary was not recognized");
 
   const archiveInstall = resolve(fixture, "archive-install");
@@ -87,7 +91,7 @@ try {
   const migratedManifest = migrateInstanceManifest(legacyManifest, "1.4.8", { migrateLegacyProfile: true });
   expect(migratedManifest.includes('future_vendor_field = "preserve-me"')
     && migratedManifest.includes('user_preferences_ref = "instance/profile/approved-profile.md"')
-    && migratedManifest.includes('product = "2.0.5"'),
+    && migratedManifest.includes('product = "2.0.6"'),
   "manifest migration did not preserve an unknown field while moving the legacy profile reference");
   const legacyProfileRoot = resolve(fixture, "legacy-profile-source");
   const legacyProfileCandidate = resolve(fixture, "legacy-profile-candidate");
@@ -100,7 +104,34 @@ try {
     validated: { profile: { user_preferences_ref: "instance/profile/approved-profile.md" } },
   }, profilePlan);
 
-  const releasePolicy = releasePathPolicyFrom(readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.5.toml"), "utf8"));
+  const governanceSourceRoot = resolve(fixture, "legacy-governance-source");
+  const governanceCandidate = resolve(fixture, "legacy-governance-candidate");
+  mkdirSync(governanceSourceRoot); mkdirSync(governanceCandidate);
+  const legacyGovernance = `+++
+id = "governance.memory-technology-review"
+summary = "周期性研究更适合 Agent Carry 的记忆、检索与自我进化技术。"
+schedule_anchor_at = "2026-08-01T09:00:00+08:00"
++++
+寻找比现有方案更适合 Agent Carry 的记忆治理方式。
+用户历史备注仍可提到 Agent Carry，不属于当前产品自述。
+`;
+  write(governanceSourceRoot, "instance/governance/memory-governance-card.md", legacyGovernance);
+  const governancePlan = planMemoryGovernanceBrandMigration(governanceSourceRoot, { state: "instance" });
+  expect(governancePlan.required, "the known active memory-governance brand residual was not planned for a bounded repair");
+  installMemoryGovernanceBrandMigration(governanceSourceRoot, governanceCandidate, governancePlan);
+  verifyMemoryGovernanceBrandMigration(governanceCandidate, governancePlan);
+  const migratedGovernance = readFileSync(resolve(governanceCandidate, "instance/governance/memory-governance-card.md"), "utf8");
+  expect(migratedGovernance.includes("周期性研究更适合 AI Carry 的记忆、检索与自我进化技术。")
+    && migratedGovernance.includes("寻找比现有方案更适合 AI Carry 的记忆治理方式。")
+    && migratedGovernance.includes('schedule_anchor_at = "2026-08-01T09:00:00+08:00"')
+    && migratedGovernance.includes("用户历史备注仍可提到 Agent Carry，不属于当前产品自述。"),
+  "the memory-governance brand repair changed schedule or user history instead of only the two current-product phrases");
+  expect(migrateMemoryGovernanceBrand(legacyGovernance.replace(
+    'id = "governance.memory-technology-review"', 'id = "governance.user-owned"'))
+    === legacyGovernance.replace('id = "governance.memory-technology-review"', 'id = "governance.user-owned"'),
+  "an unrelated governance card could be rewritten by the product-brand repair");
+
+  const releasePolicy = releasePathPolicyFrom(readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.6.toml"), "utf8"));
   const targetTree = {
     files: [
       { path: ".assistant-local/.gitkeep", bytes: 0 },
@@ -154,24 +185,24 @@ try {
   mkdirSync(releaseTarget);
   const releaseFiles = new Map([
     ["README.md", Buffer.from("AI Carry fixture\n")],
-    ["core/upgrade/release-manifest-2.0.5.toml", Buffer.from("release = \"2.0.5\"\n")],
+    ["core/upgrade/release-manifest-2.0.6.toml", Buffer.from("release = \"2.0.6\"\n")],
   ]);
   for (const [ref, bytes] of releaseFiles) write(releaseTarget, ref, bytes);
   const commitSha = "c".repeat(40);
   const treeSha = "d".repeat(40);
   const releaseObject = {
-    tag_name: "v2.0.5",
+    tag_name: "v2.0.6",
     draft: false,
     prerelease: false,
     id: 200,
-    html_url: "https://github.com/Ww-Cooooo/Agent-Carry/releases/tag/v2.0.5",
+    html_url: "https://github.com/Ww-Cooooo/Agent-Carry/releases/tag/v2.0.6",
   };
   let requestCount = 0;
   const requestJson = async (path) => {
     requestCount += 1;
-    if (path === "/releases/tags/v2.0.5") return releaseObject;
+    if (path === "/releases/tags/v2.0.6") return releaseObject;
     if (path === "/releases/latest") return releaseObject;
-    if (path === "/git/ref/tags/v2.0.5") return { object: { type: "commit", sha: commitSha } };
+    if (path === "/git/ref/tags/v2.0.6") return { object: { type: "commit", sha: commitSha } };
     if (path === "/git/ref/heads/main") return { object: { type: "commit", sha: commitSha } };
     if (path === `/git/commits/${commitSha}`) return { sha: commitSha, tree: { sha: treeSha } };
     if (path === `/git/trees/${treeSha}?recursive=1`) return {
@@ -247,7 +278,7 @@ try {
   try {
     await verifyOfficialAiCarryRelease({
       target: releaseTarget,
-      requestJson: async (path, label) => path === "/releases/tags/v2.0.5"
+      requestJson: async (path, label) => path === "/releases/tags/v2.0.6"
         ? { ...releaseObject, draft: true }
         : requestJson(path, label),
     });
@@ -257,7 +288,7 @@ try {
   try {
     await verifyOfficialAiCarryRelease({
       target: releaseTarget,
-      requestJson: async (path, label) => path === "/git/ref/tags/v2.0.5"
+      requestJson: async (path, label) => path === "/git/ref/tags/v2.0.6"
         ? { object: { type: "tag", sha: "e".repeat(40) } }
         : requestJson(path, label),
     });
@@ -298,9 +329,9 @@ try {
   expect(vagueReply.decision === "ai-carry-upgrade-confirmation-unverified" && vagueReply.updated === false,
     "a vague or pre-preview reply could authorize writes");
 
-  const releaseManifestSource = readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.5.toml"), "utf8");
-  expect(releaseManifestSource.includes('from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1", "2.0.2", "2.0.3", "2.0.4"]'),
-    "2.0.4 is not retained as a direct 2.0.5 upgrade source");
+  const releaseManifestSource = readFileSync(resolve(repository, "core/upgrade/release-manifest-2.0.6.toml"), "utf8");
+  expect(releaseManifestSource.includes('from_versions = ["1.4.8", "1.4.9", "2.0.0", "2.0.1", "2.0.2", "2.0.3", "2.0.4", "2.0.5"]'),
+    "2.0.5 is not retained as a direct 2.0.6 upgrade source");
   const dashboardActions = JSON.parse(readFileSync(resolve(repository, "dashboard/src/generated/dashboard-actions.json"), "utf8"));
   expect(validateUpgradeRuntimeContract(releaseManifestSource, dashboardActions).action_id === "instance.upgrade-template",
     "the generated dashboard action and release manifest did not close the runtime reentry contract");
@@ -376,7 +407,7 @@ try {
   }
 
   passed = true;
-  console.log("AI Carry upgrade CLI passed focused cases for one-time preview authority, offline confirmation binding, bounded API requests, recoverable network refusal, real authority drift, published boundary, official already-current closure, manifest-driven template/instance write sets, unlisted/private target rejection, copied-target drift, retry-safe staging, Windows hardlink review, zero inferred removals, numbered retry, host-confirmed reply boundaries, and no self-attested session authority.");
+  console.log("AI Carry upgrade CLI passed focused cases for one-time preview authority, bounded built-in governance brand repair, offline confirmation binding, bounded API requests, recoverable network refusal, real authority drift, published boundary, official already-current closure, manifest-driven template/instance write sets, unlisted/private target rejection, copied-target drift, retry-safe staging, Windows hardlink review, zero inferred removals, numbered retry, host-confirmed reply boundaries, and no self-attested session authority.");
 } finally {
   if (passed) rmSync(fixture, { recursive: true, force: false });
 }

@@ -81,7 +81,7 @@ function sha256(text) {
 async function loadDependency(name, dependency, directory) {
   const metadataPath = resolve(directory, 'package.json')
   if (!(await exists(metadataPath))) {
-    throw new Error(`Cannot locate installed metadata for ${name}. Run npm install before generating notices.`)
+    throw new Error(`Cannot locate installed metadata for ${name}. This maintainer-only license check needs the lockfile dependencies in an isolated development or release copy (npm ci --ignore-scripts); an installed AI Carry instance does not need to run it.`)
   }
 
   const metadata = JSON.parse(await readFile(metadataPath, 'utf8'))

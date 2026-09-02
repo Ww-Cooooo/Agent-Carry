@@ -58,11 +58,12 @@ TEXT_EXTENSIONS = {".json", ".md", ".srt", ".txt", ".toml", ".vtt", ".yaml", ".y
 ENCRYPTED_PRIVATE_KEY_MARKER = "".join(("-----BEGIN ENCRYPTED ", "PRIVATE KEY-----"))
 
 SECRET_PATTERNS = [
-    ("private-key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
+    ("private-key-block", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----")),
     ("encrypted-private-key", re.compile(re.escape(ENCRYPTED_PRIVATE_KEY_MARKER))),
-    ("github-token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b")),
-    ("openai-style-token", re.compile(r"\bsk-[A-Za-z0-9]{20,}\b")),
-    ("aws-access-key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    ("github-token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{35,})\b")),
+    ("openai-style-token", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b")),
+    ("google-api-key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
+    ("aws-access-key", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
     ("aws-secret-access-key", re.compile(r"(?i)\baws[_-]?secret[_-]?access[_-]?key\b\s*[:=]\s*[\"']?[A-Za-z0-9+/=]{24,}")),
     ("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b")),
     ("authorization-header", re.compile(r"(?im)(?:^|[\r\n,{])\s*[\"']?(?:proxy-)?authorization[\"']?\s*[:=]\s*[\"']?bearer\s+[A-Za-z0-9._~+\/-]{12,}")),
