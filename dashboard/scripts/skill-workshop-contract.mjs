@@ -7,7 +7,7 @@ import { stableAssetId } from "./asset-route-contract.mjs";
 const decoder = new TextDecoder("utf-8", { fatal: true });
 const skillName = /^[a-z0-9][a-z0-9-]{0,63}$/u;
 const skillVersion = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
-const allowedRoots = new Set(["SKILL.md", "LICENSE", "LICENSE.md", "references", "scripts", "assets"]);
+const allowedRoots = new Set(["SKILL.md", "LICENSE", "LICENSE.md", "agents", "references", "scripts", "assets"]);
 const textExtensions = new Set([".md", ".txt", ".json", ".toml", ".yaml", ".yml", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".py", ".ps1", ".sh", ".bat", ".cmd", ".css", ".html", ".xml", ".csv", ".tsv", ".svg", ".sql", ".ini", ".cfg"]);
 const forbiddenPrivateMarkers = ["private://", ".assistant-private", ".assistant-local", "maintainer-private", "AGENTS.override.md"];
 
@@ -35,19 +35,37 @@ function boundedRead(path, maxBytes, label) {
     return buffer;
   } finally { closeSync(descriptor); }
 }
+function scalar(value) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) return trimmed.slice(1, -1);
+  return trimmed;
+}
 function parseSkillHead(source) {
   const normalized = source.replaceAll("\r\n", "\n");
   if (!normalized.startsWith("---\n")) return null;
   const end = normalized.indexOf("\n---\n", 4);
   if (end < 0 || end > 8192) return null;
-  const values = {};
-  for (const line of normalized.slice(4, end).split("\n")) {
-    if (!line.trim() || line.trimStart().startsWith("#")) continue;
-    const match = /^([a-zA-Z0-9_-]+):\s*(.*?)\s*$/u.exec(line);
+  const values = {}; const metadata = {};
+  let section = "";
+  for (const rawLine of normalized.slice(4, end).split("\n")) {
+    if (!rawLine.trim() || rawLine.trimStart().startsWith("#")) continue;
+    if (/^\s/u.test(rawLine)) {
+      if (section !== "metadata") continue;
+      if (/^\t/u.test(rawLine)) return null;
+      const nested = /^\s+([a-zA-Z0-9_.-]+):\s*(.*?)\s*$/u.exec(rawLine);
+      if (!nested || Object.hasOwn(metadata, nested[1])) return null;
+      metadata[nested[1]] = scalar(nested[2]);
+      continue;
+    }
+    const match = /^([a-zA-Z0-9_-]+):\s*(.*?)\s*$/u.exec(rawLine);
     if (!match || Object.hasOwn(values, match[1])) return null;
-    let value = match[2];
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
-    values[match[1]] = value;
+    if (match[1] === "metadata" && !match[2]) {
+      values.metadata = metadata;
+      section = "metadata";
+      continue;
+    }
+    values[match[1]] = scalar(match[2]);
+    section = "";
   }
   return values;
 }
@@ -129,12 +147,24 @@ export function inspectSkillPackage(packageRoot, { mode = "import", sourceAssetI
       const head = parseSkillHead(decoder.decode(boundedRead(skillEntry.path, 512 * 1024, "SKILL.md")));
       name = typeof head?.name === "string" ? head.name : "";
       description = typeof head?.description === "string" ? head.description : "";
-      skillId = typeof head?.skill_id === "string" ? head.skill_id : "";
-      version = typeof head?.version === "string" ? head.version : "";
+      const metadata = head?.metadata && typeof head.metadata === "object" ? head.metadata : {};
+      const standardSkillId = typeof metadata["ai-carry-skill-id"] === "string" ? metadata["ai-carry-skill-id"] : "";
+      const standardVersion = typeof metadata["ai-carry-version"] === "string" ? metadata["ai-carry-version"] : "";
+      const legacySkillId = typeof head?.skill_id === "string" ? head.skill_id : "";
+      const legacyVersion = typeof head?.version === "string" ? head.version : "";
+      skillId = standardSkillId || legacySkillId;
+      version = standardVersion || legacyVersion;
       if (!skillName.test(name)) isolated.push(issue("name-invalid", "SKILL.md 的 name 必须是小写字母、数字和连字符组成的稳定名称。"));
       if (!description.trim() || [...description].length > 1024) isolated.push(issue("description-invalid", "SKILL.md 缺少有界、可理解的 description。"));
-      if (skillId && !stableAssetId.test(skillId)) review.push(issue("skill-id-invalid", "SKILL.md 的 skill_id 不是可识别的稳定共享身份。"));
-      if (version && !skillVersion.test(version)) review.push(issue("version-invalid", "SKILL.md 的 version 必须是三段数字版本，例如 1.2.0。"));
+      if (skillId && !stableAssetId.test(skillId)) review.push(issue("skill-id-invalid", "SKILL.md 的共享身份不是可识别的稳定 ID。"));
+      if (version && !skillVersion.test(version)) review.push(issue("version-invalid", "SKILL.md 的共享版本必须是三段数字，例如 1.2.0。"));
+      if ((standardSkillId && legacySkillId && standardSkillId !== legacySkillId)
+        || (standardVersion && legacyVersion && standardVersion !== legacyVersion)) {
+        review.push(issue("identity-metadata-conflict", "SKILL.md 的新旧共享身份元数据互相冲突；本包保持原样并只进入复核。"));
+      }
+      if (Boolean(standardSkillId) !== Boolean(standardVersion) || Boolean(legacySkillId) !== Boolean(legacyVersion)) {
+        review.push(issue("upgrade-metadata-format-incomplete", "SKILL.md 的同一套共享身份和版本没有成对出现；本包仍可保留，但不能自动判断升级。"));
+      }
       if (Boolean(skillId) !== Boolean(version)) review.push(issue("upgrade-metadata-incomplete", "共享身份和版本需要同时提供；本包仍可保留，但不能自动判断升级。"));
     } catch { isolated.push(issue("skill-entry-read-failed", "无法稳定读取 SKILL.md。")); }
   }

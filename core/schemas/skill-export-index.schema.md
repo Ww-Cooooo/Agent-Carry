@@ -22,7 +22,19 @@
 - `entry`：`instance/skills/exports/<skill-id>/SKILL.md` 形式的仓库相对路径。
 - `generated_at`：首次产生或本次实际内容变化的带时区时间。
 
-新生成真源的 `SKILL.md` 必须同时写入 `skill_id: <当前 exports.id>` 和 `version: <当前 exports.version>`。`skill_id` 是跨助手识别“这是同一份 Skill”的共享身份，不是来源资产 ID；共享包仍不得包含 `source_asset_id`。真源内容实际变化时版本必须前进，默认只增加末段；纯重复生成、载体重建或链接变化不得刷新版本。
+新生成真源的 `SKILL.md` 使用开放 Agent Skills frontmatter，不新增 AI Carry 私有顶层字段。共享身份和版本写入标准 `metadata`：
+
+```yaml
+---
+name: example-skill
+description: Explain what this Skill does and when the Agent should use it.
+metadata:
+  ai-carry-skill-id: example-skill
+  ai-carry-version: "1.0.0"
+---
+```
+
+`ai-carry-skill-id` 必须等于当前 `exports.id`，用于跨助手识别“这是同一份 Skill”，不是来源资产 ID；共享包仍不得包含 `source_asset_id`。真源内容实际变化时版本必须前进，默认只增加末段；纯重复生成、载体重建或链接变化不得刷新版本。`license`、`compatibility`、`allowed-tools` 或宿主可选元数据只在真实需要时加入，不能成为其他宿主使用核心流程的前提。
 
 以下交付字段全部可选。它们描述从同一可编辑 Skill 真源生成的分享载体，不是另一份内容真源；旧条目一个也没有时仍然合法：
 
@@ -37,7 +49,7 @@
 字段闭包：
 
 - 没有任何 `delivery_*` 字段的旧 `ready` 条目按 `unselected` 读取，看板显示“分享方式待选择”；升级不得为它猜测方式、刷新时间或自动生成载体。
-- 旧条目或旧真源缺少 `version`／`skill_id` 时仍可查看、完善和生成载体，但别人导入后只能按兼容旧包处理，不能只凭同名自动认定升级。下一次用户主动修改这份真源时，Agent 回读索引稳定 `id`，补齐共享身份与版本；不得因此改写来源资产或其他未知字段。
+- 旧条目或旧真源缺少版本／共享身份时仍可查看、完善和生成载体，但别人导入后只能按兼容旧包处理，不能只凭同名自动认定升级。旧版顶层 `skill_id`／`version` 继续按原含义读取；下一次用户主动修改这份真源时，Agent 回读索引稳定 `id`，改用标准 `metadata`，不得只为迁移格式刷新版本，也不得改写来源资产或其他未知字段。新旧元数据同时存在且一致时正常读取；互相冲突时只隔离这一份 Skill 进入复核，不能猜测身份或拖住其他能力。
 - `local-only` 只需要 `delivery_method="local-only"` 与 `delivery_state="local-only"`，不得伪造载体位置或摘要。
 - `artifact-ready` 只与 `zip|folder` 搭配；`target-needed|link-ready` 只与 `link` 搭配。后三种状态都必须闭合本地载体位置、两个摘要与生成时间；`link-ready` 还必须有合法 `delivery_link`。
 - 可编辑 Skill 的当前内容摘要、载体物理状态或载体摘要与登记不一致时，保留原载体并在看板投影为 `stale`；已知交付字段不闭合时投影为 `review`。这两个是计算出的局部状态，不要求为了显示而回写索引。

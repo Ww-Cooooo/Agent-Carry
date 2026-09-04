@@ -149,12 +149,12 @@ request_template = "执行看板动作 instance.instantiate。按根地图进入
 action_id = "skill.create-from-asset"
 label = "整理并选择分享方式"
 root_category = "local-operations"
-purpose = "看板推荐只供选择。用户指定正式方法后，Agent 先问一次交付方式，再建立带稳定共享身份和版本的唯一可编辑 Skill 真源，自动完成本地副本的隐私处理、通用化、检查和所选交付载体；推荐列表和原资产保持不变。"
+purpose = "看板推荐只供选择。用户指定正式方法后，Agent 先问一次交付方式，再用工坊内置创作核心建立符合开放格式、带稳定共享身份和版本的唯一可编辑 Skill 真源，自动完成本地副本的隐私处理、通用化、精准检查和所选交付载体；推荐列表和原资产保持不变。"
 route_id = "skill-workshop"
 target = "core/guides/skill-workshop-guide.md"
 writes_files = true
 confirmation_point = "ask-one-delivery-choice-before-generation-local-carrier-then-authorized-external-link-action-needs-exact-target-and-visibility"
-request_template = "执行看板动作 skill.create-from-asset。按根地图进入 local-operations → skill-workshop，读取 Skill 工坊指南、资产生命周期和导出索引 Schema。末尾 asset_id 只用于从正式地图唯一定位用户主动选择的 SOP 或含可复用流程的能力；不合适的资产自然说明原因。若分享方式未知，只问一次 ZIP、文件夹、链接、本机保留或帮忙选择。Agent 在副本中自动脱敏和参数化，原资产不变；保留共享 skill_id、版本、步骤、工具类别、失败处理与适用边界。检查或载体失败只隔离这一份 Skill，不影响其他能力。任何上传或发布仍需明确目标、可见范围和外部授权。完成后说明来源适合性、自动处理内容、本地真源、版本、载体、未执行外部动作和下一步。"
+request_template = "执行看板动作 skill.create-from-asset。按根地图进入 local-operations → skill-workshop，读取 Skill 工坊指南、资产生命周期和导出索引 Schema。末尾 asset_id 只用于从正式地图唯一定位用户主动选择的 SOP 或含可复用流程的能力；不合适的资产自然说明原因。若分享方式未知，只问一次 ZIP、文件夹、链接、本机保留或帮忙选择。直接使用工坊内置创作核心，从当前对话和正式资产提取已有意图，只追问会改变成品的缺口；不安装或依赖外部 Creator。Agent 在副本中自动脱敏和参数化，原资产不变；用开放 Agent Skills frontmatter 和标准 metadata 保留共享身份、版本、触发边界、步骤、失败处理与适用范围，资源只按真实需要加入。检查 2～3 个代表触发和一个不触发场景；只有复杂且结果可客观核对时才增加一条隔离代表任务，不建立批量评测。检查或载体失败只隔离这一份 Skill，不影响其他能力。任何上传或发布仍需明确目标、可见范围和外部授权。完成后说明来源适合性、自动处理内容、本地真源、版本、载体、未执行外部动作和下一步。"
 
 [[actions]]
 action_id = "skill.continue-export"

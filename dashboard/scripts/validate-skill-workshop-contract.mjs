@@ -22,7 +22,10 @@ try {
   const guide = source("core/guides/skill-workshop-guide.md");
   for (const fragment of [
     "普通学习、保存 SOP、使用能力或看板推荐不会自动触发转换",
+    "使用工坊内置创作核心",
     "自动脱敏、通用化和参数化只作用于这份副本",
+    "不安装、更新或依赖外部 Skill Creator",
+    "普通 Skill 不建立批量基线、评分 Agent 或统计评测",
     "旧版“已生成但未分享”条目必须能够无损继续",
     "同一稳定 `skill_id` 且版本更高时",
     "空模板 requirements map 在这里懒初始化",
@@ -54,10 +57,25 @@ try {
 
   // A text Skill with a script is inspected without executing the script.
   const clean = resolve(root, "clean");
-  write(clean, "SKILL.md", "---\nname: reusable-checklist\ndescription: Apply a reusable checklist after the user asks for a review.\n---\n# Workflow\nAsk for the target, review it, and report limits.\n");
+  write(clean, "SKILL.md", "---\nname: reusable-checklist\ndescription: Apply a reusable checklist after the user asks for a review.\nmetadata:\n  ai-carry-skill-id: skill.reusable-checklist\n  ai-carry-version: \"1.0.0\"\n---\n# Workflow\nAsk for the target, review it, and report limits.\n");
+  write(clean, "agents/openai.yaml", "interface:\n  display_name: Reusable checklist\n");
   write(clean, "scripts/check.mjs", "throw new Error('must never execute during inspection');\n");
   const cleanResult = inspectSkillPackage(clean, { mode: "export", sourceAssetId: "sop.private-source" });
-  assert(cleanResult.decision === "ready" && cleanResult.scripts.includes("scripts/check.mjs"), "safe package inspection failed or executed a script");
+  assert(cleanResult.decision === "ready" && cleanResult.skillId === "skill.reusable-checklist" && cleanResult.version === "1.0.0"
+    && cleanResult.scripts.includes("scripts/check.mjs"), "standard portable package inspection failed or executed a script");
+
+  // Legacy top-level identity remains readable; conflicting old/new identity
+  // pauses only that package instead of breaking the workshop.
+  const legacy = resolve(root, "legacy");
+  write(legacy, "SKILL.md", "---\nname: legacy-checklist\ndescription: Keep an older AI Carry Skill readable when the user imports it.\nskill_id: skill.legacy-checklist\nversion: 1.0.0\n---\n# Workflow\nPreserve the existing workflow.\n");
+  const legacyResult = inspectSkillPackage(legacy);
+  assert(legacyResult.decision === "ready" && legacyResult.skillId === "skill.legacy-checklist" && legacyResult.version === "1.0.0",
+    "legacy Skill identity stopped being readable");
+  const conflicting = resolve(root, "conflicting-metadata");
+  write(conflicting, "SKILL.md", "---\nname: conflicting-checklist\ndescription: Keep conflicting identity local for review.\nskill_id: skill.old-checklist\nversion: 1.0.0\nmetadata:\n  ai-carry-skill-id: skill.new-checklist\n  ai-carry-version: \"2.0.0\"\n---\n# Workflow\nDo not guess the shared identity.\n");
+  const conflictingResult = inspectSkillPackage(conflicting);
+  assert(conflictingResult.decision === "review" && conflictingResult.issues.some((item) => item.code === "identity-metadata-conflict")
+    && inspectSkillPackage(clean).decision === "ready", "identity conflict escaped its single-package boundary");
 
   // The same source makes real ZIP and folder carriers; existing output is never overwritten.
   const deliveryRoot = resolve(root, "delivery");
@@ -117,7 +135,7 @@ try {
   } });
   assert(unstableResult.decision === "isolated" && unstableResult.issues.some((item) => item.code === "directory-read-failed"), "nested read fault escaped package isolation");
 
-  console.log("Skill workshop journey passed advisory recommendations, automatic-copy boundaries, legacy continuation, ZIP/folder delivery, upgrade identity guidance, and local package fault isolation without running scripts.");
+  console.log("Skill workshop journey passed the built-in lean creator contract, standard and legacy identity reading, single-package conflict isolation, ZIP/folder delivery, and local package fault isolation without running scripts.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

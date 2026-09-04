@@ -38,7 +38,8 @@ const [readmeZh, readmeEn, installEn, startEn, entryZh, entryEn, i18n, catalog, 
 
 requireFragments(readmeZh, 'Chinese README', [
   '[English](README.en.md)',
-  '当前版本：`2.0.7`',
+  '当前版本：`2.0.8`',
+  '点击展开：2.0.8 改变了什么',
   '点击展开：2.0.7 改变了什么',
   '点击展开：2.0.6 修复了什么',
   '点击展开：2.0.5 改变了什么',
@@ -49,7 +50,7 @@ requireFragments(readmeZh, 'Chinese README', [
   '点击展开：2.0.0 主要改了什么',
   '稳定身份和三段版本',
   '最早觉得不对',
-  '固定到 `v2.0.7` 标签',
+  '固定到 `v2.0.8` 标签',
   '只暂停当前组件',
   '🧠 这次用上了',
   '🌱 这一步我学到了',
@@ -61,7 +62,8 @@ requireFragments(readmeZh, 'Chinese README', [
 ])
 requireFragments(readmeEn, 'English README', [
   '[简体中文](README.md)',
-  'Current version: `2.0.7`',
+  'Current version: `2.0.8`',
+  'What changed in 2.0.8',
   'What changed in 2.0.7',
   'What 2.0.6 fixes',
   'What changed in 2.0.5',
@@ -72,7 +74,7 @@ requireFragments(readmeEn, 'English README', [
   'What changed in 2.0.0',
   'stable identity and semantic version',
   'which first message or action felt wrong',
-  'pinned to the `v2.0.7` tag',
+  'pinned to the `v2.0.8` tag',
   'limits only that component',
   '🧠 Used this time',
   '🌱 Learned this step',

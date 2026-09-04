@@ -10,8 +10,11 @@ const write = (base, ref, source) => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, source, "utf8");
 };
-const skill = (base, name, body, withScript = false, { version = "1.0.0", skillId = `skill.${name}` } = {}) => {
-  write(base, "SKILL.md", `---\nname: ${name}\ndescription: Use ${name} when the user explicitly asks for this bounded workflow. Do not use it for unrelated tasks.\nskill_id: ${skillId}\nversion: ${version}\n---\n# Workflow\n${body}\n`);
+const skill = (base, name, body, withScript = false, { version = "1.0.0", skillId = `skill.${name}`, legacy = false } = {}) => {
+  const identity = legacy
+    ? `skill_id: ${skillId}\nversion: ${version}`
+    : `metadata:\n  ai-carry-skill-id: ${skillId}\n  ai-carry-version: \"${version}\"`;
+  write(base, "SKILL.md", `---\nname: ${name}\ndescription: Use ${name} when the user explicitly asks for this bounded workflow. Do not use it for unrelated tasks.\n${identity}\n---\n# Workflow\n${body}\n`);
   if (withScript) write(base, "scripts/never-run.mjs", "throw new Error('inspection or installation executed package code');\n");
 };
 const snapshotStub = () => ({ decision: "snapshot-pair-installed", byte_identical: true });
@@ -24,7 +27,7 @@ try {
   // 1. A ready source only creates a local preview receipt; it does not install,
   // execute scripts, or alter the formal requirements map before confirmation.
   const source = resolve(root, "shared-source");
-  skill(source, "shared-checklist", "Read the supplied facts, report limits, and keep unrelated work available.", true);
+  skill(source, "shared-checklist", "Read the supplied facts, report limits, and keep unrelated work available.", true, { legacy: true });
   write(source, "references/removed-in-v2.md", "This bounded legacy reference is removed by version 1.1.0.\n");
   write(source, "assets/stable.txt", "stable shared asset\n");
   const marker = resolve(source, "executed.txt");
@@ -137,7 +140,7 @@ try {
     && existsSync(resolve(root, ".assistant-local/skills/shared-checklist/SKILL.md")),
   "an injected local failure was not contained and rolled back without harming the existing Skill");
 
-  console.log("Skill install transaction passed seven high-information cases: preview-only, lazy first-use registration, atomic install, idempotence, complex same-Skill upgrade, conflict isolation, and rollback without package execution.");
+  console.log("Skill install transaction passed seven high-information cases: legacy install, standard-metadata upgrade, idempotence, conflict isolation, and rollback without package execution.");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
