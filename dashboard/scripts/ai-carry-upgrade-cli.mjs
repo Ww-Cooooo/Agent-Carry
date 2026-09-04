@@ -180,6 +180,10 @@ function assistantIdentity(root, label) {
 }
 
 const acceptedPublicGitOrigins = new Set([
+  "https://github.com/Ww-Cooooo/AI-Carry",
+  "https://github.com/Ww-Cooooo/AI-Carry.git",
+  "git@github.com:Ww-Cooooo/AI-Carry.git",
+  "ssh://git@github.com/Ww-Cooooo/AI-Carry.git",
   "https://github.com/Ww-Cooooo/Agent-Carry",
   "https://github.com/Ww-Cooooo/Agent-Carry.git",
   "git@github.com:Ww-Cooooo/Agent-Carry.git",
@@ -786,14 +790,14 @@ function validateOfficialReleaseLive(target, targetTree, releaseRef) {
   const authorityFingerprint = officialAuthorityFingerprint(record);
   if (record.record_type !== "ai-carry-live-official-release-verification"
     || record.authority !== "github-api-live-https"
-    || record.repository !== "Ww-Cooooo/Agent-Carry"
+    || record.repository !== "Ww-Cooooo/AI-Carry"
     || record.release_ref !== `v${TARGET_VERSION}`
     || !/^[a-f0-9]{40}$/u.test(record.commit_sha ?? "")
     || record.main_commit_sha !== record.commit_sha
     || !/^[a-f0-9]{40}$/u.test(record.git_tree_sha ?? "")
     || !/^[1-9][0-9]*$/u.test(String(record.release_id ?? ""))
     || record.latest_release_id !== record.release_id
-    || record.release_url !== `https://github.com/Ww-Cooooo/Agent-Carry/releases/tag/v${TARGET_VERSION}`
+    || record.release_url !== `https://github.com/Ww-Cooooo/AI-Carry/releases/tag/v${TARGET_VERSION}`
     || record.draft !== false || record.prerelease !== false || record.fixture !== false
     || record.target_tree_sha256 !== `sha256:${targetTree.fingerprint}`
     || record.release_manifest_sha256 !== releaseManifestDigest

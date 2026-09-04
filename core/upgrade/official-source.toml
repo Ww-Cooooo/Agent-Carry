@@ -2,19 +2,20 @@ schema_version = 2
 source_id = "ai-carry-official-public"
 product_id = "ai-carry"
 label = "AI Carry 官方公开发布源"
-repository = "https://github.com/Ww-Cooooo/Agent-Carry"
-releases = "https://github.com/Ww-Cooooo/Agent-Carry/releases"
-latest_release = "https://github.com/Ww-Cooooo/Agent-Carry/releases/latest"
-latest_archive = "https://github.com/Ww-Cooooo/Agent-Carry/archive/refs/heads/main.zip"
+repository = "https://github.com/Ww-Cooooo/AI-Carry"
+releases = "https://github.com/Ww-Cooooo/AI-Carry/releases"
+latest_release = "https://github.com/Ww-Cooooo/AI-Carry/releases/latest"
+latest_archive = "https://github.com/Ww-Cooooo/AI-Carry/archive/refs/heads/main.zip"
 latest_archive_kind = "github-generated-public-main-source-archive"
-versioned_archive_template = "https://github.com/Ww-Cooooo/Agent-Carry/archive/refs/tags/{tag}.zip"
-installation_guide = "https://github.com/Ww-Cooooo/Agent-Carry/blob/main/INSTALL.md"
+versioned_archive_template = "https://github.com/Ww-Cooooo/AI-Carry/archive/refs/tags/{tag}.zip"
+installation_guide = "https://github.com/Ww-Cooooo/AI-Carry/blob/main/INSTALL.md"
 
 [identity_compatibility]
 legacy_source_ids = ["agent-carry-official-public"]
 legacy_product_ids = ["agent-carry"]
-repository_slug_state = "legacy-agent-carry-slug-is-still-the-current-official-location"
-repository_rename = "separate-explicitly-authorized-external-operation-after-a-compatible-release"
+legacy_repositories = ["https://github.com/Ww-Cooooo/Agent-Carry"]
+repository_slug_state = "current-ai-carry-slug-with-legacy-github-redirect"
+repository_rename = "completed-with-compatible-old-repository-read-and-new-output-write"
 
 [behavior]
 check = "only-after-explicit-user-request"

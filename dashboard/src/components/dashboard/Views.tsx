@@ -164,12 +164,12 @@ export function HomeView({
   const selectOrbit = useCallback((key: string) => onNavigate(routeForOrbit(key)), [onNavigate]);
 
   const headline = isTemplate
-    ? "先创建一个真正属于你的助手"
+    ? "让你的 AI 助手，越用越懂你"
     : pending.length
       ? pending[0].title
       : "今天没有需要继续的待办";
   const intro = isTemplate
-    ? "选择交流方式和助手方向，核对预览后再创建。"
+    ? "记住你的习惯，沉淀你的方法。换模型、换 Agent、换电脑，也能继续。"
     : pending.length
       ? pending[0].summary || "从这项待办继续。"
       : "直接告诉 Agent 今天想做什么，需要的内容会按任务读取。";
@@ -179,16 +179,26 @@ export function HomeView({
       <section className="home-command" aria-labelledby="home-title">
         <div className="home-command__copy">
           <div className="home-command__topline">
-            <SectionEyebrow icon={isTemplate ? Lightbulb : Sparkles}>{isTemplate ? "第一次使用" : <>当前助手 · <SourceText>{profile.displayName}</SourceText></>}</SectionEyebrow>
+            <SectionEyebrow icon={isTemplate ? Sparkles : Lightbulb}>{isTemplate ? "你的 AI 随身助手" : <>当前助手 · <SourceText>{profile.displayName}</SourceText></>}</SectionEyebrow>
             <span className="local-indicator"><i /> 保存在本机</span>
           </div>
-          <h1 id="home-title">{isTemplate ? headline : <SourceText>{headline}</SourceText>}</h1>
-          {isTemplate ? <p>{intro}</p> : <SourceText as="p">{intro}</SourceText>}
+
+          <div className="home-command__message">
+            {isTemplate ? (
+              <h1 id="home-title" aria-label={headline}>
+                <span>让你的 AI 助手</span>
+                <strong>越用越懂你</strong>
+              </h1>
+            ) : (
+              <h1 id="home-title"><SourceText>{headline}</SourceText></h1>
+            )}
+            {isTemplate ? <p>{intro}</p> : <SourceText as="p">{intro}</SourceText>}
+          </div>
 
           {isTemplate ? (
             <div className="home-command__action">
-              <span className="compact-fact"><strong>创建前先看完整预览</strong><InfoHint label="第一次创建说明" help="Agent 会引导你选择交流方式和助手方向；正式保存前会展示完整预览，网页本身不会直接修改或锁定内容。" /></span>
               {instantiate ? <StartActionButton onClick={() => setOnboardingOpen(true)}>创建我的助手</StartActionButton> : null}
+              <span className="home-command__assurance"><ShieldCheck aria-hidden="true" /><strong>创建前先看完整预览</strong><InfoHint label="第一次创建说明" help="Agent 会引导你选择交流方式和助手方向；正式保存前会展示完整预览，网页本身不会直接修改或锁定内容。" /></span>
             </div>
           ) : pending.length ? (
             <div className="home-command__action">
@@ -201,29 +211,40 @@ export function HomeView({
               <Button variant="outline" className="secondary-cta" onClick={() => onNavigate({ page: "library", kind: "memories" })}>查看随身资产<ArrowRight aria-hidden="true" /></Button>
             </div>
           )}
+
+          <div className="home-command__promises" aria-label="AI Carry 的三项核心价值">
+            <div><span>01</span><strong>记得住</strong><small>习惯与经验</small></div>
+            <div><span>02</span><strong>用得上</strong><small>相关时自动调用</small></div>
+            <div><span>03</span><strong>带得走</strong><small>换环境也能继续</small></div>
+          </div>
         </div>
 
         <div className="home-command__visual" aria-label={`当前保存 ${carryCount} 项内容`}>
+          <div className="home-command__visual-heading" aria-hidden="true">
+            <span>AI CARRY</span>
+            <small>PORTABLE INTELLIGENCE</small>
+          </div>
           <Core planets={ORBIT_PLANETS} onSelect={selectOrbit} className="home-command__core" />
           <div className="home-command__count"><strong>{carryCount}</strong><span>项随身内容</span></div>
         </div>
-      </section>
 
-      <nav className="carry-index" aria-label="查看随身内容">
-        <div className="carry-index__lead"><Library aria-hidden="true" /><span><strong>随身内容</strong><small>按任务读取</small></span></div>
-        {CATEGORIES.map((category) => (
-          <button
-            key={category.key}
-            type="button"
-            onClick={() => onNavigate(routeForOrbit(category.key))}
-            style={{ "--category-color": category.color } as React.CSSProperties}
-          >
-            <span className="carry-index__dot" />
-            <span>{category.shortLabel}</span>
-            <strong>{categoryCount(category.key)}</strong>
-          </button>
-        ))}
-      </nav>
+        <nav className="carry-index" aria-label="查看随身内容">
+          <div className="carry-index__lead"><Library aria-hidden="true" /><span><strong>随身内容</strong><small>需要时自动读取</small></span></div>
+          {CATEGORIES.map((category) => (
+            <button
+              key={category.key}
+              type="button"
+              data-full-label={localizeText(category.shortLabel)}
+              onClick={() => onNavigate(routeForOrbit(category.key))}
+              style={{ "--category-color": category.color } as React.CSSProperties}
+            >
+              <span className="carry-index__dot" />
+              <span>{category.shortLabel}</span>
+              <strong>{categoryCount(category.key)}</strong>
+            </button>
+          ))}
+        </nav>
+      </section>
       {instantiate ? (
         <OnboardingDialog
           open={onboardingOpen}

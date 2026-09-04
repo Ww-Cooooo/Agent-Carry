@@ -4,7 +4,7 @@ AI Carry 会处理记忆、工作方式和本地个人资料。怀疑存在漏�
 
 ## 私密报告入口
 
-请使用 GitHub 仓库的 [私密漏洞报告](https://github.com/Ww-Cooooo/Agent-Carry/security/advisories/new)。这个入口会把报告发送给仓库维护者，而不是公开展示。
+请使用 GitHub 仓库的 [私密漏洞报告](https://github.com/Ww-Cooooo/AI-Carry/security/advisories/new)。这个入口会把报告发送给仓库维护者，而不是公开展示。
 
 如果该页面暂时没有显示报告按钮，请不要改用公开 Issue 粘贴漏洞细节。可以只新建一条不含技术细节、日志、个人数据或秘密原值的 Issue，说明“私密安全报告入口不可用”，等待维护者恢复入口。
 

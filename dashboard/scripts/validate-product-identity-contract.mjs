@@ -49,8 +49,9 @@ includesAll(assistantSource, [
   'legacy_professional_extension_record_types = ["agent-carry-professional-extension"]',
   'legacy_private_package_types = ["agent-carry-private-migration"]',
   'legacy_host_sources = ["agent-carry"]', 'legacy_host_access_scopes = ["agent-carry-root"]',
-  'repository = "https://github.com/Ww-Cooooo/Agent-Carry"',
-  'repository_slug_state = "legacy-slug-until-separately-authorized-rename"',
+  'repository = "https://github.com/Ww-Cooooo/AI-Carry"',
+  'legacy_repositories = ["https://github.com/Ww-Cooooo/Agent-Carry"]',
+  'repository_slug_state = "current-ai-carry-slug-with-legacy-github-redirect"',
   'write_policy = "new-product-owned-output-uses-ai-carry-identities"',
 ], "assistant identity authority");
 includesAll(read("core/manifest.toml"), ['core_id = "ai-carry-core"', `version = "${productVersion}"`], "core identity authority");
@@ -58,8 +59,9 @@ includesAll(read("instance/manifest.toml"), ['instance_id = "template"', `create
 includesAll(read("dashboard/package.json"), ['"name": "ai-carry-dashboard"', `"version": "${productVersion}"`, '"upgrade": "node scripts/ai-carry-upgrade-cli.mjs"'], "Dashboard identity authority");
 includesAll(read("core/upgrade/official-source.toml"), [
   'source_id = "ai-carry-official-public"', 'product_id = "ai-carry"', 'label = "AI Carry 官方公开发布源"',
-  'repository = "https://github.com/Ww-Cooooo/Agent-Carry"',
-  'repository_slug_state = "legacy-agent-carry-slug-is-still-the-current-official-location"',
+  'repository = "https://github.com/Ww-Cooooo/AI-Carry"',
+  'legacy_repositories = ["https://github.com/Ww-Cooooo/Agent-Carry"]',
+  'repository_slug_state = "current-ai-carry-slug-with-legacy-github-redirect"',
 ], "official source identity");
 const legacyDisplayTrigger = `${LEGACY_PRODUCT_IDENTITY.productNames[0]} 旧名`;
 includesAll(read("BOOTSTRAP.md"), [

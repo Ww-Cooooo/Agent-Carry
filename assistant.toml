@@ -1,8 +1,8 @@
 schema_version = 1
 product_id = "ai-carry"
 product_name = "AI Carry"
-product_version = "2.0.8"
-core_version = "2.0.8"
+product_version = "2.0.9"
+core_version = "2.0.9"
 license = "Apache-2.0"
 purpose = "Carry user-owned, policy-governed memory, preferences, capabilities, SOPs and evolution across AI agents."
 portable_truth = ["markdown", "toml"]
@@ -18,8 +18,9 @@ legacy_private_package_types = ["agent-carry-private-migration"]
 legacy_host_sources = ["agent-carry"]
 legacy_host_access_scopes = ["agent-carry-root"]
 legacy_snapshot_globals = ["AGENT_CARRY_SNAPSHOT", "AGENT_CARRY_IS_REAL", "AGENT_CARRY_DEMO"]
-repository = "https://github.com/Ww-Cooooo/Agent-Carry"
-repository_slug_state = "legacy-slug-until-separately-authorized-rename"
+repository = "https://github.com/Ww-Cooooo/AI-Carry"
+legacy_repositories = ["https://github.com/Ww-Cooooo/Agent-Carry"]
+repository_slug_state = "current-ai-carry-slug-with-legacy-github-redirect"
 read_policy = "accept-known-legacy-identities-with-bounded-migration-or-alias"
 write_policy = "new-product-owned-output-uses-ai-carry-identities"
 
@@ -142,7 +143,7 @@ policy_change_requires_user_approval = true
 [maintenance]
 component_registry = "core/maps/component-map.toml"
 ownership = "core/ownership.toml"
-release_manifest = "core/upgrade/release-manifest-2.0.8.toml"
+release_manifest = "core/upgrade/release-manifest-2.0.9.toml"
 official_update_source = "core/upgrade/official-source.toml"
 durable_change_protocol = "core/protocols/COMPONENT_CHANGE.md"
 durable_change_load_policy = "only-after-a-formal-add-modify-delete-rename-move-migrate-upgrade-or-publish-intent; never-for-read-only-or-ordinary-use"

@@ -45,7 +45,7 @@ function overlaps(line, match, fragment) {
 }
 function archivedRelease(ref) {
   return /^core\/upgrade\/(?:release-manifest-|upgrade-).+\.(?:toml|md)$/u.test(ref)
-    && !ref.endsWith("release-manifest-2.0.8.toml");
+    && !ref.endsWith("release-manifest-2.0.9.toml");
 }
 function classify(ref, line, match) {
   if (repositoryLocations.some((fragment) => overlaps(line, match, fragment))) return "repository-location";
@@ -68,7 +68,7 @@ function synthetic(ref, line, value, expected) {
 }
 synthetic("START-HERE.txt", "Agent Carry", legacyDisplay, "");
 synthetic("BOOTSTRAP.md", "Agent Carry 是 AI Carry 的旧名", legacyDisplay, "documented-compatibility");
-synthetic("README.md", "https://github.com/Ww-Cooooo/Agent-Carry", legacyDashed, "repository-location");
+synthetic("assistant.toml", "legacy repository https://github.com/Ww-Cooooo/Agent-Carry", legacyDashed, "repository-location");
 synthetic("core/schemas/migration-kit.schema.md", "new Agent-Carry-Migration-demo", legacyDashed, "invalid-new-output");
 synthetic("core/schemas/migration-kit.schema.md", "旧版 Agent-Carry-Migration-demo 只读兼容", legacyDashed, "legacy-output-read-only");
 
