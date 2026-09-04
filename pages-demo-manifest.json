@@ -1,18 +1,18 @@
 {
   "schemaVersion": 2,
   "kind": "ai-carry-synthetic-pages-demo",
-  "publicRepository": "Ww-Cooooo/Agent-Carry",
-  "expectedUrl": "https://ww-cooooo.github.io/Agent-Carry/",
+  "publicRepository": "Ww-Cooooo/AI-Carry",
+  "expectedUrl": "https://ww-cooooo.github.io/AI-Carry/",
   "publishingBranch": "gh-pages",
   "publishingFolder": "/",
   "dataPolicy": "synthetic-only",
   "includedInPublicMain": false,
   "includedInReleaseArchive": false,
   "source": {
-    "dashboardIndexSha256": "6e45ab722470cbce5dbadc448e57528a1307ad66bf39b867cb83d64d24b515fd",
-    "formalEmptySnapshotSha256": "2243dc73736eb1476928f1d3c94bb10ad108a1777191e4fb510be08957abb8d6",
-    "syntheticDemoSnapshotSha256": "36984a814ac2d8bc610d53c5e4c40464f1733724f2a99a705d90b6e30f23b70d",
-    "englishSyntheticDemoSnapshotSha256": "4196394a911378c1adb56b48d9a4381d56a75ff136df9fd6a01325967fbb5829",
-    "englishDashboardIndexSha256": "445f4ef30301581f31405e50d8e044c01b818883c2398f3a4f4320f46c2b13e1"
+    "dashboardIndexSha256": "b8a68959953ca971605dd66d1a8dd577c00584339c2c3efe35cc91db116511ce",
+    "formalEmptySnapshotSha256": "9f05442dfe599faaffdba0e7359249dfa0817155084f6fb29506a5b9e9665720",
+    "syntheticDemoSnapshotSha256": "6a67a7c52ff7dec9e05b4af21139ffb9726b37d4b810918ff69b23e57a09803f",
+    "englishSyntheticDemoSnapshotSha256": "ee9ac14451bcd29d300e5ce8e84a275a4e97dc841091a07f2171bd97489eec0d",
+    "englishDashboardIndexSha256": "b71c7ddd5ae96329234ebb54a53f7075306e7ac4c3280b2d3d0f3f751a406fbe"
   }
 }
